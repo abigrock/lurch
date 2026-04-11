@@ -8,15 +8,16 @@ use std::sync::{Arc, Mutex};
 
 use eframe::egui;
 
-use crate::core::curseforge::{CfCategory, CfMod, CfSearchResponse, CfSortField};
+use crate::core::curseforge::CfCategory;
 use crate::core::instance::{Instance, ModOrigin};
 use crate::core::local_mods::{self, InstalledMod};
-use crate::core::modrinth::{MrCategory, MrSortIndex, SearchHit, SearchResponse};
+use crate::core::modrinth::MrCategory;
 use crate::core::servers::{self, Server};
 use crate::core::shaders::{self, ShaderPack};
 use crate::core::update::{ModUpdateInfo, ModUpdateMap};
 use crate::core::worlds::{self, World};
-use crate::ui::helpers::{tab_button, SearchState, ViewMode};
+use crate::ui::browse_common::BrowseTab;
+use crate::ui::helpers::tab_button;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum DetailTab {
@@ -45,25 +46,15 @@ pub struct InstanceDetailView {
     // ── Mods state ───────────────────────────────────────────────
     mods_sub_tab: ModsSubTab,
     installed: Vec<InstalledMod>,
-    mr_search: SearchState<SearchResponse>,
-    search_results: Vec<SearchHit>,
+    pub mr_browse: BrowseTab,
+    pub cf_browse: BrowseTab,
     pub pending_toasts: Vec<crate::app::Toast>,
     needs_rescan: bool,
-    search_all_versions: bool,
-    cf_search: SearchState<CfSearchResponse>,
-    cf_search_results: Vec<CfMod>,
-    cf_search_all_versions: bool,
-    mr_browse_view_mode: ViewMode,
-    cf_browse_view_mode: ViewMode,
-    mr_sort: MrSortIndex,
-    cf_sort: CfSortField,
-    // Category filtering
+    // Category fetch (kept in caller, not in BrowseTab)
     mr_categories: Option<Vec<MrCategory>>,
     mr_categories_fetch: Option<Arc<Mutex<Option<Result<Vec<MrCategory>, String>>>>>,
-    mr_selected_category: Option<String>,
     cf_categories: Option<Vec<CfCategory>>,
     cf_categories_fetch: Option<Arc<Mutex<Option<Result<Vec<CfCategory>, String>>>>>,
-    cf_selected_category: Option<u64>,
     installed_filter: String,
     pending_origins: Arc<Mutex<Vec<ModOrigin>>>,
     pub mod_origin_updates: Vec<ModOrigin>,
@@ -105,24 +96,14 @@ impl InstanceDetailView {
             selected_tab: DetailTab::Mods,
             mods_sub_tab: ModsSubTab::Installed,
             installed: Vec::new(),
-            mr_search: SearchState::default(),
-            search_results: Vec::new(),
+            mr_browse: BrowseTab::default(),
+            cf_browse: BrowseTab::default(),
             pending_toasts: Vec::new(),
             needs_rescan: true,
-            search_all_versions: false,
-            cf_search: SearchState::default(),
-            cf_search_results: Vec::new(),
-            cf_search_all_versions: false,
-            mr_browse_view_mode: ViewMode::List,
-            cf_browse_view_mode: ViewMode::List,
-            mr_sort: MrSortIndex::default(),
-            cf_sort: CfSortField::default(),
             mr_categories: None,
             mr_categories_fetch: None,
-            mr_selected_category: None,
             cf_categories: None,
             cf_categories_fetch: None,
-            cf_selected_category: None,
             installed_filter: String::new(),
             pending_origins: Arc::new(Mutex::new(Vec::new())),
             mod_origin_updates: Vec::new(),
@@ -278,40 +259,6 @@ impl InstanceDetailView {
         if self.servers_needs_rescan {
             self.server_list = servers::read_servers(&servers_dat);
             self.servers_needs_rescan = false;
-        }
-
-        // ── Poll active searches ─────────────────────────────────
-        if let Some(result) = self.mr_search.poll() {
-            match result {
-                Ok(resp) => {
-                    if self.mr_search.appending {
-                        self.search_results.extend(resp.hits);
-                    } else {
-                        self.search_results = resp.hits;
-                    }
-                    self.mr_search.total = resp.total_hits;
-                    self.mr_search.appending = false;
-                }
-                Err(e) => {
-                    self.pending_toasts.push(crate::app::Toast::error(format!("Search failed: {e}")));
-                }
-            }
-        }
-        if let Some(result) = self.cf_search.poll() {
-            match result {
-                Ok(resp) => {
-                    if self.cf_search.appending {
-                        self.cf_search_results.extend(resp.data);
-                    } else {
-                        self.cf_search_results = resp.data;
-                    }
-                    self.cf_search.total = resp.pagination.total_count;
-                    self.cf_search.appending = false;
-                }
-                Err(e) => {
-                    self.pending_toasts.push(crate::app::Toast::error(format!("Search failed: {e}")));
-                }
-            }
         }
 
         // ── Top-level tab bar ────────────────────────────────────
