@@ -36,8 +36,9 @@ impl InstancesView {
 
         // Top bar
         ui.horizontal(|ui| {
-            let back_lbl = format!("{} Back", egui_phosphor::regular::ARROW_LEFT);
-            let back_clicked = ui.add(self.theme.ghost_button(&back_lbl)).clicked();
+            let back_clicked = ui
+                .add(self.theme.ghost_button(egui_phosphor::regular::ARROW_LEFT))
+                .clicked();
             if back_clicked {
                 self.show_add_instance = false;
             }

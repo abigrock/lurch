@@ -167,6 +167,12 @@ impl InstanceDetailView {
             if ui.add(theme.ghost_button(egui_phosphor::regular::ARROW_LEFT)).clicked() {
                 self.back_requested = true;
             }
+            let icon_size = 40.0;
+            if let Some(url) = &instance.icon {
+                ui.add(egui::Image::new(url).fit_to_exact_size(egui::vec2(icon_size, icon_size)).corner_radius(6));
+            } else {
+                crate::ui::helpers::icon_placeholder(ui, &instance.name, icon_size, theme);
+            }
             ui.vertical(|ui| {
                 ui.add(egui::Label::new(crate::ui::helpers::section_heading(&instance.name, theme)).truncate());
                 let version_info = if instance.loader != crate::core::instance::ModLoader::Vanilla {
