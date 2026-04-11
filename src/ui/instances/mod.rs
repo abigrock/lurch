@@ -742,80 +742,38 @@ impl InstancesView {
                             let t = &self.theme;
                             let more_btn = ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)));
                             let more_btn = more_btn.on_hover_text("More actions");
-                            egui::Popup::menu(&more_btn).show(|ui| {
-                                ui.set_min_width(140.0);
-                                let t = &self.theme;
-                                t.style_menu(ui);
-                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH))).clicked()
-                                {
-                                    self.detail_view =
-                                        Some(detail::InstanceDetailView::new(inst_id.clone()));
+                            let inst = &instances[idx];
+                            let theme_ref = &self.theme;
+                            let out = egui::Popup::menu(&more_btn).show(|ui| {
+                                instance_context_menu_body(ui, theme_ref, inst, idx, is_running)
+                            });
+                            if let Some(out) = out.map(|r| r.inner) {
+                                if let Some(id) = out.manage {
+                                    self.detail_view = Some(detail::InstanceDetailView::new(id));
                                 }
-                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Rename", egui_phosphor::regular::PENCIL))).clicked()
-                                {
-                                    self.renaming = Some(inst_id.clone());
+                                if let Some(id) = out.rename {
+                                    self.renaming = Some(id);
                                     self.rename_text = instances[idx].name.clone();
                                 }
-                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Configure", egui_phosphor::regular::GEAR_SIX))).clicked()
-                                {
-                                    self.editing = Some(inst_id.clone());
+                                if let Some(id) = out.configure {
+                                    self.editing = Some(id);
                                 }
-                                if ui.add(t.menu_item(&format!("{} Open Folder", egui_phosphor::regular::FOLDER))).clicked()
-                                    && let Ok(dir) = instances[idx].instance_dir()
-                                {
-                                    let _ = open::that(dir);
+                                if let Some(i) = out.duplicate {
+                                    *to_duplicate = Some(i);
                                 }
-                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD))).clicked()
-                                {
-                                    *to_duplicate = Some(idx);
+                                if let Some(i) = out.export {
+                                    self.export_requested = Some(i);
                                 }
-                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Export", egui_phosphor::regular::EXPORT))).clicked()
-                                {
-                                    self.export_requested = Some(idx);
+                                if let Some(id) = out.kill {
+                                    self.confirm_kill = Some(id);
                                 }
-                                if let Some(origin) = &inst.modpack_origin {
-                                    let source_name = match origin.source.as_str() {
-                                        "modrinth" => "Modrinth",
-                                        "curseforge" => "CurseForge",
-                                        _ => "source",
-                                    };
-                                    if ui.add(t.menu_item(&format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE))).clicked()
-                                    {
-                                        if let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
-                                            let _ = open::that(&url);
-                                        }
-                                    }
-                                    if ui.add_enabled(!is_running, t.menu_item(&format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP))).clicked() {
-                                        self.modpack_version_picker_requested = Some((
-                                            inst.id.clone(),
-                                            inst.name.clone(),
-                                            origin.source.clone(),
-                                            origin.project_id.clone(),
-                                            origin.version_id.clone(),
-                                        ));
-                                    }
+                                if let Some(id) = out.delete {
+                                    *to_delete = Some(id);
                                 }
-                                if is_running {
-                                    ui.separator();
-                                    let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
-                                    let kill_clicked = ui.add(t.danger_button(&kill_lbl)).clicked();
-                                    if kill_clicked {
-                                        self.confirm_kill = Some(inst_id.clone());
-                                        ui.close();
-                                    }
+                                if let Some(req) = out.version_picker {
+                                    self.modpack_version_picker_requested = Some(req);
                                 }
-                                ui.separator();
-                                let del_lbl =
-                                    format!("{} Delete", egui_phosphor::regular::TRASH);
-                                if is_running {
-                                    ui.add_enabled(false, egui::Button::new(&del_lbl));
-                                } else {
-                                    let delete_clicked = ui.add(t.danger_button(&del_lbl)).clicked();
-                                    if delete_clicked {
-                                        *to_delete = Some(inst_id.clone());
-                                    }
-                                }
-                            });
+                            }
 
                             let t = &self.theme;
                             if !is_running {
@@ -991,83 +949,38 @@ impl InstancesView {
                         let t = &self.theme;
                         let more_btn = ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)));
                         let more_btn = more_btn.on_hover_text("More actions");
-                        egui::Popup::menu(&more_btn).show(|ui| {
-                            ui.set_min_width(140.0);
-                            let t = &self.theme;
-                            t.style_menu(ui);
-                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH))).clicked()
-                            {
-                                self.detail_view = Some(
-                                    detail::InstanceDetailView::new(inst_id.clone()),
-                                );
+                        let inst = &instances[idx];
+                        let theme_ref = &self.theme;
+                        let out = egui::Popup::menu(&more_btn).show(|ui| {
+                            instance_context_menu_body(ui, theme_ref, inst, idx, is_running)
+                        });
+                        if let Some(out) = out.map(|r| r.inner) {
+                            if let Some(id) = out.manage {
+                                self.detail_view = Some(detail::InstanceDetailView::new(id));
                             }
-                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Rename", egui_phosphor::regular::PENCIL))).clicked()
-                            {
-                                self.renaming = Some(inst_id.clone());
+                            if let Some(id) = out.rename {
+                                self.renaming = Some(id);
                                 *rename_cell.borrow_mut() = instances[idx].name.clone();
                             }
-                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Configure", egui_phosphor::regular::GEAR_SIX))).clicked()
-                            {
-                                self.editing = Some(inst_id.clone());
+                            if let Some(id) = out.configure {
+                                self.editing = Some(id);
                             }
-                            if ui.add(t.menu_item(&format!("{} Open Folder", egui_phosphor::regular::FOLDER))).clicked()
-                                && let Ok(dir) = instances[idx].instance_dir()
-                            {
-                                let _ = open::that(dir);
+                            if let Some(i) = out.duplicate {
+                                *to_duplicate = Some(i);
                             }
-                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD))).clicked()
-                            {
-                                *to_duplicate = Some(idx);
+                            if let Some(i) = out.export {
+                                self.export_requested = Some(i);
                             }
-                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Export", egui_phosphor::regular::EXPORT))).clicked()
-                            {
-                                self.export_requested = Some(idx);
+                            if let Some(id) = out.kill {
+                                self.confirm_kill = Some(id);
                             }
-                            if let Some(origin) = &inst.modpack_origin {
-                                let source_name = match origin.source.as_str() {
-                                    "modrinth" => "Modrinth",
-                                    "curseforge" => "CurseForge",
-                                    _ => "source",
-                                };
-                                if ui.add(t.menu_item(&format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE))).clicked()
-                                {
-                                    if let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
-                                        let _ = open::that(&url);
-                                    }
-                                }
-                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP))).clicked() {
-                                    open_version_picker_req = Some((
-                                        inst.id.clone(),
-                                        inst.name.clone(),
-                                        origin.source.clone(),
-                                        origin.project_id.clone(),
-                                        origin.version_id.clone(),
-                                    ));
-                                }
+                            if let Some(id) = out.delete {
+                                *to_delete = Some(id);
                             }
-                            if is_running {
-                                ui.separator();
-                                let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
-                                let kill_clicked = ui.add(t.danger_button(&kill_lbl)).clicked();
-                                if kill_clicked {
-                                    self.confirm_kill = Some(inst_id.clone());
-                                    ui.close();
-                                }
+                            if out.version_picker.is_some() {
+                                open_version_picker_req = out.version_picker;
                             }
-                            ui.separator();
-                            let del_lbl = format!(
-                                "{} Delete",
-                                egui_phosphor::regular::TRASH
-                            );
-                            if is_running {
-                                ui.add_enabled(false, egui::Button::new(&del_lbl));
-                            } else {
-                                let delete_clicked = ui.add(t.danger_button(&del_lbl)).clicked();
-                                if delete_clicked {
-                                    *to_delete = Some(inst_id.clone());
-                                }
-                            }
-                        });
+                        }
                     },
                 );
 
@@ -1168,7 +1081,153 @@ impl InstancesView {
             }
         }
     }
+}
 
+/// Outputs from the shared instance context menu.
+#[derive(Default)]
+struct ContextMenuOutputs {
+    manage: Option<String>,
+    rename: Option<String>,
+    configure: Option<String>,
+    export: Option<usize>,
+    kill: Option<String>,
+    delete: Option<String>,
+    duplicate: Option<usize>,
+    version_picker: Option<(String, String, String, String, String)>,
+}
+
+/// Renders the body of an instance context menu. Returns outputs for the caller to apply.
+#[allow(clippy::too_many_arguments)]
+fn instance_context_menu_body(
+    ui: &mut egui::Ui,
+    theme: &crate::theme::Theme,
+    inst: &Instance,
+    idx: usize,
+    is_running: bool,
+) -> ContextMenuOutputs {
+    let mut out = ContextMenuOutputs::default();
+    let inst_id = &inst.id;
+    ui.set_min_width(140.0);
+    theme.style_menu(ui);
+    if ui
+        .add_enabled(
+            !is_running,
+            theme.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH)),
+        )
+        .clicked()
+    {
+        out.manage = Some(inst_id.clone());
+    }
+    if ui
+        .add_enabled(
+            !is_running,
+            theme.menu_item(&format!("{} Rename", egui_phosphor::regular::PENCIL)),
+        )
+        .clicked()
+    {
+        out.rename = Some(inst_id.clone());
+    }
+    if ui
+        .add_enabled(
+            !is_running,
+            theme.menu_item(&format!(
+                "{} Configure",
+                egui_phosphor::regular::GEAR_SIX
+            )),
+        )
+        .clicked()
+    {
+        out.configure = Some(inst_id.clone());
+    }
+    if ui
+        .add(theme.menu_item(&format!(
+            "{} Open Folder",
+            egui_phosphor::regular::FOLDER
+        )))
+        .clicked()
+        && let Ok(dir) = inst.instance_dir()
+    {
+        let _ = open::that(dir);
+    }
+    if ui
+        .add_enabled(
+            !is_running,
+            theme.menu_item(&format!(
+                "{} Duplicate",
+                egui_phosphor::regular::CLIPBOARD
+            )),
+        )
+        .clicked()
+    {
+        out.duplicate = Some(idx);
+    }
+    if ui
+        .add_enabled(
+            !is_running,
+            theme.menu_item(&format!("{} Export", egui_phosphor::regular::EXPORT)),
+        )
+        .clicked()
+    {
+        out.export = Some(idx);
+    }
+    if let Some(origin) = &inst.modpack_origin {
+        let source_name = match origin.source.as_str() {
+            "modrinth" => "Modrinth",
+            "curseforge" => "CurseForge",
+            _ => "source",
+        };
+        if ui
+            .add(theme.menu_item(&format!(
+                "{} Open on {source_name}",
+                egui_phosphor::regular::GLOBE
+            )))
+            .clicked()
+        {
+            if let Some(url) = crate::core::local_mods::modpack_project_url(
+                &origin.source,
+                &origin.project_id,
+            ) {
+                let _ = open::that(&url);
+            }
+        }
+        if ui
+            .add_enabled(
+                !is_running,
+                theme.menu_item(&format!(
+                    "{} Change Version",
+                    egui_phosphor::regular::ARROWS_DOWN_UP
+                )),
+            )
+            .clicked()
+        {
+            out.version_picker = Some((
+                inst.id.clone(),
+                inst.name.clone(),
+                origin.source.clone(),
+                origin.project_id.clone(),
+                origin.version_id.clone(),
+            ));
+        }
+    }
+    if is_running {
+        ui.separator();
+        let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
+        if ui.add(theme.danger_button(&kill_lbl)).clicked() {
+            out.kill = Some(inst_id.clone());
+            ui.close();
+        }
+    }
+    ui.separator();
+    let del_lbl = format!("{} Delete", egui_phosphor::regular::TRASH);
+    if is_running {
+        ui.add_enabled(false, egui::Button::new(&del_lbl));
+    } else if ui.add(theme.danger_button(&del_lbl)).clicked() {
+        out.delete = Some(inst_id.clone());
+    }
+    out
+}
+
+impl InstancesView {
     fn show_modpack_version_picker(&mut self, ui: &mut egui::Ui) {
         if self.modpack_version_picker.is_none() {
             return;
