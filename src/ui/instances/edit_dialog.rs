@@ -401,6 +401,16 @@ impl InstancesView {
                                 jvm_text.split_whitespace().map(str::to_string).collect();
                         }
                         ui.end_row();
+
+                        // Environment variables
+                        ui.label("Env Vars:");
+                        ui.add(
+                            egui::TextEdit::multiline(&mut inst.env_vars)
+                                .desired_rows(3)
+                                .hint_text("KEY=VALUE (one per line)")
+                                .margin(egui::Margin::symmetric(4, 9)),
+                        );
+                        ui.end_row();
                     });
 
                 ui.add_space(8.0);

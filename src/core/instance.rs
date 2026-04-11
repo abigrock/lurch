@@ -53,6 +53,9 @@ pub struct Instance {
     pub mod_origins: Vec<ModOrigin>,
     #[serde(default)]
     pub created: Option<u64>,
+    /// Custom environment variables (one `KEY=VALUE` per line)
+    #[serde(default)]
+    pub env_vars: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -84,6 +87,7 @@ impl Instance {
             modpack_origin: None,
             mod_origins: Vec::new(),
             created: None,
+            env_vars: String::new(),
         }
     }
 
@@ -106,6 +110,7 @@ impl Instance {
             modpack_origin: self.modpack_origin.clone(),
             mod_origins: self.mod_origins.clone(),
             created: None,
+            env_vars: self.env_vars.clone(),
         }
     }
 
