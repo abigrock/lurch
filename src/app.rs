@@ -844,6 +844,8 @@ use crate::core::modrinth_modpack;
                     if let Some(last) = self.instances.last() {
                         self.instances_view.editing = Some(last.id.clone());
                     }
+                    // Navigate back to instances list (closes modpack browser / add-instance view)
+                    self.instances_view.show_add_instance = false;
                     self.current_view = View::Instances;
                 }
             }

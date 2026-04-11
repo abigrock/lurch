@@ -2,6 +2,8 @@
 
 A Minecraft launcher built with Rust and [egui](https://github.com/emilk/egui).
 
+![Preview](assets/preview.png)
+
 ## Features
 
 - **Multiple mod loaders** — Vanilla, Forge, NeoForge, Fabric, Quilt
