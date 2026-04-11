@@ -6,14 +6,16 @@ A Minecraft launcher built with Rust and [egui](https://github.com/emilk/egui).
 
 ## Features
 
-- **Multiple mod loaders** — Vanilla, Forge, NeoForge, Fabric, Quilt
-- **Modpack sources** — Browse and install from Modrinth and CurseForge
-- **Microsoft authentication** — Device code flow login
-- **Java management** — Automatic runtime detection and download
-- **Instance management** — Create, configure, and launch isolated instances
-- **Per-instance content** — Manage mods, worlds, shaders, resource packs, and servers
-- **Themes** — 33 built-in themes with support for custom user themes
-- **Cross-platform** — Linux, Windows, macOS
+- **Multiple mod loaders** - Vanilla, Forge, NeoForge, Fabric, Quilt
+- **Modpack support** - Browse, install, and update modpacks from Modrinth and CurseForge
+- **Mod browser** - Search and install mods per instance from Modrinth and CurseForge
+- **Microsoft authentication** - Device code flow login
+- **Java management** - Automatic runtime detection and download
+- **Instance management** - Create, configure, and launch isolated game instances
+- **Per-instance content** - Manage mods, shaders, worlds, and servers for each instance
+- **Game console** - Real-time log output with per-instance tabs
+- **Themes** - 33 built-in themes plus custom JSON themes
+- **Cross-platform** - Linux, Windows, macOS
 
 ## Building
 
@@ -33,7 +35,7 @@ CurseForge browsing and modpack installation work out of the box with the bundle
 
 ## Development
 
-This project is built with significant AI assistance. The architecture, implementation decisions, and code were developed collaboratively with AI tools. Contributions and feedback are welcome regardless — the code is the code.
+This project is built with significant AI assistance. The architecture, implementation decisions, and code were developed collaboratively with AI tools. Contributions and feedback are welcome regardless - the code is the code.
 
 ### Architecture
 
