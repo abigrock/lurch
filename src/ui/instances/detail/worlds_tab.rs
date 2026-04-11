@@ -9,17 +9,12 @@ impl InstanceDetailView {
         &mut self,
         ui: &mut egui::Ui,
         saves_dir: &std::path::Path,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
     ) {
         ui.add_space(4.0);
 
         ui.horizontal(|ui| {
-            let folder_clicked = if let Some(t) = theme {
-                ui.add(t.accent_button("Open Saves Folder")).clicked()
-            } else {
-                ui.button("Open Saves Folder").clicked()
-            };
-            if folder_clicked {
+            if ui.add(theme.accent_button("Open Saves Folder")).clicked() {
                 let _ = std::fs::create_dir_all(saves_dir);
                 let _ = open::that(saves_dir);
             }
@@ -29,28 +24,17 @@ impl InstanceDetailView {
         if self.installed_worlds.is_empty() {
             ui.add_space(20.0);
             ui.vertical_centered(|ui| {
-                if let Some(t) = theme {
-                    ui.label(
-                        egui::RichText::new(egui_phosphor::regular::GLOBE_HEMISPHERE_WEST)
-                            .size(48.0)
-                            .color(t.color("fg_muted")),
-                    );
-                    ui.add_space(8.0);
-                    ui.label(t.subtext("No worlds found."));
-                    ui.add_space(4.0);
-                    ui.label(
-                        t.subtext("Worlds will appear here after you create or join one in-game."),
-                    );
-                } else {
-                    ui.label(
-                        egui::RichText::new(egui_phosphor::regular::GLOBE_HEMISPHERE_WEST)
-                            .size(48.0),
-                    );
-                    ui.add_space(8.0);
-                    ui.weak("No worlds found.");
-                    ui.add_space(4.0);
-                    ui.weak("Worlds will appear here after you create or join one in-game.");
-                }
+                ui.label(
+                    egui::RichText::new(egui_phosphor::regular::GLOBE_HEMISPHERE_WEST)
+                        .size(48.0)
+                        .color(theme.color("fg_muted")),
+                );
+                ui.add_space(8.0);
+                ui.label(theme.subtext("No worlds found."));
+                ui.add_space(4.0);
+                ui.label(
+                    theme.subtext("Worlds will appear here after you create or join one in-game."),
+                );
             });
             return;
         }
@@ -85,24 +69,15 @@ impl InstanceDetailView {
                             ui.separator();
                         }
                         let row_resp = ui.horizontal(|ui| {
-                            if let Some(t) = theme {
-                                ui.label(t.title(&w.display_name));
-                            } else {
-                                ui.strong(&w.display_name);
-                            }
+                            ui.label(theme.title(&w.display_name));
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
-                                    let clicked = if let Some(t) = theme {
-                                        ui.add(t.danger_button(egui_phosphor::regular::TRASH))
-                                            .on_hover_text("Delete world")
-                                            .clicked()
-                                    } else {
-                                        ui.small_button(egui_phosphor::regular::TRASH)
-                                            .on_hover_text("Delete world")
-                                            .clicked()
-                                    };
-                                    if clicked {
+                                    if ui
+                                        .add(theme.danger_button(egui_phosphor::regular::TRASH))
+                                        .on_hover_text("Delete world")
+                                        .clicked()
+                                    {
                                         self.confirm_world_delete = Some(w.dir_name.clone());
                                     }
                                     let detail = format!(
@@ -110,11 +85,7 @@ impl InstanceDetailView {
                                         worlds::format_size(w.size_bytes),
                                         w.last_modified,
                                     );
-                                    if let Some(t) = theme {
-                                        ui.label(t.subtext(&detail));
-                                    } else {
-                                        ui.weak(&detail);
-                                    }
+                                    ui.label(theme.subtext(&detail));
                                 },
                             );
                         });
@@ -140,26 +111,16 @@ impl InstanceDetailView {
                 .open(&mut open)
                 .show(ui.ctx(), |ui| {
                     ui.label(format!("Delete world \"{}\"?", display));
-                    if let Some(t) = theme {
-                        ui.label(
-                            t.subtext("This will permanently delete the world and all save data."),
-                        );
-                    } else {
-                        ui.weak("This will permanently delete the world and all save data.");
-                    }
+                    ui.label(
+                        theme.subtext("This will permanently delete the world and all save data."),
+                    );
                     ui.add_space(8.0);
                     let row_h = ui.spacing().interact_size.y + 4.0;
                     ui.allocate_ui_with_layout(
                         egui::vec2(ui.available_width(), row_h),
                         egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
                         |ui| {
-                            let confirm_clicked = if let Some(t) = theme {
-                                ui.add(t.danger_button("Delete")).clicked()
-                            } else {
-                                ui.button(egui::RichText::new("Delete").color(egui::Color32::RED))
-                                    .clicked()
-                            };
-                            if confirm_clicked {
+                            if ui.add(theme.danger_button("Delete")).clicked() {
                                 match worlds::remove_world(saves_dir, del_name) {
                                     Ok(()) => self.worlds_needs_rescan = true,
                                     Err(e) => {

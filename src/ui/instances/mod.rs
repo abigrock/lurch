@@ -41,7 +41,7 @@ impl InstanceSortMode {
 }
 
 pub struct InstancesView {
-    pub theme: Option<crate::theme::Theme>,
+    pub theme: crate::theme::Theme,
     pub view_mode: ViewMode,
     pub show_add_instance: bool,
     pub(crate) add_instance_tab: AddInstanceTab,
@@ -57,6 +57,7 @@ pub struct InstancesView {
     pub launch_requested: Option<String>,
     pub detail_view: Option<detail::InstanceDetailView>,
     pub export_requested: Option<usize>,
+    pub modpack_version_picker_requested: Option<(String, String, String, String, String)>,
     pub pending_toasts: Vec<crate::app::Toast>,
     pub modpack_browser: modpack_browser::ModpackBrowser,
     pub local_mrpack_import: Option<std::path::PathBuf>,
@@ -116,7 +117,7 @@ enum ModpackVersionPickerAction {
 impl Default for InstancesView {
     fn default() -> Self {
         Self {
-            theme: None,
+            theme: crate::theme::bundled_themes().pop().unwrap(),
             view_mode: ViewMode::default(),
             show_add_instance: false,
             add_instance_tab: AddInstanceTab::default(),
@@ -132,6 +133,7 @@ impl Default for InstancesView {
             launch_requested: None,
             detail_view: None,
             export_requested: None,
+            modpack_version_picker_requested: None,
             pending_toasts: Vec::new(),
             modpack_browser: modpack_browser::ModpackBrowser::default(),
             local_mrpack_import: None,
@@ -218,29 +220,15 @@ impl InstancesView {
                     .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                     .open(&mut open)
                     .show(&ctx, |ui| {
+                        let t = &self.theme;
                         ui.label(format!("Kill \"{}\"?", inst_name));
-                        if let Some(t) = self.theme.as_ref() {
-                            ui.label(t.subtext("This will forcefully terminate the running instance."));
-                        } else {
-                            ui.weak("This will forcefully terminate the running instance.");
-                        }
+                        ui.label(t.subtext("This will forcefully terminate the running instance."));
                         ui.add_space(8.0);
                         ui.horizontal(|ui| {
-                            let confirm_clicked = if let Some(t) = self.theme.as_ref() {
-                                ui.add(
-                                    t.danger_button(&format!("{} Kill", egui_phosphor::regular::SKULL)),
-                                )
-                                .clicked()
-                            } else {
-                                ui.button(
-                                    egui::RichText::new(format!(
-                                        "{} Kill",
-                                        egui_phosphor::regular::SKULL
-                                    ))
-                                    .color(egui::Color32::RED),
-                                )
-                                .clicked()
-                            };
+                            let confirm_clicked = ui.add(
+                                t.danger_button(&format!("{} Kill", egui_phosphor::regular::SKULL)),
+                            )
+                            .clicked();
                             if confirm_clicked {
                                 self.kill_requested = Some(kill_id.clone());
                                 self.confirm_kill = None;
@@ -261,7 +249,7 @@ impl InstancesView {
         if let Some(ref mut detail) = self.detail_view {
             let inst = instances.iter().find(|i| i.id == detail.instance_id());
             if let Some(inst) = inst {
-                detail.show(ui, inst, self.theme.as_ref());
+                detail.show(ui, inst, &self.theme);
                 self.pending_toasts.append(&mut detail.pending_toasts);
                 if detail.back_requested {
                     self.detail_view = None;
@@ -299,11 +287,8 @@ impl InstancesView {
             egui::vec2(ui.available_width(), row_h),
             egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
             |ui| {
-                if let Some(t) = self.theme.as_ref() {
-                    ui.label(t.section_header("Instances"));
-                } else {
-                    ui.heading("Instances");
-                }
+                let t = &self.theme;
+                ui.label(t.section_header("Instances"));
 
                 ui.separator();
 
@@ -348,13 +333,10 @@ impl InstancesView {
                 ui.with_layout(
                     egui::Layout::right_to_left(egui::Align::Center).with_cross_justify(true),
                     |ui| {
+                        let t = &self.theme;
                         // Add Instance (rightmost)
                         let add_lbl = format!("{} Add Instance", egui_phosphor::regular::PLUS);
-                        let add_clicked = if let Some(t) = self.theme.as_ref() {
-                            ui.add(t.accent_button(&add_lbl)).clicked()
-                        } else {
-                            ui.button(&add_lbl).clicked()
-                        };
+                        let add_clicked = ui.add(t.accent_button(&add_lbl)).clicked();
                         if add_clicked {
                             self.show_add_instance = true;
                             self.add_instance_tab = AddInstanceTab::Vanilla;
@@ -372,15 +354,9 @@ impl InstancesView {
 
                         // Refresh
                         let refresh_lbl = egui_phosphor::regular::ARROWS_CLOCKWISE.to_string();
-                        let refresh_clicked = if let Some(t) = self.theme.as_ref() {
-                            ui.add(t.ghost_button(&refresh_lbl))
-                                .on_hover_text("Check for modpack updates")
-                                .clicked()
-                        } else {
-                            ui.add(egui::Button::new(&refresh_lbl).frame(false))
-                                .on_hover_text("Check for modpack updates")
-                                .clicked()
-                        };
+                        let refresh_clicked = ui.add(t.ghost_button(&refresh_lbl))
+                            .on_hover_text("Check for modpack updates")
+                            .clicked();
                         if refresh_clicked {
                             self.recheck_modpack_updates = true;
                         }
@@ -408,59 +384,32 @@ impl InstancesView {
 
         if instances.is_empty() {
             ui.vertical_centered(|ui| {
+                let t = &self.theme;
                 ui.add_space(80.0);
-                if let Some(t) = self.theme.as_ref() {
-                    ui.label(
-                        egui::RichText::new(egui_phosphor::regular::GAME_CONTROLLER)
-                            .size(48.0)
-                            .color(t.color("fg_muted")),
-                    );
-                    ui.add_space(12.0);
-                    ui.label(t.section_header("No instances yet"));
-                    ui.add_space(4.0);
-                    ui.label(t.subtext("Create a new instance or browse modpacks to get started."));
-                    ui.add_space(16.0);
-                    let new_inst_lbl = format!("{} Add Instance", egui_phosphor::regular::PLUS);
-                    if ui.add(t.accent_button(&new_inst_lbl)).clicked() {
-                        self.show_add_instance = true;
-                        self.add_instance_tab = AddInstanceTab::Vanilla;
-                        self.new_name.clear();
-                        self.new_mc_version.clear();
-                        self.new_loader = ModLoader::default();
-                        self.new_group.clear();
-                        self.loader_versions.clear();
-                        self.loader_versions_loading = false;
-                        self.loader_versions_error = None;
-                        self.loader_versions_fetch = None;
-                        self.new_loader_version.clear();
-                        self.name_auto_generated = false;
-                    }
-                } else {
-                    ui.label(
-                        egui::RichText::new(egui_phosphor::regular::GAME_CONTROLLER).size(48.0),
-                    );
-                    ui.add_space(12.0);
-                    ui.heading("No instances yet");
-                    ui.add_space(4.0);
-                    ui.label("Create a new instance or browse modpacks to get started.");
-                    ui.add_space(16.0);
-                    if ui
-                        .button(format!("{} Add Instance", egui_phosphor::regular::PLUS))
-                        .clicked()
-                    {
-                        self.show_add_instance = true;
-                        self.add_instance_tab = AddInstanceTab::Vanilla;
-                        self.new_name.clear();
-                        self.new_mc_version.clear();
-                        self.new_loader = ModLoader::default();
-                        self.new_group.clear();
-                        self.loader_versions.clear();
-                        self.loader_versions_loading = false;
-                        self.loader_versions_error = None;
-                        self.loader_versions_fetch = None;
-                        self.new_loader_version.clear();
-                        self.name_auto_generated = false;
-                    }
+                ui.label(
+                    egui::RichText::new(egui_phosphor::regular::GAME_CONTROLLER)
+                        .size(48.0)
+                        .color(t.color("fg_muted")),
+                );
+                ui.add_space(12.0);
+                ui.label(t.section_header("No instances yet"));
+                ui.add_space(4.0);
+                ui.label(t.subtext("Create a new instance or browse modpacks to get started."));
+                ui.add_space(16.0);
+                let new_inst_lbl = format!("{} Add Instance", egui_phosphor::regular::PLUS);
+                if ui.add(t.accent_button(&new_inst_lbl)).clicked() {
+                    self.show_add_instance = true;
+                    self.add_instance_tab = AddInstanceTab::Vanilla;
+                    self.new_name.clear();
+                    self.new_mc_version.clear();
+                    self.new_loader = ModLoader::default();
+                    self.new_group.clear();
+                    self.loader_versions.clear();
+                    self.loader_versions_loading = false;
+                    self.loader_versions_error = None;
+                    self.loader_versions_fetch = None;
+                    self.new_loader_version.clear();
+                    self.name_auto_generated = false;
                 }
             });
         } else {
@@ -547,19 +496,12 @@ impl InstancesView {
 
             // Show result count when filtering
             if is_searching || self.loader_filter.is_some() {
-                if let Some(t) = self.theme.as_ref() {
-                    ui.label(t.subtext(&format!(
-                        "Showing {} of {} instances",
-                        sorted_indices.len(),
-                        instances.len()
-                    )));
-                } else {
-                    ui.label(format!(
-                        "Showing {} of {} instances",
-                        sorted_indices.len(),
-                        instances.len()
-                    ));
-                }
+                let t = &self.theme;
+                ui.label(t.subtext(&format!(
+                    "Showing {} of {} instances",
+                    sorted_indices.len(),
+                    instances.len()
+                )));
                 ui.add_space(4.0);
             }
 
@@ -571,11 +513,7 @@ impl InstancesView {
                 let group_keys: Vec<String> = groups.keys().cloned().collect();
                 for group_name in group_keys {
                     let indices = groups[&group_name].clone();
-                    let header_text = if let Some(t) = self.theme.as_ref() {
-                        t.subtext(&group_name)
-                    } else {
-                        egui::RichText::new(&group_name).strong()
-                    };
+                    let header_text = self.theme.subtext(&group_name);
                     egui::CollapsingHeader::new(header_text)
                         .default_open(true)
                         .open(if is_searching { Some(true) } else { None })
@@ -608,11 +546,7 @@ impl InstancesView {
                 }
 
                 if !ungrouped.is_empty() {
-                    let ungrouped_header = if let Some(t) = self.theme.as_ref() {
-                        t.subtext("Ungrouped")
-                    } else {
-                        egui::RichText::new("Ungrouped").weak()
-                    };
+                    let ungrouped_header = self.theme.subtext("Ungrouped");
                     egui::CollapsingHeader::new(ungrouped_header)
                         .default_open(true)
                         .open(if is_searching { Some(true) } else { None })
@@ -684,6 +618,11 @@ impl InstancesView {
                             }
                         }
                     }
+
+            // Handle deferred modpack version picker (avoids borrow conflict in popup closure)
+            if let Some((id, name, source, project_id, version_id)) = self.modpack_version_picker_requested.take() {
+                self.open_modpack_version_picker(&id, &name, &source, &project_id, &version_id, false, ui.ctx());
+            }
         }
 
     }
@@ -701,7 +640,7 @@ impl InstancesView {
         to_rename_confirm: &mut Option<(String, String)>,
         rename_cancelled: &mut bool,
     ) {
-        let outer_frame = crate::ui::helpers::card_frame(ui, self.theme.as_ref());
+        let outer_frame = crate::ui::helpers::card_frame(ui, &self.theme);
         outer_frame.show(ui, |ui| {
             ui.set_min_width(ui.available_width() - 8.0);
             for (list_idx, &idx) in indices.iter().enumerate() {
@@ -721,15 +660,11 @@ impl InstancesView {
                             ui,
                             &inst.name,
                             48.0,
-                            self.theme.as_ref(),
+                            &self.theme,
                         )
                     };
                     if is_running {
-                        let color = self
-                            .theme
-                            .as_ref()
-                            .map(|t| t.color("success"))
-                            .unwrap_or(egui::Color32::from_rgb(76, 175, 80));
+                        let color = self.theme.color("success");
                         let dot_rect = egui::Rect::from_min_size(
                             icon_resp.rect.right_bottom() - egui::vec2(14.0, 14.0),
                             egui::vec2(10.0, 10.0),
@@ -755,10 +690,9 @@ impl InstancesView {
                                     Some((inst_id.clone(), self.rename_text.clone()));
                             }
                             response.request_focus();
-                        } else if let Some(t) = self.theme.as_ref() {
-                            ui.label(t.title(&inst.name));
                         } else {
-                            ui.strong(&inst.name);
+                            let t = &self.theme;
+                            ui.label(t.title(&inst.name));
                         }
                         let mut info_parts: Vec<String> = vec![inst.mc_version.clone()];
                         if inst.loader != ModLoader::Vanilla {
@@ -778,47 +712,24 @@ impl InstancesView {
                             ui,
                             &tag_refs,
                             10,
-                            self.theme.as_ref(),
+                            &self.theme,
                         );
                         let lp_text = inst.last_played.as_deref().unwrap_or("Never played");
-                        if let Some(t) = self.theme.as_ref() {
-                            ui.label(t.subtext(&format!("{} {lp_text}", egui_phosphor::regular::CLOCK)).size(11.0));
-                        } else {
-                            ui.label(egui::RichText::new(format!("{} {lp_text}", egui_phosphor::regular::CLOCK)).size(11.0).weak());
-                        }
+                        let t = &self.theme;
+                        ui.label(t.subtext(&format!("{} {lp_text}", egui_phosphor::regular::CLOCK)).size(11.0));
                         if self.modpack_updates.contains_key(&inst.id) {
-                            let update_fill = if let Some(t) = self.theme.as_ref() {
-                                t.color("accent")
-                            } else {
-                                egui::Color32::from_rgb(76, 175, 80)
-                            };
-                            let badge_resp = if let Some(t) = self.theme.as_ref() {
-                                t.badge_frame(update_fill).show(ui, |ui| {
-                                    ui.label(
-                                        egui::RichText::new(format!(
-                                            "{} Update available",
-                                            egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                        ))
-                                        .size(11.0)
-                                        .color(t.button_fg()),
-                                    )
-                                })
-                            } else {
-                                egui::Frame::new()
-                                    .fill(update_fill)
-                                    .corner_radius(4.0)
-                                    .inner_margin(egui::Margin::symmetric(6, 2))
-                                    .show(ui, |ui| {
-                                        ui.label(
-                                            egui::RichText::new(format!(
-                                                "{} Update available",
-                                                egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                            ))
-                                            .size(11.0)
-                                            .color(egui::Color32::WHITE),
-                                        )
-                                    })
-                            };
+                            let t = &self.theme;
+                            let update_fill = t.color("accent");
+                            let badge_resp = t.badge_frame(update_fill).show(ui, |ui| {
+                                ui.label(
+                                    egui::RichText::new(format!(
+                                        "{} Update available",
+                                        egui_phosphor::regular::ARROW_CIRCLE_UP,
+                                    ))
+                                    .size(11.0)
+                                    .color(t.button_fg()),
+                                )
+                            });
                             if badge_resp.response.interact(egui::Sense::click()).clicked() {
                                 self.update_modpack_requested = Some(inst_id.clone());
                             }
@@ -828,65 +739,37 @@ impl InstancesView {
                     ui.with_layout(
                         egui::Layout::right_to_left(egui::Align::Center),
                         |ui| {
-                            let more_btn = if let Some(t) = self.theme.as_ref() {
-                                ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)))
-                            } else {
-                                ui.add(egui::Button::new(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)))
-                            };
+                            let t = &self.theme;
+                            let more_btn = ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)));
                             let more_btn = more_btn.on_hover_text("More actions");
                             egui::Popup::menu(&more_btn).show(|ui| {
                                 ui.set_min_width(140.0);
-                                if let Some(t) = self.theme.as_ref() {
-                                    t.style_menu(ui);
-                                }
-                                if if let Some(t) = self.theme.as_ref() {
-                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH)))
-                                } else {
-                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Manage", egui_phosphor::regular::WRENCH)).frame(false))
-                                }.clicked()
+                                let t = &self.theme;
+                                t.style_menu(ui);
+                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH))).clicked()
                                 {
                                     self.detail_view =
                                         Some(detail::InstanceDetailView::new(inst_id.clone()));
                                 }
-                                if if let Some(t) = self.theme.as_ref() {
-                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Rename", egui_phosphor::regular::PENCIL)))
-                                } else {
-                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Rename", egui_phosphor::regular::PENCIL)).frame(false))
-                                }.clicked()
+                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Rename", egui_phosphor::regular::PENCIL))).clicked()
                                 {
                                     self.renaming = Some(inst_id.clone());
                                     self.rename_text = instances[idx].name.clone();
                                 }
-                                if if let Some(t) = self.theme.as_ref() {
-                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Configure", egui_phosphor::regular::GEAR_SIX)))
-                                } else {
-                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Configure", egui_phosphor::regular::GEAR_SIX)).frame(false))
-                                }.clicked()
+                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Configure", egui_phosphor::regular::GEAR_SIX))).clicked()
                                 {
                                     self.editing = Some(inst_id.clone());
                                 }
-                                if if let Some(t) = self.theme.as_ref() {
-                                    ui.add(t.menu_item(&format!("{} Open Folder", egui_phosphor::regular::FOLDER)))
-                                } else {
-                                    ui.add(egui::Button::new(format!("{} Open Folder", egui_phosphor::regular::FOLDER)).frame(false))
-                                }.clicked()
+                                if ui.add(t.menu_item(&format!("{} Open Folder", egui_phosphor::regular::FOLDER))).clicked()
                                     && let Ok(dir) = instances[idx].instance_dir()
                                 {
                                     let _ = open::that(dir);
                                 }
-                                if if let Some(t) = self.theme.as_ref() {
-                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD)))
-                                } else {
-                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD)).frame(false))
-                                }.clicked()
+                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD))).clicked()
                                 {
                                     *to_duplicate = Some(idx);
                                 }
-                                if if let Some(t) = self.theme.as_ref() {
-                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Export", egui_phosphor::regular::EXPORT)))
-                                } else {
-                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Export", egui_phosphor::regular::EXPORT)).frame(false))
-                                }.clicked()
+                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Export", egui_phosphor::regular::EXPORT))).clicked()
                                 {
                                     self.export_requested = Some(idx);
                                 }
@@ -896,40 +779,26 @@ impl InstancesView {
                                         "curseforge" => "CurseForge",
                                         _ => "source",
                                     };
-                                    if if let Some(t) = self.theme.as_ref() {
-                                        ui.add(t.menu_item(&format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE)))
-                                    } else {
-                                        ui.add(egui::Button::new(format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE)).frame(false))
-                                    }.clicked()
+                                    if ui.add(t.menu_item(&format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE))).clicked()
                                     {
                                         if let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
                                             let _ = open::that(&url);
                                         }
                                     }
-                                    if if let Some(t) = self.theme.as_ref() {
-                                        ui.add_enabled(!is_running, t.menu_item(&format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP)))
-                                    } else {
-                                        ui.add_enabled(!is_running, egui::Button::new(format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP)).frame(false))
-                                    }.clicked() {
-                                        self.open_modpack_version_picker(
-                                            &inst.id,
-                                            &inst.name,
-                                            &origin.source,
-                                            &origin.project_id,
-                                            &origin.version_id,
-                                            false,
-                                            ui.ctx(),
-                                        );
+                                    if ui.add_enabled(!is_running, t.menu_item(&format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP))).clicked() {
+                                        self.modpack_version_picker_requested = Some((
+                                            inst.id.clone(),
+                                            inst.name.clone(),
+                                            origin.source.clone(),
+                                            origin.project_id.clone(),
+                                            origin.version_id.clone(),
+                                        ));
                                     }
                                 }
                                 if is_running {
                                     ui.separator();
                                     let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
-                                    let kill_clicked = if let Some(t) = self.theme.as_ref() {
-                                        ui.add(t.danger_button(&kill_lbl)).clicked()
-                                    } else {
-                                        ui.button(egui::RichText::new(&kill_lbl).color(egui::Color32::RED)).clicked()
-                                    };
+                                    let kill_clicked = ui.add(t.danger_button(&kill_lbl)).clicked();
                                     if kill_clicked {
                                         self.confirm_kill = Some(inst_id.clone());
                                         ui.close();
@@ -941,38 +810,24 @@ impl InstancesView {
                                 if is_running {
                                     ui.add_enabled(false, egui::Button::new(&del_lbl));
                                 } else {
-                                    let delete_clicked =
-                                        if let Some(t) = self.theme.as_ref() {
-                                            ui.add(t.danger_button(&del_lbl)).clicked()
-                                        } else {
-                                            ui.button(&del_lbl).clicked()
-                                        };
+                                    let delete_clicked = ui.add(t.danger_button(&del_lbl)).clicked();
                                     if delete_clicked {
                                         *to_delete = Some(inst_id.clone());
                                     }
                                 }
                             });
 
+                            let t = &self.theme;
                             if !is_running {
-                                let launch_clicked = if let Some(t) = self.theme.as_ref() {
-                                    ui.add(t.accent_button("▶ Launch"))
-                                        .clicked()
-                                } else {
-                                    ui.button("▶ Launch").clicked()
-                                };
+                                let launch_clicked = ui.add(t.accent_button("▶ Launch"))
+                                    .clicked();
                                 if launch_clicked {
                                     self.launch_requested = Some(inst_id.clone());
                                 }
                             } else {
-                                let console_clicked = if let Some(t) = self.theme.as_ref() {
-                                    ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)))
-                                        .on_hover_text("Open console")
-                                        .clicked()
-                                } else {
-                                    ui.button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW))
-                                        .on_hover_text("Open console")
-                                        .clicked()
-                                };
+                                let console_clicked = ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)))
+                                    .on_hover_text("Open console")
+                                    .clicked();
                                 if console_clicked {
                                     self.console_requested = Some(inst_id.clone());
                                 }
@@ -1032,7 +887,7 @@ impl InstancesView {
                 crate::ui::helpers::grid_card(
                     ui,
                     cell_rect,
-                    self.theme.as_ref(),
+                    &self.theme,
                     |ui| {
                         let mod_count =
                             self.mod_counts.get(&inst.id).copied().unwrap_or(0);
@@ -1045,15 +900,11 @@ impl InstancesView {
                                     ui,
                                     &inst.name,
                                     36.0,
-                                    self.theme.as_ref(),
+                                    &self.theme,
                                 )
                             };
                             if is_running {
-                                let color = self
-                                    .theme
-                                    .as_ref()
-                                    .map(|t| t.color("success"))
-                                    .unwrap_or(egui::Color32::from_rgb(76, 175, 80));
+                                let color = self.theme.color("success");
                                 let dot_rect = egui::Rect::from_min_size(
                                     icon_resp.rect.right_bottom() - egui::vec2(12.0, 12.0),
                                     egui::vec2(10.0, 10.0),
@@ -1081,10 +932,9 @@ impl InstancesView {
                                     ));
                                 }
                                 response.request_focus();
-                            } else if let Some(t) = self.theme.as_ref() {
-                                ui.add(egui::Label::new(t.title(&inst.name)).truncate());
                             } else {
-                                ui.add(egui::Label::new(egui::RichText::new(&inst.name).strong()).truncate());
+                                let t = &self.theme;
+                                ui.add(egui::Label::new(t.title(&inst.name)).truncate());
                             }
                         });
                         ui.add_space(4.0);
@@ -1096,145 +946,80 @@ impl InstancesView {
                             meta_parts.push(format!("{mod_count} mods"));
                         }
                         let tag_refs: Vec<&str> = meta_parts.iter().map(|s| s.as_str()).collect();
-                        crate::ui::helpers::show_category_tags(ui, &tag_refs, 10, self.theme.as_ref());
+                        crate::ui::helpers::show_category_tags(ui, &tag_refs, 10, &self.theme);
                         if self.modpack_updates.contains_key(&inst.id) {
-                            let update_fill = if let Some(t) = self.theme.as_ref() {
-                                t.color("accent")
-                            } else {
-                                egui::Color32::from_rgb(76, 175, 80)
-                            };
-                            let badge_resp = if let Some(t) = self.theme.as_ref() {
-                                t.badge_frame(update_fill).show(ui, |ui| {
-                                    ui.label(
-                                        egui::RichText::new(format!(
-                                            "{} Update available",
-                                            egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                        ))
-                                        .size(11.0)
-                                        .color(t.button_fg()),
-                                    )
-                                })
-                            } else {
-                                egui::Frame::new()
-                                    .fill(update_fill)
-                                    .corner_radius(4.0)
-                                    .inner_margin(egui::Margin::symmetric(6, 2))
-                                    .show(ui, |ui| {
-                                        ui.label(
-                                            egui::RichText::new(format!(
-                                                "{} Update available",
-                                                egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                            ))
-                                            .size(11.0)
-                                            .color(egui::Color32::WHITE),
-                                        )
-                                    })
-                            };
+                            let t = &self.theme;
+                            let update_fill = t.color("accent");
+                            let badge_resp = t.badge_frame(update_fill).show(ui, |ui| {
+                                ui.label(
+                                    egui::RichText::new(format!(
+                                        "{} Update available",
+                                        egui_phosphor::regular::ARROW_CIRCLE_UP,
+                                    ))
+                                    .size(11.0)
+                                    .color(t.button_fg()),
+                                )
+                            });
                             if badge_resp.response.interact(egui::Sense::click()).clicked() {
                                 self.update_modpack_requested = Some(inst_id.clone());
                             }
                         }
                         let lp_text = inst.last_played.as_deref().unwrap_or("Never played");
-                        if let Some(t) = self.theme.as_ref() {
-                            ui.label(t.subtext(&format!(
-                                "{} {lp_text}",
-                                egui_phosphor::regular::CLOCK,
-                            )).size(11.0));
-                        } else {
-                            ui.label(
-                                egui::RichText::new(format!(
-                                    "{} {lp_text}",
-                                    egui_phosphor::regular::CLOCK,
-                                )).size(11.0).weak(),
-                            );
-                        }
+                        let t = &self.theme;
+                        ui.label(t.subtext(&format!(
+                            "{} {lp_text}",
+                            egui_phosphor::regular::CLOCK,
+                        )).size(11.0));
                     },
                     |ui| {
+                        let t = &self.theme;
                         if !is_running {
                             let btn_width = ui.available_width() - 36.0 - ui.spacing().item_spacing.x;
-                            let launch_clicked = if let Some(t) = self.theme.as_ref() {
-                                ui.add(t.accent_button("▶ Launch").min_size(egui::vec2(btn_width, 0.0)))
-                                    .clicked()
-                            } else {
-                                ui.add(egui::Button::new("▶ Launch").min_size(egui::vec2(btn_width, 0.0)))
-                                    .clicked()
-                            };
+                            let launch_clicked = ui.add(t.accent_button("▶ Launch").min_size(egui::vec2(btn_width, 0.0)))
+                                .clicked();
                             if launch_clicked {
                                 self.launch_requested = Some(inst_id.clone());
                             }
                         } else {
                             let btn_width = ui.available_width() - 36.0 - ui.spacing().item_spacing.x;
-                            let console_clicked = if let Some(t) = self.theme.as_ref() {
-                                ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)).min_size(egui::vec2(btn_width, 0.0)))
-                                    .clicked()
-                            } else {
-                                ui.add(egui::Button::new(format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)).min_size(egui::vec2(btn_width, 0.0)))
-                                    .clicked()
-                            };
+                            let console_clicked = ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)).min_size(egui::vec2(btn_width, 0.0)))
+                                .clicked();
                             if console_clicked {
                                 self.console_requested = Some(inst_id.clone());
                             }
                         }
-                        let more_btn = if let Some(t) = self.theme.as_ref() {
-                            ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)))
-                        } else {
-                            ui.add(egui::Button::new(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)))
-                        };
+                        let t = &self.theme;
+                        let more_btn = ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)));
                         let more_btn = more_btn.on_hover_text("More actions");
                         egui::Popup::menu(&more_btn).show(|ui| {
                             ui.set_min_width(140.0);
-                            if let Some(t) = self.theme.as_ref() {
-                                t.style_menu(ui);
-                            }
-                            if if let Some(t) = self.theme.as_ref() {
-                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH)))
-                            } else {
-                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Manage", egui_phosphor::regular::WRENCH)).frame(false))
-                            }.clicked()
+                            let t = &self.theme;
+                            t.style_menu(ui);
+                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH))).clicked()
                             {
                                 self.detail_view = Some(
                                     detail::InstanceDetailView::new(inst_id.clone()),
                                 );
                             }
-                            if if let Some(t) = self.theme.as_ref() {
-                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Rename", egui_phosphor::regular::PENCIL)))
-                            } else {
-                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Rename", egui_phosphor::regular::PENCIL)).frame(false))
-                            }.clicked()
+                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Rename", egui_phosphor::regular::PENCIL))).clicked()
                             {
                                 self.renaming = Some(inst_id.clone());
                                 *rename_cell.borrow_mut() = instances[idx].name.clone();
                             }
-                            if if let Some(t) = self.theme.as_ref() {
-                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Configure", egui_phosphor::regular::GEAR_SIX)))
-                            } else {
-                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Configure", egui_phosphor::regular::GEAR_SIX)).frame(false))
-                            }.clicked()
+                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Configure", egui_phosphor::regular::GEAR_SIX))).clicked()
                             {
                                 self.editing = Some(inst_id.clone());
                             }
-                            if if let Some(t) = self.theme.as_ref() {
-                                ui.add(t.menu_item(&format!("{} Open Folder", egui_phosphor::regular::FOLDER)))
-                            } else {
-                                ui.add(egui::Button::new(format!("{} Open Folder", egui_phosphor::regular::FOLDER)).frame(false))
-                            }.clicked()
+                            if ui.add(t.menu_item(&format!("{} Open Folder", egui_phosphor::regular::FOLDER))).clicked()
                                 && let Ok(dir) = instances[idx].instance_dir()
                             {
                                 let _ = open::that(dir);
                             }
-                            if if let Some(t) = self.theme.as_ref() {
-                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD)))
-                            } else {
-                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD)).frame(false))
-                            }.clicked()
+                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD))).clicked()
                             {
                                 *to_duplicate = Some(idx);
                             }
-                            if if let Some(t) = self.theme.as_ref() {
-                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Export", egui_phosphor::regular::EXPORT)))
-                            } else {
-                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Export", egui_phosphor::regular::EXPORT)).frame(false))
-                            }.clicked()
+                            if ui.add_enabled(!is_running, t.menu_item(&format!("{} Export", egui_phosphor::regular::EXPORT))).clicked()
                             {
                                 self.export_requested = Some(idx);
                             }
@@ -1244,21 +1029,13 @@ impl InstancesView {
                                     "curseforge" => "CurseForge",
                                     _ => "source",
                                 };
-                                if if let Some(t) = self.theme.as_ref() {
-                                    ui.add(t.menu_item(&format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE)))
-                                } else {
-                                    ui.add(egui::Button::new(format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE)).frame(false))
-                                }.clicked()
+                                if ui.add(t.menu_item(&format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE))).clicked()
                                 {
                                     if let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
                                         let _ = open::that(&url);
                                     }
                                 }
-                                if if let Some(t) = self.theme.as_ref() {
-                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP)))
-                                } else {
-                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP)).frame(false))
-                                }.clicked() {
+                                if ui.add_enabled(!is_running, t.menu_item(&format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP))).clicked() {
                                     open_version_picker_req = Some((
                                         inst.id.clone(),
                                         inst.name.clone(),
@@ -1271,11 +1048,7 @@ impl InstancesView {
                             if is_running {
                                 ui.separator();
                                 let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
-                                let kill_clicked = if let Some(t) = self.theme.as_ref() {
-                                    ui.add(t.danger_button(&kill_lbl)).clicked()
-                                } else {
-                                    ui.button(egui::RichText::new(&kill_lbl).color(egui::Color32::RED)).clicked()
-                                };
+                                let kill_clicked = ui.add(t.danger_button(&kill_lbl)).clicked();
                                 if kill_clicked {
                                     self.confirm_kill = Some(inst_id.clone());
                                     ui.close();
@@ -1289,12 +1062,7 @@ impl InstancesView {
                             if is_running {
                                 ui.add_enabled(false, egui::Button::new(&del_lbl));
                             } else {
-                                let delete_clicked =
-                                    if let Some(t) = self.theme.as_ref() {
-                                        ui.add(t.danger_button(&del_lbl)).clicked()
-                                    } else {
-                                        ui.button(&del_lbl).clicked()
-                                    };
+                                let delete_clicked = ui.add(t.danger_button(&del_lbl)).clicked();
                                 if delete_clicked {
                                     *to_delete = Some(inst_id.clone());
                                 }
@@ -1419,23 +1187,16 @@ impl InstancesView {
             .default_size([500.0, 420.0])
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ui.ctx(), |ui| {
+                let t = &theme;
                 if is_loading {
                     ui.horizontal(|ui| {
-                        if let Some(ref t) = theme {
-                            ui.add(egui::Spinner::new().color(t.color("accent")));
-                        } else {
-                            ui.spinner();
-                        }
+                        ui.add(egui::Spinner::new().color(t.color("accent")));
                         ui.label("Fetching versions...");
                     });
                     return;
                 }
 
-                if let Some(ref t) = theme {
-                    ui.label(t.subtext("Select a version:"));
-                } else {
-                    ui.weak("Select a version:");
-                }
+                ui.label(t.subtext("Select a version:"));
                 ui.add_space(4.0);
 
                 let vp = self.modpack_version_picker.as_mut().unwrap();
@@ -1510,11 +1271,7 @@ impl InstancesView {
                         "curseforge" => !vp.cf_files.is_empty(),
                         _ => false,
                     };
-                    let apply_clicked = if let Some(ref t) = theme {
-                        ui.add_enabled(has_versions, t.accent_button("Apply")).clicked()
-                    } else {
-                        ui.add_enabled(has_versions, egui::Button::new("Apply")).clicked()
-                    };
+                    let apply_clicked = ui.add_enabled(has_versions, t.accent_button("Apply")).clicked();
                     if apply_clicked {
                         action = Some(ModpackVersionPickerAction::Apply);
                     }

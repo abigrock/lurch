@@ -36,20 +36,12 @@ impl InstancesView {
         // Top bar
         ui.horizontal(|ui| {
             let back_lbl = format!("{} Back", egui_phosphor::regular::ARROW_LEFT);
-            let back_clicked = if let Some(t) = self.theme.as_ref() {
-                ui.add(t.ghost_button(&back_lbl)).clicked()
-            } else {
-                ui.button(&back_lbl).clicked()
-            };
+            let back_clicked = ui.add(self.theme.ghost_button(&back_lbl)).clicked();
             if back_clicked {
                 self.show_add_instance = false;
             }
             ui.separator();
-            if let Some(t) = self.theme.as_ref() {
-                ui.label(t.section_header("Add Instance"));
-            } else {
-                ui.heading("Add Instance");
-            }
+            ui.label(self.theme.section_header("Add Instance"));
         });
         ui.separator();
 
@@ -60,7 +52,7 @@ impl InstancesView {
                 ui,
                 &format!("{} Vanilla", egui_phosphor::regular::CUBE),
                 self.add_instance_tab == AddInstanceTab::Vanilla,
-                self.theme.as_ref(),
+                &self.theme,
             ) {
                 self.add_instance_tab = AddInstanceTab::Vanilla;
             }
@@ -68,7 +60,7 @@ impl InstancesView {
                 ui,
                 &format!("{} CurseForge", egui_phosphor::regular::FIRE),
                 self.add_instance_tab == AddInstanceTab::CurseForge,
-                self.theme.as_ref(),
+                &self.theme,
             ) {
                 self.add_instance_tab = AddInstanceTab::CurseForge;
             }
@@ -76,7 +68,7 @@ impl InstancesView {
                 ui,
                 &format!("{} Modrinth", egui_phosphor::regular::PACKAGE),
                 self.add_instance_tab == AddInstanceTab::Modrinth,
-                self.theme.as_ref(),
+                &self.theme,
             ) {
                 self.add_instance_tab = AddInstanceTab::Modrinth;
             }
@@ -84,7 +76,7 @@ impl InstancesView {
                 ui,
                 &format!("{} Import", egui_phosphor::regular::DOWNLOAD_SIMPLE),
                 self.add_instance_tab == AddInstanceTab::Import,
-                self.theme.as_ref(),
+                &self.theme,
             ) {
                 self.add_instance_tab = AddInstanceTab::Import;
             }
@@ -101,7 +93,7 @@ impl InstancesView {
                 self.modpack_browser.show_for_source(
                     ui,
                     modpack_browser::ModpackSource::Modrinth,
-                    self.theme.as_ref(),
+                    &self.theme,
                     &mut self.pending_toasts,
                 );
             }
@@ -109,7 +101,7 @@ impl InstancesView {
                 self.modpack_browser.show_for_source(
                     ui,
                     modpack_browser::ModpackSource::CurseForge,
-                    self.theme.as_ref(),
+                    &self.theme,
                     &mut self.pending_toasts,
                 );
             }
@@ -148,11 +140,7 @@ impl InstancesView {
                 match &*manifest_snapshot {
                     ManifestState::Loading => {
                         drop(manifest_snapshot);
-                        if let Some(t) = self.theme.as_ref() {
-                            ui.add(egui::Spinner::new().color(t.color("accent")));
-                        } else {
-                            ui.spinner();
-                        }
+                        ui.add(egui::Spinner::new().color(self.theme.color("accent")));
                         ui.label("Loading versions...");
                     }
                     ManifestState::Failed(err) => {
@@ -308,11 +296,7 @@ impl InstancesView {
                     ui.label("Loader version:");
                     if self.loader_versions_loading {
                         ui.horizontal(|ui| {
-                            if let Some(t) = self.theme.as_ref() {
-                                ui.add(egui::Spinner::new().color(t.color("accent")));
-                            } else {
-                                ui.spinner();
-                            }
+                            ui.add(egui::Spinner::new().color(self.theme.color("accent")));
                             ui.weak("Loading versions...");
                         });
                     } else if self.loader_versions_error.is_some() {
@@ -373,13 +357,9 @@ impl InstancesView {
         ui.horizontal(|ui| {
             let can_create =
                 !self.new_name.trim().is_empty() && !self.new_mc_version.trim().is_empty();
-            let create_clicked = if let Some(t) = self.theme.as_ref() {
-                ui.add_enabled(can_create, t.accent_button("Create"))
-                    .clicked()
-            } else {
-                ui.add_enabled(can_create, egui::Button::new("Create"))
-                    .clicked()
-            };
+            let create_clicked = ui
+                .add_enabled(can_create, self.theme.accent_button("Create"))
+                .clicked();
             if create_clicked {
                 let mut inst = Instance::new(
                     self.new_name.trim().to_string(),
@@ -410,36 +390,22 @@ impl InstancesView {
             ui.add_space(40.0);
 
             let icon = egui_phosphor::regular::DOWNLOAD_SIMPLE;
-            if let Some(t) = self.theme.as_ref() {
-                ui.label(
-                    egui::RichText::new(icon)
-                        .size(48.0)
-                        .color(t.color("fg_muted")),
-                );
-            } else {
-                ui.label(egui::RichText::new(icon).size(48.0));
-            }
+            ui.label(
+                egui::RichText::new(icon)
+                    .size(48.0)
+                    .color(self.theme.color("fg_muted")),
+            );
 
             ui.add_space(12.0);
 
-            if let Some(t) = self.theme.as_ref() {
-                ui.label(t.section_header("Import Instance"));
-                ui.add_space(4.0);
-                ui.label(t.subtext("Import a Lurch export (.zip), Modrinth modpack (.mrpack), or CurseForge modpack."));
-            } else {
-                ui.heading("Import Instance");
-                ui.add_space(4.0);
-                ui.label("Import a Lurch export (.zip), Modrinth modpack (.mrpack), or CurseForge modpack.");
-            }
+            ui.label(self.theme.section_header("Import Instance"));
+            ui.add_space(4.0);
+            ui.label(self.theme.subtext("Import a Lurch export (.zip), Modrinth modpack (.mrpack), or CurseForge modpack."));
 
             ui.add_space(16.0);
 
             let browse_lbl = format!("{} Browse Files...", egui_phosphor::regular::FOLDER_OPEN);
-            let browse_clicked = if let Some(t) = self.theme.as_ref() {
-                ui.add(t.accent_button(&browse_lbl)).clicked()
-            } else {
-                ui.button(&browse_lbl).clicked()
-            };
+            let browse_clicked = ui.add(self.theme.accent_button(&browse_lbl)).clicked();
 
             if browse_clicked {
                 if let Some(path) = rfd::FileDialog::new()

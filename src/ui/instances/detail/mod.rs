@@ -174,7 +174,7 @@ impl InstanceDetailView {
         &mut self,
         ui: &mut egui::Ui,
         instance: &Instance,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
     ) {
         // ── Header: back button + instance info ──────────────────
         let row_h = ui.spacing().interact_size.y + 12.0;
@@ -182,12 +182,7 @@ impl InstanceDetailView {
             egui::vec2(ui.available_width(), row_h),
             egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
             |ui| {
-            let back_clicked = if let Some(t) = theme {
-                ui.add(t.ghost_button(egui_phosphor::regular::ARROW_LEFT)).clicked()
-            } else {
-                ui.button(egui_phosphor::regular::ARROW_LEFT).clicked()
-            };
-            if back_clicked {
+            if ui.add(theme.ghost_button(egui_phosphor::regular::ARROW_LEFT)).clicked() {
                 self.back_requested = true;
             }
             ui.vertical(|ui| {
@@ -197,19 +192,11 @@ impl InstanceDetailView {
                 } else {
                     instance.mc_version.clone()
                 };
-                if let Some(t) = theme {
-                    ui.label(t.subtext(&version_info));
-                } else {
-                    ui.weak(&version_info);
-                }
+                ui.label(theme.subtext(&version_info));
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if let Some(origin) = &instance.modpack_origin {
-                    let open_page = if let Some(t) = theme {
-                        ui.add(t.ghost_button(egui_phosphor::regular::GLOBE))
-                    } else {
-                        ui.button(egui_phosphor::regular::GLOBE)
-                    };
+                    let open_page = ui.add(theme.ghost_button(egui_phosphor::regular::GLOBE));
                     let source_name = match origin.source.as_str() {
                         "modrinth" => "Modrinth",
                         "curseforge" => "CurseForge",
@@ -344,14 +331,10 @@ impl InstanceDetailView {
                     self.selected_tab = tab;
                 }
                 if count > 0 {
-                    let (fill, text_color) = if let Some(t) = theme {
-                        if active {
-                            (t.color("accent"), t.button_fg())
-                        } else {
-                            (t.color("surface"), t.color("fg_dim"))
-                        }
+                    let (fill, text_color) = if active {
+                        (theme.color("accent"), theme.button_fg())
                     } else {
-                        (ui.visuals().widgets.inactive.bg_fill, ui.visuals().text_color())
+                        (theme.color("surface"), theme.color("fg_dim"))
                     };
                     egui::Frame::new()
                         .fill(fill)

@@ -9,17 +9,12 @@ impl InstanceDetailView {
         &mut self,
         ui: &mut egui::Ui,
         shaderpacks_dir: &std::path::Path,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
     ) {
         ui.add_space(4.0);
 
         ui.horizontal(|ui| {
-            let add_clicked = if let Some(t) = theme {
-                ui.add(t.accent_button("Add Shader")).clicked()
-            } else {
-                ui.button("Add Shader").clicked()
-            };
-            if add_clicked
+            if ui.add(theme.accent_button("Add Shader")).clicked()
                 && let Some(paths) = rfd::FileDialog::new()
                     .add_filter("Shader Packs", &["zip"])
                     .set_title("Select shader pack(s)")
@@ -38,12 +33,7 @@ impl InstanceDetailView {
                     }
                 }
 
-            let folder_clicked = if let Some(t) = theme {
-                ui.add(t.accent_button("Open Folder")).clicked()
-            } else {
-                ui.button("Open Folder").clicked()
-            };
-            if folder_clicked {
+            if ui.add(theme.accent_button("Open Folder")).clicked() {
                 let _ = std::fs::create_dir_all(shaderpacks_dir);
                 let _ = open::that(shaderpacks_dir);
             }
@@ -53,25 +43,17 @@ impl InstanceDetailView {
         if self.installed_shaders.is_empty() {
             ui.add_space(20.0);
             ui.vertical_centered(|ui| {
-                if let Some(t) = theme {
-                    ui.label(
-                        egui::RichText::new(egui_phosphor::regular::SUN)
-                            .size(48.0)
-                            .color(t.color("fg_muted")),
-                    );
-                    ui.add_space(8.0);
-                    ui.label(t.subtext("No shader packs installed."));
-                    ui.add_space(4.0);
-                    ui.label(t.subtext(
-                        "Add shader packs with the button above, or drop .zip files into the shaderpacks folder.",
-                    ));
-                } else {
-                    ui.label(egui::RichText::new(egui_phosphor::regular::SUN).size(48.0));
-                    ui.add_space(8.0);
-                    ui.weak("No shader packs installed.");
-                    ui.add_space(4.0);
-                    ui.weak("Add shader packs with the button above, or drop .zip files into the shaderpacks folder.");
-                }
+                ui.label(
+                    egui::RichText::new(egui_phosphor::regular::SUN)
+                        .size(48.0)
+                        .color(theme.color("fg_muted")),
+                );
+                ui.add_space(8.0);
+                ui.label(theme.subtext("No shader packs installed."));
+                ui.add_space(4.0);
+                ui.label(theme.subtext(
+                    "Add shader packs with the button above, or drop .zip files into the shaderpacks folder.",
+                ));
             });
             return;
         }
@@ -127,24 +109,15 @@ impl InstanceDetailView {
                                     toggle_idx = Some(orig_idx);
                                 }
                             }
-                            if let Some(t) = theme {
-                                ui.label(t.title(&s.title));
-                            } else {
-                                ui.strong(&s.title);
-                            }
+                            ui.label(theme.title(&s.title));
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
-                                    let clicked = if let Some(t) = theme {
-                                        ui.add(t.danger_button(egui_phosphor::regular::TRASH))
-                                            .on_hover_text("Remove")
-                                            .clicked()
-                                    } else {
-                                        ui.small_button(egui_phosphor::regular::TRASH)
-                                            .on_hover_text("Remove")
-                                            .clicked()
-                                    };
-                                    if clicked {
+                                    if ui
+                                        .add(theme.danger_button(egui_phosphor::regular::TRASH))
+                                        .on_hover_text("Remove")
+                                        .clicked()
+                                    {
                                         remove_idx = Some(orig_idx);
                                     }
                                     let detail = if s.is_folder {
@@ -152,11 +125,7 @@ impl InstanceDetailView {
                                     } else {
                                         s.filename.clone()
                                     };
-                                    if let Some(t) = theme {
-                                        ui.label(t.subtext(&detail));
-                                    } else {
-                                        ui.weak(&detail);
-                                    }
+                                    ui.label(theme.subtext(&detail));
                                 },
                             );
                         });
@@ -197,39 +166,27 @@ impl InstanceDetailView {
                     .open(&mut open)
                     .show(ui.ctx(), |ui| {
                         ui.label(format!("Remove shader pack \"{}\"?", shader_name));
-                        if let Some(t) = theme {
-                            ui.label(
-                                t.subtext("This will permanently delete the shader pack file."),
-                            );
-                        } else {
-                            ui.weak("This will permanently delete the shader pack file.");
-                        }
+                        ui.label(theme.subtext("This will permanently delete the shader pack file."));
                         ui.add_space(8.0);
-        let row_h = ui.spacing().interact_size.y + 4.0;
-        ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), row_h),
-            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
-            |ui| {
-                            let confirm_clicked = if let Some(t) = theme {
-                                ui.add(t.danger_button("Delete")).clicked()
-                            } else {
-                                ui.button(egui::RichText::new("Delete").color(egui::Color32::RED))
-                                    .clicked()
-                            };
-                            if confirm_clicked {
-                                let s = &self.installed_shaders[del_idx];
-                                match shaders::remove_shaderpack(shaderpacks_dir, &s.filename) {
-                                    Ok(()) => self.shaders_needs_rescan = true,
-                                    Err(e) => {
-                                        self.pending_toasts.push(crate::app::Toast::error(format!("Error: {e}")));
+                        let row_h = ui.spacing().interact_size.y + 4.0;
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), row_h),
+                            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+                            |ui| {
+                                if ui.add(theme.danger_button("Delete")).clicked() {
+                                    let s = &self.installed_shaders[del_idx];
+                                    match shaders::remove_shaderpack(shaderpacks_dir, &s.filename) {
+                                        Ok(()) => self.shaders_needs_rescan = true,
+                                        Err(e) => {
+                                            self.pending_toasts.push(crate::app::Toast::error(format!("Error: {e}")));
+                                        }
                                     }
+                                    self.confirm_shader_delete = None;
                                 }
-                                self.confirm_shader_delete = None;
-                            }
-                            if ui.button("Cancel").clicked() {
-                                self.confirm_shader_delete = None;
-                            }
-                        });
+                                if ui.button("Cancel").clicked() {
+                                    self.confirm_shader_delete = None;
+                                }
+                            });
                     });
 
                 if !open {

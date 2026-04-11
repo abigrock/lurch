@@ -15,23 +15,12 @@ pub enum ViewMode {
 
 /// Paint a rounded-rect placeholder with the first letter of `name` centered inside.
 /// Used when an instance has no icon image loaded yet.
-pub fn icon_placeholder(
-    ui: &mut egui::Ui,
-    name: &str,
-    size: f32,
-    theme: Option<&Theme>,
-) -> egui::Response {
+pub fn icon_placeholder(ui: &mut egui::Ui, name: &str, size: f32, theme: &Theme) -> egui::Response {
     let desired = egui::vec2(size, size);
     let (rect, response) = ui.allocate_exact_size(desired, egui::Sense::hover());
     if ui.is_rect_visible(rect) {
-        let (bg, fg) = if let Some(t) = theme {
-            (t.color("surface"), t.color("accent"))
-        } else {
-            (
-                ui.visuals().widgets.inactive.bg_fill,
-                ui.visuals().hyperlink_color,
-            )
-        };
+        let bg = theme.color("surface");
+        let fg = theme.color("accent");
         ui.painter()
             .rect_filled(rect, egui::CornerRadius::same(6), bg);
         let letter = name
@@ -71,48 +60,36 @@ pub fn truncate_desc(s: &str, max: usize) -> String {
     }
 }
 
-pub fn tab_button(ui: &mut egui::Ui, label: &str, active: bool, theme: Option<&Theme>) -> bool {
-    if let Some(t) = theme {
-        let btn = egui::Button::new(
-            egui::RichText::new(label)
-                .color(if active {
-                    t.color("accent")
-                } else {
-                    t.color("fg_dim")
-                })
-                .strong(),
-        )
-        .fill(egui::Color32::TRANSPARENT)
-        .stroke(egui::Stroke::new(
-            1.0,
-            if active {
-                t.color("accent")
+pub fn tab_button(ui: &mut egui::Ui, label: &str, active: bool, theme: &Theme) -> bool {
+    let btn = egui::Button::new(
+        egui::RichText::new(label)
+            .color(if active {
+                theme.color("accent")
             } else {
-                t.color("surface_hover")
-            },
-        ))
-        .corner_radius(egui::CornerRadius::same(6))
-        .min_size(egui::vec2(0.0, 32.0));
-        ui.add(btn).clicked()
-    } else {
-        ui.selectable_label(active, label).clicked()
-    }
+                theme.color("fg_dim")
+            })
+            .strong(),
+    )
+    .fill(egui::Color32::TRANSPARENT)
+    .stroke(egui::Stroke::new(
+        1.0,
+        if active {
+            theme.color("accent")
+        } else {
+            theme.color("surface_hover")
+        },
+    ))
+    .corner_radius(egui::CornerRadius::same(6))
+    .min_size(egui::vec2(0.0, 32.0));
+    ui.add(btn).clicked()
 }
 
-pub fn section_heading(text: &str, theme: Option<&Theme>) -> egui::RichText {
-    if let Some(t) = theme {
-        t.section_header(text)
-    } else {
-        egui::RichText::new(text).heading()
-    }
+pub fn section_heading(text: &str, theme: &Theme) -> egui::RichText {
+    theme.section_header(text)
 }
 
-pub fn card_frame(ui: &egui::Ui, theme: Option<&Theme>) -> egui::Frame {
-    if let Some(t) = theme {
-        t.card_frame()
-    } else {
-        egui::Frame::group(ui.style()).inner_margin(egui::Margin::same(6))
-    }
+pub fn card_frame(_ui: &egui::Ui, theme: &Theme) -> egui::Frame {
+    theme.card_frame()
 }
 
 struct GridCardStyle {
@@ -123,21 +100,12 @@ struct GridCardStyle {
 }
 
 impl GridCardStyle {
-    fn from_theme(theme: Option<&Theme>) -> Self {
-        if let Some(t) = theme {
-            Self {
-                fill: t.color("bg_secondary"),
-                stroke: egui::Stroke::new(1.0, t.color("surface")),
-                rounding: egui::CornerRadius::same(8),
-                margin: 12.0,
-            }
-        } else {
-            Self {
-                fill: egui::Color32::from_gray(40),
-                stroke: egui::Stroke::new(1.0, egui::Color32::from_gray(60)),
-                rounding: egui::CornerRadius::same(8),
-                margin: 8.0,
-            }
+    fn from_theme(theme: &Theme) -> Self {
+        Self {
+            fill: theme.color("bg_secondary"),
+            stroke: egui::Stroke::new(1.0, theme.color("surface")),
+            rounding: egui::CornerRadius::same(8),
+            margin: 12.0,
         }
     }
 }
@@ -199,7 +167,7 @@ pub fn card_grid<T>(
     items: &[T],
     card_w: f32,
     card_h: f32,
-    theme: Option<&Theme>,
+    theme: &Theme,
     has_more: bool,
     total: usize,
     mut render_body: impl FnMut(&mut egui::Ui, usize, &T),
@@ -257,7 +225,7 @@ pub fn card_grid<T>(
 pub fn grid_card(
     ui: &mut egui::Ui,
     cell_rect: egui::Rect,
-    theme: Option<&Theme>,
+    theme: &Theme,
     render_body: impl FnMut(&mut egui::Ui),
     render_actions: impl FnMut(&mut egui::Ui),
 ) {
@@ -301,12 +269,7 @@ impl<R: Send + 'static> Default for SearchState<R> {
 }
 
 /// Render category/tag pills inline. Shows at most `max_tags`, with a "+N more" overflow.
-pub fn show_category_tags(
-    ui: &mut egui::Ui,
-    tags: &[&str],
-    max_tags: usize,
-    theme: Option<&Theme>,
-) {
+pub fn show_category_tags(ui: &mut egui::Ui, tags: &[&str], max_tags: usize, theme: &Theme) {
     if tags.is_empty() {
         return;
     }
@@ -321,16 +284,8 @@ pub fn show_category_tags(
             } else {
                 std::borrow::Cow::Borrowed(tag)
             };
-            let bg = if let Some(t) = theme {
-                t.color("surface")
-            } else {
-                ui.visuals().widgets.inactive.bg_fill
-            };
-            let fg = if let Some(t) = theme {
-                t.color("fg_dim")
-            } else {
-                ui.visuals().text_color()
-            };
+            let bg = theme.color("surface");
+            let fg = theme.color("fg_dim");
             egui::Frame::new()
                 .fill(bg)
                 .corner_radius(egui::CornerRadius::same(4))
@@ -349,11 +304,7 @@ pub fn show_category_tags(
                 });
         }
         if remainder > 0 {
-            let fg = if let Some(t) = theme {
-                t.color("fg_dim")
-            } else {
-                ui.visuals().text_color()
-            };
+            let fg = theme.color("fg_dim");
             ui.label(
                 egui::RichText::new(format!("+{remainder} more"))
                     .size(10.0)
@@ -416,14 +367,10 @@ pub fn format_human_timestamp(time: SystemTime) -> String {
 }
 
 /// Paint a subtle hover highlight on a row's rectangle.
-pub fn row_hover_highlight(ui: &egui::Ui, rect: egui::Rect, theme: Option<&Theme>) {
+pub fn row_hover_highlight(ui: &egui::Ui, rect: egui::Rect, theme: &Theme) {
     if ui.rect_contains_pointer(rect) {
-        let hover_color = if let Some(t) = theme {
-            let fg = t.color("fg");
-            egui::Color32::from_rgba_unmultiplied(fg.r(), fg.g(), fg.b(), 12)
-        } else {
-            egui::Color32::from_white_alpha(12)
-        };
+        let fg = theme.color("fg");
+        let hover_color = egui::Color32::from_rgba_unmultiplied(fg.r(), fg.g(), fg.b(), 12);
         ui.painter().rect_filled(rect, 4.0, hover_color);
     }
 }
@@ -436,23 +383,15 @@ pub fn project_tooltip(
     description: &str,
     downloads: u64,
     tags: &[String],
-    theme: Option<&Theme>,
+    theme: &Theme,
 ) {
     ui.set_max_width(300.0);
     if let Some(url) = icon_url {
         ui.add(egui::Image::new(url).fit_to_exact_size(egui::vec2(64.0, 64.0)));
     }
-    if let Some(t) = theme {
-        ui.label(t.title(title));
-    } else {
-        ui.strong(title);
-    }
+    ui.label(theme.title(title));
     if !description.is_empty() {
-        if let Some(t) = theme {
-            ui.label(t.subtext(description));
-        } else {
-            ui.weak(description);
-        }
+        ui.label(theme.subtext(description));
     }
     let mut info: Vec<String> = Vec::new();
     info.push(format!("{} downloads", format_downloads(downloads)));
@@ -460,61 +399,38 @@ pub fn project_tooltip(
         info.push(format!("Tags: {}", tags.join(", ")));
     }
     let info_text = info.join("\n");
-    if let Some(t) = theme {
-        ui.label(t.subtext(&info_text));
-    } else {
-        ui.weak(&info_text);
-    }
+    ui.label(theme.subtext(&info_text));
 }
 
 /// Show a "Load More" button with "Showing X of Y" count. Returns true if clicked.
-pub fn load_more_button(
-    ui: &mut egui::Ui,
-    showing: usize,
-    total: usize,
-    theme: Option<&Theme>,
-) -> bool {
+pub fn load_more_button(ui: &mut egui::Ui, showing: usize, total: usize, theme: &Theme) -> bool {
     let mut clicked = false;
     ui.add_space(16.0);
     ui.vertical_centered(|ui| {
-        let btn_clicked = if let Some(t) = theme {
-            ui.add_sized([200.0, 32.0], t.ghost_button("Load More"))
-                .clicked()
-        } else {
-            ui.add_sized([200.0, 32.0], egui::Button::new("Load More"))
-                .clicked()
-        };
-        if btn_clicked {
+        if ui
+            .add_sized([200.0, 32.0], theme.ghost_button("Load More"))
+            .clicked()
+        {
             clicked = true;
         }
         ui.add_space(4.0);
         let showing_text = format!("Showing {} of {}", showing, total);
-        if let Some(t) = theme {
-            ui.label(t.subtext(&showing_text));
-        } else {
-            ui.label(egui::RichText::new(&showing_text).size(12.0));
-        }
+        ui.label(theme.subtext(&showing_text));
     });
     ui.add_space(24.0);
     clicked
 }
 
 /// Show an empty state with a large icon and a message.
-pub fn empty_state(ui: &mut egui::Ui, icon: &str, message: &str, theme: Option<&Theme>) {
+pub fn empty_state(ui: &mut egui::Ui, icon: &str, message: &str, theme: &Theme) {
     ui.add_space(20.0);
     ui.vertical_centered(|ui| {
-        if let Some(t) = theme {
-            ui.label(
-                egui::RichText::new(icon)
-                    .size(48.0)
-                    .color(t.color("fg_muted")),
-            );
-            ui.add_space(8.0);
-            ui.label(t.subtext(message));
-        } else {
-            ui.label(egui::RichText::new(icon).size(48.0));
-            ui.add_space(8.0);
-            ui.weak(message);
-        }
+        ui.label(
+            egui::RichText::new(icon)
+                .size(48.0)
+                .color(theme.color("fg_muted")),
+        );
+        ui.add_space(8.0);
+        ui.label(theme.subtext(message));
     });
 }

@@ -13,7 +13,7 @@ impl InstanceDetailView {
         ui: &mut egui::Ui,
         instance: &Instance,
         mods_dir: &std::path::Path,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
     ) {
         ui.add_space(4.0);
 
@@ -60,11 +60,7 @@ impl InstanceDetailView {
                 do_search = true;
             }
             if self.mr_search.is_searching() {
-                if let Some(t) = theme {
-                    ui.add(egui::Spinner::new().color(t.color("accent")));
-                } else {
-                    ui.spinner();
-                }
+                ui.add(egui::Spinner::new().color(theme.color("accent")));
             }
         });
 
@@ -77,22 +73,14 @@ impl InstanceDetailView {
             let version_str = &instance.mc_version;
 
             if self.search_all_versions {
-                if let Some(t) = theme {
-                    ui.label(t.subtext("Searching all versions and loaders"));
-                } else {
-                    ui.weak("Searching all versions and loaders");
-                }
+                ui.label(theme.subtext("Searching all versions and loaders"));
             } else {
                 let filter_text = if loader_str.to_lowercase() == "vanilla" {
                     format!("Filtering: {version_str}")
                 } else {
                     format!("Filtering: {version_str} + {loader_str}")
                 };
-                if let Some(t) = theme {
-                    ui.label(t.subtext(&filter_text));
-                } else {
-                    ui.weak(&filter_text);
-                }
+                ui.label(theme.subtext(&filter_text));
             }
 
             let prev = self.search_all_versions;
@@ -162,11 +150,7 @@ impl InstanceDetailView {
         let mut load_more_triggered = false;
 
         if !self.search_results.is_empty() {
-            if let Some(t) = theme {
-                ui.label(t.subtext(&format!("Showing {} of {}", self.search_results.len(), self.mr_search.total)));
-            } else {
-                ui.weak(format!("Showing {} of {}", self.search_results.len(), self.mr_search.total));
-            }
+            ui.label(theme.subtext(&format!("Showing {} of {}", self.search_results.len(), self.mr_search.total)));
 
             match self.mr_browse_view_mode {
                 ViewMode::List => {
@@ -190,7 +174,6 @@ impl InstanceDetailView {
                                     let tip_desc = hit.description.clone();
                                     let tip_downloads = hit.downloads;
                                     let tip_tags: Vec<String> = hit.categories.clone();
-                                    let tip_theme = theme.cloned();
 
                                     let row_resp = ui.horizontal(|ui| {
                                         let icon_resp = if let Some(url) = &hit.icon_url {
@@ -199,25 +182,16 @@ impl InstanceDetailView {
                                             crate::ui::helpers::icon_placeholder(ui, &hit.title, 40.0, theme)
                                         };
                                         icon_resp.on_hover_ui(|ui| {
-                                            project_tooltip(ui, tip_icon_url.as_deref(), &tip_title, &tip_desc, tip_downloads, &tip_tags, tip_theme.as_ref());
+                                            project_tooltip(ui, tip_icon_url.as_deref(), &tip_title, &tip_desc, tip_downloads, &tip_tags, theme);
                                         });
                                         ui.vertical(|ui| {
                                             ui.set_max_width(ui.available_width() - 220.0);
-                                            if let Some(t) = theme {
-                                                ui.label(t.title(&hit.title));
-                                                ui.label(t.subtext(&truncate_desc(&hit.description, 120)));
-                                                ui.label(t.subtext(&format!(
-                                                    "{} downloads",
-                                                    format_downloads(hit.downloads)
-                                                )));
-                                            } else {
-                                                ui.strong(&hit.title);
-                                                ui.weak(truncate_desc(&hit.description, 120));
-                                                ui.weak(format!(
-                                                    "{} downloads",
-                                                    format_downloads(hit.downloads)
-                                                ));
-                                            }
+                                            ui.label(theme.title(&hit.title));
+                                            ui.label(theme.subtext(&truncate_desc(&hit.description, 120)));
+                                            ui.label(theme.subtext(&format!(
+                                                "{} downloads",
+                                                format_downloads(hit.downloads)
+                                            )));
                                             let tags: Vec<&str> = hit.categories.iter().map(|s| s.as_str()).collect();
                                             crate::ui::helpers::show_category_tags(ui, &tags, 3, theme);
                                         });
@@ -229,11 +203,7 @@ impl InstanceDetailView {
                                                 let mods_dir_c = mods_dir.clone();
                                                 let mc_ver_c = mc_ver.clone();
                                                 let loader_c = loader.clone();
-                                                if if let Some(t) = theme {
-                                                    ui.add(t.accent_button("Install")).clicked()
-                                                } else {
-                                                    ui.button("Install").clicked()
-                                                } {
+                                                if ui.add(theme.accent_button("Install")).clicked() {
                                                     self.open_mr_mod_version_picker(
                                                         project_id,
                                                         title,
@@ -244,11 +214,7 @@ impl InstanceDetailView {
                                                     );
                                                 }
                                                 let open_page_lbl = egui_phosphor::regular::GLOBE;
-                                                let open_page = if let Some(t) = theme {
-                                                    ui.add(t.ghost_button(open_page_lbl))
-                                                } else {
-                                                    ui.button(open_page_lbl)
-                                                };
+                                                let open_page = ui.add(theme.ghost_button(open_page_lbl));
                                                 if open_page.on_hover_text("Open Page").clicked() {
                                                     let url = modrinth::modrinth_project_url(&hit.slug);
                                                     let _ = open::that(&url);
@@ -304,7 +270,6 @@ impl InstanceDetailView {
                                     let tip_desc = hit.description.clone();
                                     let tip_downloads = hit.downloads;
                                     let tip_tags: Vec<String> = hit.categories.clone();
-                                    let tip_theme = theme.cloned();
 
                                     crate::ui::helpers::grid_card(
                                         ui,
@@ -323,29 +288,17 @@ impl InstanceDetailView {
                                                      )
                                                  };
                                                 icon_resp.on_hover_ui(|ui| {
-                                                    project_tooltip(ui, tip_icon_url.as_deref(), &tip_title, &tip_desc, tip_downloads, &tip_tags, tip_theme.as_ref());
+                                                    project_tooltip(ui, tip_icon_url.as_deref(), &tip_title, &tip_desc, tip_downloads, &tip_tags, theme);
                                                 });
-                                                if let Some(t) = theme {
-                                                    ui.add(egui::Label::new(t.title(&hit.title)).truncate());
-                                                } else {
-                                                    ui.add(egui::Label::new(egui::RichText::new(&hit.title).strong()).truncate());
-                                                }
+                                                ui.add(egui::Label::new(theme.title(&hit.title)).truncate());
                                             });
                                             ui.add_space(8.0);
-                                            if let Some(t) = theme {
-                                                ui.label(t.subtext(&truncate_desc(&hit.description, 75)));
-                                            } else {
-                                                ui.weak(truncate_desc(&hit.description, 75));
-                                            }
+                                            ui.label(theme.subtext(&truncate_desc(&hit.description, 75)));
                                             ui.add_space(4.0);
                                             let tags: Vec<&str> = hit.categories.iter().map(|s| s.as_str()).collect();
                                             crate::ui::helpers::show_category_tags(ui, &tags, 2, theme);
                                             let dl = format!("{} downloads", format_downloads(hit.downloads));
-                                            if let Some(t) = theme {
-                                                ui.label(egui::RichText::new(dl).size(10.0).color(t.color("fg_dim")));
-                                            } else {
-                                                ui.label(egui::RichText::new(dl).size(10.0));
-                                            }
+                                            ui.label(egui::RichText::new(dl).size(10.0).color(theme.color("fg_dim")));
                                         },
                                         |ui| {
                                             let project_id = hit.project_id.clone();
@@ -353,11 +306,7 @@ impl InstanceDetailView {
                                             let mods_dir_c = mods_dir.clone();
                                             let mc_ver_c = mc_ver.clone();
                                             let loader_c = loader.clone();
-                                            if if let Some(t) = theme {
-                                                ui.add(t.accent_button("Install")).clicked()
-                                            } else {
-                                                ui.button("Install").clicked()
-                                            } {
+                                            if ui.add(theme.accent_button("Install")).clicked() {
                                                 self.open_mr_mod_version_picker(
                                                     project_id,
                                                     title,
@@ -367,11 +316,7 @@ impl InstanceDetailView {
                                                     ui.ctx(),
                                                 );
                                             }
-                                            let open_page = if let Some(t) = theme {
-                                                ui.add(t.ghost_button(egui_phosphor::regular::GLOBE))
-                                            } else {
-                                                ui.button(egui_phosphor::regular::GLOBE)
-                                            };
+                                            let open_page = ui.add(theme.ghost_button(egui_phosphor::regular::GLOBE));
                                             if open_page.on_hover_text("Open Page").clicked() {
                                                 let url = modrinth::modrinth_project_url(&hit.slug);
                                                 let _ = open::that(&url);

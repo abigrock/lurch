@@ -55,7 +55,7 @@ impl SettingsView {
         current_theme_idx: &mut usize,
         java_installs: &mut Vec<JavaInstall>,
         java_download: &mut Option<Arc<Mutex<crate::app::JavaDownloadState>>>,
-        theme: Option<&Theme>,
+        theme: &Theme,
     ) {
     ui.label(crate::ui::helpers::section_heading("Settings", theme));
     ui.separator();
@@ -66,11 +66,7 @@ impl SettingsView {
         .auto_shrink([false, false])
         .show(ui, |ui| {
             // ── Appearance ──
-            let header_text = if let Some(t) = theme {
-                t.section_header(&format!("{} Appearance", egui_phosphor::regular::PAINT_BRUSH))
-            } else {
-                egui::RichText::new(format!("{} Appearance", egui_phosphor::regular::PAINT_BRUSH)).strong()
-            };
+            let header_text = theme.section_header(&format!("{} Appearance", egui_phosphor::regular::PAINT_BRUSH));
             egui::CollapsingHeader::new(header_text)
                 .default_open(true)
                 .id_salt("settings_appearance")
@@ -149,7 +145,7 @@ impl SettingsView {
                     // ── Built-in themes ──
                     if has_custom {
                         ui.label(egui::RichText::new("Built-in").size(12.0).color(
-                            theme.map_or(egui::Color32::GRAY, |t| t.color("fg_muted"))
+                            theme.color("fg_muted")
                         ));
                         ui.add_space(2.0);
                     }
@@ -159,7 +155,7 @@ impl SettingsView {
                     if has_custom {
                         ui.add_space(12.0);
                         ui.label(egui::RichText::new("Custom").size(12.0).color(
-                            theme.map_or(egui::Color32::GRAY, |t| t.color("fg_muted"))
+                            theme.color("fg_muted")
                         ));
                         ui.add_space(2.0);
                         render_theme_cards(ui, builtin_theme_count..themes.len());
@@ -172,31 +168,19 @@ impl SettingsView {
                         egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
                         |ui| {
                         let open_lbl = format!("{} Open Themes Folder", egui_phosphor::regular::FOLDER_OPEN);
-                        let open_clicked = if let Some(t) = theme {
-                            ui.add(t.accent_button(&open_lbl)).clicked()
-                        } else {
-                            ui.button(&open_lbl).clicked()
-                        };
+                        let open_clicked = ui.add(theme.accent_button(&open_lbl)).clicked();
                         if open_clicked
                             && let Ok(dir) = crate::util::paths::themes_dir()
                         {
                             let _ = open::that(dir);
                         }
-                        if let Some(t) = theme {
-                            ui.label(t.subtext("Drop .json theme files here to add custom themes."));
-                        } else {
-                            ui.weak("Drop .json theme files here to add custom themes.");
-                        }
+                        ui.label(theme.subtext("Drop .json theme files here to add custom themes."));
                     });
                 });
             ui.add_space(16.0);
 
             // ── Java Runtime (merged Download + Installations) ──
-            let header_text = if let Some(t) = theme {
-                t.section_header(&format!("{} Java Runtime", egui_phosphor::regular::COFFEE))
-            } else {
-                egui::RichText::new(format!("{} Java Runtime", egui_phosphor::regular::COFFEE)).strong()
-            };
+            let header_text = theme.section_header(&format!("{} Java Runtime", egui_phosphor::regular::COFFEE));
             egui::CollapsingHeader::new(header_text)
                 .default_open(true)
                 .id_salt("settings_java")
@@ -212,11 +196,7 @@ impl SettingsView {
                                 egui::vec2(ui.available_width(), row_h),
                                 egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
                                 |ui| {
-                                if let Some(t) = theme {
-                                    ui.add(egui::Spinner::new().color(t.color("accent")));
-                                } else {
-                                    ui.spinner();
-                                }
+                                ui.add(egui::Spinner::new().color(theme.color("accent")));
                                 ui.label(&s.message);
                             });
                             ui.add_space(4.0);
@@ -298,11 +278,7 @@ impl SettingsView {
                         } else {
                             format!("{} Download Java {}", egui_phosphor::regular::ARROW_DOWN, self.java_version)
                         };
-                        let btn = if let Some(t) = theme {
-                            ui.add_enabled(!is_downloading && !already_installed, t.accent_button(&label))
-                        } else {
-                            ui.add_enabled(!is_downloading && !already_installed, egui::Button::new(&label))
-                        };
+                        let btn = ui.add_enabled(!is_downloading && !already_installed, theme.accent_button(&label));
                         if btn.clicked() {
                             download_clicked = true;
                         }
@@ -379,11 +355,7 @@ impl SettingsView {
                         egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
                         |ui| {
                         let rescan_lbl = format!("{} Re-scan", egui_phosphor::regular::MAGNIFYING_GLASS);
-                        if let Some(t) = theme {
-                            if ui.add(t.accent_button(&rescan_lbl)).clicked() {
-                                *java_installs = java::detect_java_installations();
-                            }
-                        } else if ui.button(&rescan_lbl).clicked() {
+                        if ui.add(theme.accent_button(&rescan_lbl)).clicked() {
                             *java_installs = java::detect_java_installations();
                         }
                     });
@@ -392,21 +364,9 @@ impl SettingsView {
                     if java_installs.is_empty() {
                         ui.label("No Java installations detected.");
                     } else {
-                        let badge_fill = if let Some(t) = theme {
-                            t.color("surface")
-                        } else {
-                            ui.visuals().widgets.inactive.bg_fill
-                        };
-                        let badge_fg = if let Some(t) = theme {
-                            t.color("fg_dim")
-                        } else {
-                            ui.visuals().text_color()
-                        };
-                        let managed_fill = if let Some(t) = theme {
-                            t.color("accent")
-                        } else {
-                            egui::Color32::from_rgb(76, 175, 80)
-                        };
+                        let badge_fill = theme.color("surface");
+                        let badge_fg = theme.color("fg_dim");
+                        let managed_fill = theme.color("accent");
 
                         let outer = crate::ui::helpers::card_frame(ui, theme);
                         outer.show(ui, |ui| {
@@ -420,97 +380,44 @@ impl SettingsView {
                                     egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
                                     |ui| {
                                     let title = format!("Java {}", install.major);
-                                    if let Some(t) = theme {
-                                        ui.label(t.title(&title));
-                                    } else {
-                                        ui.label(egui::RichText::new(&title).strong());
-                                    }
+                                    ui.label(theme.title(&title));
 
                                     ui.spacing_mut().item_spacing.x = 4.0;
 
-                                    if let Some(t) = theme {
-                                        t.badge_frame(badge_fill).show(ui, |ui| {
-                                            ui.label(
-                                                egui::RichText::new(&install.version)
-                                                    .size(11.0)
-                                                    .color(badge_fg),
-                                            );
-                                        });
-                                    } else {
-                                        egui::Frame::new()
-                                            .fill(badge_fill)
-                                            .corner_radius(4.0)
-                                            .inner_margin(egui::Margin::symmetric(6, 2))
-                                            .show(ui, |ui| {
-                                                ui.label(
-                                                    egui::RichText::new(&install.version)
-                                                        .size(11.0)
-                                                        .color(badge_fg),
-                                                );
-                                            });
-                                    }
+                                    theme.badge_frame(badge_fill).show(ui, |ui| {
+                                        ui.label(
+                                            egui::RichText::new(&install.version)
+                                                .size(11.0)
+                                                .color(badge_fg),
+                                        );
+                                    });
 
-                                    if let Some(t) = theme {
-                                        t.badge_frame(badge_fill).show(ui, |ui| {
-                                            ui.label(
-                                                egui::RichText::new(&install.vendor)
-                                                    .size(11.0)
-                                                    .color(badge_fg),
-                                            );
-                                        });
-                                    } else {
-                                        egui::Frame::new()
-                                            .fill(badge_fill)
-                                            .corner_radius(4.0)
-                                            .inner_margin(egui::Margin::symmetric(6, 2))
-                                            .show(ui, |ui| {
-                                                ui.label(
-                                                    egui::RichText::new(&install.vendor)
-                                                        .size(11.0)
-                                                        .color(badge_fg),
-                                                );
-                                            });
-                                    }
+                                    theme.badge_frame(badge_fill).show(ui, |ui| {
+                                        ui.label(
+                                            egui::RichText::new(&install.vendor)
+                                                .size(11.0)
+                                                .color(badge_fg),
+                                        );
+                                    });
 
                                     if install.managed {
-                                        if let Some(t) = theme {
-                                            t.badge_frame(managed_fill).show(ui, |ui| {
-                                                ui.label(
-                                                    egui::RichText::new("Managed")
-                                                        .size(11.0)
-                                                        .color(t.button_fg()),
-                                                );
-                                            });
-                                        } else {
-                                            egui::Frame::new()
-                                                .fill(managed_fill)
-                                                .corner_radius(4.0)
-                                                .inner_margin(egui::Margin::symmetric(6, 2))
-                                                .show(ui, |ui| {
-                                                    ui.label(
-                                                        egui::RichText::new("Managed")
-                                                            .size(11.0)
-                                                            .color(egui::Color32::WHITE),
-                                                    );
-                                                });
-                                        }
+                                        theme.badge_frame(managed_fill).show(ui, |ui| {
+                                            ui.label(
+                                                egui::RichText::new("Managed")
+                                                    .size(11.0)
+                                                    .color(theme.button_fg()),
+                                            );
+                                        });
                                     }
 
                                     if install.managed {
                                         ui.with_layout(
                                             egui::Layout::right_to_left(egui::Align::Center),
                                             |ui| {
-                                                let btn = if let Some(t) = theme {
-                                                    ui.add(t.danger_button(&format!(
-                                                        "{} Remove",
-                                                        egui_phosphor::regular::TRASH
-                                                    )))
-                                                } else {
-                                                    ui.button(format!(
-                                                        "{} Remove",
-                                                        egui_phosphor::regular::TRASH
-                                                    ))
-                                                };
+                                                let btn = ui.add(theme.danger_button(&format!(
+                                                    "{} Remove",
+                                                    egui_phosphor::regular::TRASH
+                                                )));
                                                  if btn.clicked() {
                                                     self.confirm_java_remove = Some(idx);
                                                 }
@@ -518,11 +425,7 @@ impl SettingsView {
                                         );
                                     }
                                 });
-                                if let Some(t) = theme {
-                                    ui.label(t.subtext(&install.path.display().to_string()));
-                                } else {
-                                    ui.weak(install.path.display().to_string());
-                                }
+                                ui.label(theme.subtext(&install.path.display().to_string()));
                             }
                         });
                     }
@@ -544,21 +447,12 @@ impl SettingsView {
                     .open(&mut open)
                     .show(ui.ctx(), |ui| {
                         ui.label(format!("Remove \"{}\"?", rm_label));
-                        if let Some(t) = theme {
-                            ui.label(t.subtext(
-                                "This will delete the managed Java installation from disk.",
-                            ));
-                        } else {
-                            ui.weak("This will delete the managed Java installation from disk.");
-                        }
+                        ui.label(theme.subtext(
+                            "This will delete the managed Java installation from disk.",
+                        ));
                         ui.add_space(8.0);
                         ui.horizontal(|ui| {
-                            let confirm_clicked = if let Some(t) = theme {
-                                ui.add(t.danger_button("Remove")).clicked()
-                            } else {
-                                ui.button(egui::RichText::new("Remove").color(egui::Color32::RED))
-                                    .clicked()
-                            };
+                            let confirm_clicked = ui.add(theme.danger_button("Remove")).clicked();
                             if confirm_clicked {
                                 if rm_idx < java_installs.len() {
                                     let install = &java_installs[rm_idx];
@@ -583,11 +477,7 @@ impl SettingsView {
             ui.add_space(16.0);
 
             // ── Default Memory & JVM ──
-            let header_text = if let Some(t) = theme {
-                t.section_header(&format!("{} Default Memory & JVM", egui_phosphor::regular::FLOPPY_DISK))
-            } else {
-                egui::RichText::new(format!("{} Default Memory & JVM", egui_phosphor::regular::FLOPPY_DISK)).strong()
-            };
+            let header_text = theme.section_header(&format!("{} Default Memory & JVM", egui_phosphor::regular::FLOPPY_DISK));
             egui::CollapsingHeader::new(header_text)
                 .default_open(true)
                 .id_salt("settings_memory")
@@ -642,24 +532,16 @@ impl SettingsView {
             ui.add_space(16.0);
 
             // ── CurseForge API Key ──
-            let header_text = if let Some(t) = theme {
-                t.section_header(&format!("{} CurseForge API Key", egui_phosphor::regular::KEY))
-            } else {
-                egui::RichText::new(format!("{} CurseForge API Key", egui_phosphor::regular::KEY)).strong()
-            };
+            let header_text = theme.section_header(&format!("{} CurseForge API Key", egui_phosphor::regular::KEY));
             egui::CollapsingHeader::new(header_text)
                 .default_open(true)
                 .id_salt("settings_curseforge")
                 .show(ui, |ui| {
                     ui.add_space(8.0);
 
-                    if let Some(t) = theme {
-                        ui.label(t.subtext(
-                            "Optional. Override the built-in API key with your own CurseForge API key.",
-                        ));
-                    } else {
-                        ui.weak("Optional. Override the built-in API key with your own CurseForge API key.");
-                    }
+                    ui.label(theme.subtext(
+                        "Optional. Override the built-in API key with your own CurseForge API key.",
+                    ));
                     ui.add_space(4.0);
                     let mut key_text = config.curseforge_api_key.clone().unwrap_or_default();
                     if ui
@@ -683,50 +565,28 @@ impl SettingsView {
             ui.add_space(16.0);
 
             // ── About ──
-            let header_text = if let Some(t) = theme {
-                t.section_header("ℹ About")
-            } else {
-                egui::RichText::new("ℹ About").strong()
-            };
+            let header_text = theme.section_header("ℹ About");
             egui::CollapsingHeader::new(header_text)
                 .default_open(true)
                 .id_salt("settings_about")
                 .show(ui, |ui| {
                     ui.add_space(8.0);
 
-                    if let Some(t) = theme {
-                        ui.label(t.title("Lurch"));
-                        ui.label(t.subtext("Just a Minecraft launcher"));
-                        ui.add_space(4.0);
-                        ui.horizontal(|ui| {
-                            ui.label("Version:");
-                            ui.label(t.subtext(env!("CARGO_PKG_VERSION")));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Rust Edition:");
-                            ui.label(t.subtext("2024"));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("UI Framework:");
-                            ui.label(t.subtext("egui / eframe 0.34.1"));
-                        });
-                    } else {
-                        ui.label(egui::RichText::new("Lurch").heading().strong());
-                        ui.label("Just a Minecraft launcher");
-                        ui.add_space(4.0);
-                        ui.horizontal(|ui| {
-                            ui.label("Version:");
-                            ui.weak(env!("CARGO_PKG_VERSION"));
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Rust Edition:");
-                            ui.weak("2024");
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("UI Framework:");
-                            ui.weak("egui / eframe 0.34.1");
-                        });
-                    }
+                    ui.label(theme.title("Lurch"));
+                    ui.label(theme.subtext("Just a Minecraft launcher"));
+                    ui.add_space(4.0);
+                    ui.horizontal(|ui| {
+                        ui.label("Version:");
+                        ui.label(theme.subtext(env!("CARGO_PKG_VERSION")));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Rust Edition:");
+                        ui.label(theme.subtext("2024"));
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("UI Framework:");
+                        ui.label(theme.subtext("egui / eframe 0.34.1"));
+                    });
                 });
         }); // end ScrollArea
     }

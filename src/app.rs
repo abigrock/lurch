@@ -1282,7 +1282,7 @@ use crate::core::modrinth_modpack;
         }
     }
 
-    fn show_java_prompt(&mut self, ctx: &egui::Context, theme: &Option<Theme>) {
+    fn show_java_prompt(&mut self, ctx: &egui::Context, theme: &Theme) {
         if self.java_prompt.is_none() {
             return;
         }
@@ -1320,23 +1320,14 @@ use crate::core::modrinth_modpack;
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ctx, |ui| {
-                if let Some(t) = theme.as_ref() {
-                    ui.label(t.title(&format!(
-                        "\"{}\" needs Java {}",
-                        prompt_instance_name, prompt_required_java
-                    )));
-                    ui.add_space(4.0);
-                    ui.label(t.subtext(
-                        "No suitable Java installation was found. Choose an option below:",
-                    ));
-                } else {
-                    ui.strong(format!(
-                        "\"{}\" needs Java {}",
-                        prompt_instance_name, prompt_required_java
-                    ));
-                    ui.add_space(4.0);
-                    ui.label("No suitable Java installation was found. Choose an option below:");
-                }
+                ui.label(theme.title(&format!(
+                    "\"{}\" needs Java {}",
+                    prompt_instance_name, prompt_required_java
+                )));
+                ui.add_space(4.0);
+                ui.label(theme.subtext(
+                    "No suitable Java installation was found. Choose an option below:",
+                ));
 
                 ui.add_space(8.0);
 
@@ -1351,11 +1342,7 @@ use crate::core::modrinth_modpack;
                 } else {
                     let download_label =
                         format!("⬇ Download Java {} and Launch", prompt_required_java);
-                    let download_clicked = if let Some(t) = theme.as_ref() {
-                        ui.add(t.accent_button(&download_label)).clicked()
-                    } else {
-                        ui.button(&download_label).clicked()
-                    };
+                    let download_clicked = ui.add(theme.accent_button(&download_label)).clicked();
                     if download_clicked {
                         action = Some(JavaPromptAction::Download(
                             prompt_required_java,
@@ -1370,19 +1357,11 @@ use crate::core::modrinth_modpack;
 
                 // Existing installations
                 if !prompt_java_installs.is_empty() {
-                    if let Some(t) = theme.as_ref() {
-                        ui.label(t.subtext("Or use an existing installation:"));
-                    } else {
-                        ui.weak("Or use an existing installation:");
-                    }
+                    ui.label(theme.subtext("Or use an existing installation:"));
                     ui.add_space(4.0);
                     for (label, path, _major) in &prompt_java_installs {
                         ui.horizontal(|ui| {
-                            let use_clicked = if let Some(t) = theme.as_ref() {
-                                ui.add(t.accent_button("Use")).clicked()
-                            } else {
-                                ui.button("Use").clicked()
-                            };
+                            let use_clicked = ui.add(theme.accent_button("Use")).clicked();
                             ui.label(label);
                             if use_clicked {
                                 action = Some(JavaPromptAction::UseExisting(
@@ -1455,7 +1434,7 @@ use crate::core::modrinth_modpack;
         }
     }
 
-    fn show_missing_mods_dialog(&mut self, ctx: &egui::Context, theme: &Option<Theme>) {
+    fn show_missing_mods_dialog(&mut self, ctx: &egui::Context, theme: &Theme) {
         if self.missing_mods.is_none() {
             return;
         }
@@ -1479,31 +1458,17 @@ use crate::core::modrinth_modpack;
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ctx, |ui| {
-                if let Some(t) = theme.as_ref() {
-                    ui.label(t.title(&format!(
-                        "\"{}\" is missing {} mod file{}",
-                        instance_name,
-                        missing_files.len(),
-                        if missing_files.len() == 1 { "" } else { "s" },
-                    )));
-                    ui.add_space(4.0);
-                    ui.label(t.subtext(
-                        "The following mods from the modpack were not found. They may have been \
-                         accidentally deleted.",
-                    ));
-                } else {
-                    ui.strong(format!(
-                        "\"{}\" is missing {} mod file{}",
-                        instance_name,
-                        missing_files.len(),
-                        if missing_files.len() == 1 { "" } else { "s" },
-                    ));
-                    ui.add_space(4.0);
-                    ui.label(
-                        "The following mods from the modpack were not found. They may have been \
-                         accidentally deleted.",
-                    );
-                }
+                ui.label(theme.title(&format!(
+                    "\"{}\" is missing {} mod file{}",
+                    instance_name,
+                    missing_files.len(),
+                    if missing_files.len() == 1 { "" } else { "s" },
+                )));
+                ui.add_space(4.0);
+                ui.label(theme.subtext(
+                    "The following mods from the modpack were not found. They may have been \
+                     accidentally deleted.",
+                ));
 
                 ui.add_space(8.0);
 
@@ -1513,11 +1478,7 @@ use crate::core::modrinth_modpack;
                         for entry in &missing_files {
                             let label =
                                 entry.display_name.as_deref().unwrap_or(&entry.name);
-                            if let Some(t) = theme.as_ref() {
-                                ui.label(t.subtext(&format!("  • {label}")));
-                            } else {
-                                ui.label(format!("  • {label}"));
-                            }
+                            ui.label(theme.subtext(&format!("  • {label}")));
                         }
                     });
 
@@ -1527,21 +1488,13 @@ use crate::core::modrinth_modpack;
 
                 ui.horizontal(|ui| {
                     if any_downloadable {
-                        let dl_clicked = if let Some(t) = theme.as_ref() {
-                            ui.add(t.accent_button("Download Missing")).clicked()
-                        } else {
-                            ui.button("Download Missing").clicked()
-                        };
+                        let dl_clicked = ui.add(theme.accent_button("Download Missing")).clicked();
                         if dl_clicked {
                             download = true;
                         }
                     }
 
-                    let launch_clicked = if let Some(t) = theme.as_ref() {
-                        ui.add(t.danger_button("Launch Anyway")).clicked()
-                    } else {
-                        ui.button("Launch Anyway").clicked()
-                    };
+                    let launch_clicked = ui.add(theme.danger_button("Launch Anyway")).clicked();
                     if launch_clicked {
                         launch_anyway = true;
                     }
@@ -1653,7 +1606,7 @@ use crate::core::modrinth_modpack;
         }
     }
 
-    fn show_manual_downloads_dialog(&mut self, ctx: &egui::Context, theme: &Option<Theme>) {
+    fn show_manual_downloads_dialog(&mut self, ctx: &egui::Context, theme: &Theme) {
         if !self.show_manual_downloads_dialog || self.pending_manual_downloads.is_empty() {
             self.show_manual_downloads_dialog = false;
             return;
@@ -1669,28 +1622,18 @@ use crate::core::modrinth_modpack;
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ctx, |ui| {
-                if let Some(t) = theme.as_ref() {
-                    ui.label(t.subtext(
-                        "These mods block third-party distribution. Download them from CurseForge and Lurch will auto-install them from your Downloads folder.",
-                    ));
-                } else {
-                    ui.label(
-                        "These mods block third-party distribution. Download them from CurseForge and Lurch will auto-install them from your Downloads folder.",
-                    );
-                }
+                ui.label(theme.subtext(
+                    "These mods block third-party distribution. Download them from CurseForge and Lurch will auto-install them from your Downloads folder.",
+                ));
 
                 ui.add_space(8.0);
 
                 // "Open All Download Pages" accent button
-                let open_all_clicked = if let Some(t) = theme.as_ref() {
-                    ui.add(t.accent_button(&format!(
-                        "{} Open All Download Pages",
-                        egui_phosphor::regular::GLOBE
-                    )))
-                    .clicked()
-                } else {
-                    ui.button("Open All Download Pages").clicked()
-                };
+                let open_all_clicked = ui.add(theme.accent_button(&format!(
+                    "{} Open All Download Pages",
+                    egui_phosphor::regular::GLOBE
+                )))
+                .clicked();
                 if open_all_clicked {
                     open_all = true;
                 }
@@ -1705,25 +1648,16 @@ use crate::core::modrinth_modpack;
                     .show(ui, |ui| {
                         for (i, pending) in self.pending_manual_downloads.iter().enumerate() {
                             ui.horizontal(|ui| {
-                                let clicked = if let Some(t) = theme.as_ref() {
-                                    ui.add(t.ghost_button(egui_phosphor::regular::GLOBE))
-                                        .on_hover_text("Open Download Page")
-                                        .clicked()
-                                } else {
-                                    ui.button(egui_phosphor::regular::GLOBE).clicked()
-                                };
+                                let clicked = ui.add(theme.ghost_button(egui_phosphor::regular::GLOBE))
+                                    .on_hover_text("Open Download Page")
+                                    .clicked();
                                 if clicked {
                                     open_indices.push(i);
                                 }
 
                                 ui.vertical(|ui| {
-                                    if let Some(t) = theme.as_ref() {
-                                        ui.label(t.title(&pending.display_name));
-                                        ui.label(t.subtext(&pending.file_name));
-                                    } else {
-                                        ui.strong(&pending.display_name);
-                                        ui.weak(&pending.file_name);
-                                    }
+                                    ui.label(theme.title(&pending.display_name));
+                                    ui.label(theme.subtext(&pending.file_name));
                                 });
                             });
                             if i < count - 1 {
@@ -1735,11 +1669,7 @@ use crate::core::modrinth_modpack;
                 ui.add_space(8.0);
 
                 // Dismiss button
-                let dismiss_clicked = if let Some(t) = theme.as_ref() {
-                    ui.add(t.ghost_button("Dismiss")).clicked()
-                } else {
-                    ui.button("Dismiss").clicked()
-                };
+                let dismiss_clicked = ui.add(theme.ghost_button("Dismiss")).clicked();
                 if dismiss_clicked {
                     dismiss = true;
                 }
@@ -1943,13 +1873,12 @@ impl eframe::App for App {
 
         self.poll_background_tasks(&ctx);
 
-        // Apply theme (visuals + spacing)
-        if let Some(theme) = self.themes.get(self.current_theme_idx) {
-            theme.apply(&ctx);
-        }
+        // Apply theme (visuals + spacing) — themes vec is always non-empty (33 bundled)
+        let clamped_idx = self.current_theme_idx.min(self.themes.len().saturating_sub(1));
+        self.themes[clamped_idx].apply(&ctx);
 
         // Get theme for styling helpers (cheap clone — just a HashMap)
-        let theme = self.themes.get(self.current_theme_idx).cloned();
+        let theme = self.themes[clamped_idx].clone();
 
         // Global keyboard shortcuts
         let input = ctx.input(|i| {
@@ -1991,16 +1920,10 @@ impl eframe::App for App {
 
         // Top bar
         egui::Panel::top("top_bar")
-            .frame(
-                theme
-                    .as_ref()
-                    .map_or(egui::Frame::NONE, |t| t.topbar_frame()),
-            )
+            .frame(theme.topbar_frame())
             .show_inside(ui, |ui| {
                 ui.horizontal(|ui| {
-                    let accent = theme
-                        .as_ref()
-                        .map_or(egui::Color32::WHITE, |t| t.color("accent"));
+                    let accent = theme.color("accent");
                     ui.label(
                         egui::RichText::new(egui_phosphor::regular::CUBE)
                             .size(20.0)
@@ -2055,22 +1978,14 @@ impl eframe::App for App {
         egui::Panel::left("nav_panel")
             .resizable(false)
             .default_size(200.0)
-            .frame(
-                theme
-                    .as_ref()
-                    .map_or(egui::Frame::NONE, |t| t.sidebar_frame()),
-            )
+            .frame(theme.sidebar_frame())
             .show_inside(ui, |ui| {
-                crate::ui::sidebar::show(ui, &mut self.current_view, theme.as_ref());
+                crate::ui::sidebar::show(ui, &mut self.current_view, &theme);
             });
 
         // Content area with breathing room
         egui::CentralPanel::default()
-            .frame(
-                theme
-                    .as_ref()
-                    .map_or(egui::Frame::NONE, |t| t.content_frame()),
-            )
+            .frame(theme.content_frame())
             .show_inside(ui, |ui| match self.current_view {
                 View::Instances => {
                     self.instances_view.theme = theme.clone();
@@ -2097,20 +2012,20 @@ impl eframe::App for App {
                         &mut self.current_theme_idx,
                         &mut self.java_installs,
                         &mut self.java_download,
-                        theme.as_ref(),
+                        &theme,
                     );
                 }
                 View::Accounts => {
                     self.accounts_view.show(
                         ui,
                         &mut self.account_store,
-                        theme.as_ref(),
+                        &theme,
                     );
                 }
                 View::Console => {
                     self.console_view.show(
                         ui,
-                        theme.as_ref(),
+                        &theme,
                         &mut self.running_processes,
                     );
                 }
@@ -2144,34 +2059,16 @@ impl eframe::App for App {
                     egui::Color32::from_rgba_unmultiplied(r, g, b, (alpha * (c.a() as f32)) as u8)
                 };
 
-                let (bg_color, accent_color, text_color, icon) = if let Some(t) = &theme {
-                    let accent_c = if toast.is_error { t.color("error") } else { t.color("accent") };
-                    (
-                        a(t.color("bg_secondary")),
-                        a(accent_c),
-                        a(t.color("fg")),
-                        if toast.is_error { egui_phosphor::regular::WARNING_CIRCLE } else { egui_phosphor::regular::CHECK_CIRCLE },
-                    )
-                } else {
-                    if toast.is_error {
-                        (
-                            a(egui::Color32::from_gray(40)),
-                            a(egui::Color32::from_rgb(220, 60, 60)),
-                            a(egui::Color32::WHITE),
-                            egui_phosphor::regular::WARNING_CIRCLE,
-                        )
-                    } else {
-                        (
-                            a(egui::Color32::from_gray(40)),
-                            a(egui::Color32::from_rgb(50, 180, 70)),
-                            a(egui::Color32::WHITE),
-                            egui_phosphor::regular::CHECK_CIRCLE,
-                        )
-                    }
-                };
+                let accent_c = if toast.is_error { theme.color("error") } else { theme.color("accent") };
+                let (bg_color, accent_color, text_color, icon) = (
+                    a(theme.color("bg_secondary")),
+                    a(accent_c),
+                    a(theme.color("fg")),
+                    if toast.is_error { egui_phosphor::regular::WARNING_CIRCLE } else { egui_phosphor::regular::CHECK_CIRCLE },
+                );
 
                 let toast_id = egui::Id::new("toast").with(i);
-                let stroke_color = a(if let Some(t) = &theme { t.color("surface") } else { egui::Color32::from_gray(60) });
+                let stroke_color = a(theme.color("surface"));
 
                 let area_resp = egui::Area::new(toast_id)
                     .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-margin, -(screen.max.y - y_offset)))
@@ -2231,17 +2128,9 @@ impl eframe::App for App {
                     progress.message.clone()
                 };
 
-                let (bg_color, accent_color, text_color) = if let Some(t) = &theme {
-                    (t.color("bg_secondary"), t.color("accent"), t.color("fg"))
-                } else {
-                    (
-                        egui::Color32::from_gray(40),
-                        egui::Color32::from_rgb(50, 180, 70),
-                        egui::Color32::WHITE,
-                    )
-                };
-                let stroke_color = if let Some(t) = &theme { t.color("surface") } else { egui::Color32::from_gray(60) };
-                let muted_color = if let Some(t) = &theme { t.color("fg_dim") } else { egui::Color32::GRAY };
+                let (bg_color, accent_color, text_color) = (theme.color("bg_secondary"), theme.color("accent"), theme.color("fg"));
+                let stroke_color = theme.color("surface");
+                let muted_color = theme.color("fg_dim");
 
                 let task_id = egui::Id::new("bg_task_toast").with(i);
 

@@ -41,7 +41,7 @@ impl InstanceDetailView {
         ui: &mut egui::Ui,
         instance: &crate::core::instance::Instance,
         mods_dir: &std::path::Path,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
     ) {
         ui.horizontal(|ui| {
             for (tab, label) in [
@@ -168,7 +168,7 @@ impl InstanceDetailView {
     fn show_mod_version_picker(
         &mut self,
         ui: &mut egui::Ui,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
     ) {
         if self.mod_version_picker.is_none() {
             return;
@@ -188,21 +188,13 @@ impl InstanceDetailView {
             .show(ui.ctx(), |ui| {
                 if is_loading {
                     ui.horizontal(|ui| {
-                        if let Some(t) = theme {
-                            ui.add(egui::Spinner::new().color(t.color("accent")));
-                        } else {
-                            ui.spinner();
-                        }
+                        ui.add(egui::Spinner::new().color(theme.color("accent")));
                         ui.label("Fetching versions...");
                     });
                     return;
                 }
 
-                if let Some(t) = theme {
-                    ui.label(t.subtext("Select a version to install:"));
-                } else {
-                    ui.weak("Select a version to install:");
-                }
+                ui.label(theme.subtext("Select a version to install:"));
                 ui.add_space(4.0);
 
                 match vp.source.as_str() {
@@ -265,13 +257,9 @@ impl InstanceDetailView {
                         "curseforge" => !vp.cf_files.is_empty(),
                         _ => false,
                     };
-                    let install_clicked = if let Some(t) = theme {
-                        ui.add_enabled(has_versions, t.accent_button("Install"))
-                            .clicked()
-                    } else {
-                        ui.add_enabled(has_versions, egui::Button::new("Install"))
-                            .clicked()
-                    };
+                    let install_clicked = ui
+                        .add_enabled(has_versions, theme.accent_button("Install"))
+                        .clicked();
                     if install_clicked {
                         action = Some(ModVersionPickerAction::Install);
                     }

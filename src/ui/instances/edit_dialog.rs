@@ -92,11 +92,7 @@ impl InstancesView {
                             ManifestState::Loading => {
                                 drop(manifest_snapshot);
                                 ui.horizontal(|ui| {
-                                    if let Some(t) = self.theme.as_ref() {
-                                        ui.add(egui::Spinner::new().color(t.color("accent")));
-                                    } else {
-                                        ui.spinner();
-                                    }
+                                    ui.add(egui::Spinner::new().color(self.theme.color("accent")));
                                     ui.weak("Loading versions...");
                                 });
                             }
@@ -247,11 +243,7 @@ impl InstancesView {
                             ui.label("Loader version:");
                             if self.edit_loader_versions_loading {
                                 ui.horizontal(|ui| {
-                                    if let Some(t) = self.theme.as_ref() {
-                                        ui.add(egui::Spinner::new().color(t.color("accent")));
-                                    } else {
-                                        ui.spinner();
-                                    }
+                                    ui.add(egui::Spinner::new().color(self.theme.color("accent")));
                                     ui.weak("Loading versions...");
                                 });
                             } else if self.edit_loader_versions_error.is_some() {
@@ -415,11 +407,7 @@ impl InstancesView {
 
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
-                    let save_clicked = if let Some(t) = self.theme.as_ref() {
-                        ui.add(t.accent_button("Save")).clicked()
-                    } else {
-                        ui.button("Save").clicked()
-                    };
+                    let save_clicked = ui.add(self.theme.accent_button("Save")).clicked();
                     if save_clicked {
                         // Apply MC version / loader changes
                         inst.mc_version = self.edit_mc_version.clone();
@@ -471,19 +459,13 @@ impl InstancesView {
             .open(&mut open)
             .show(ctx, |ui| {
                 ui.label(format!("Delete instance \"{inst_name}\"?"));
-                if let Some(t) = self.theme.as_ref() {
-                    ui.label(t.subtext("This will permanently remove all instance files."));
-                } else {
-                    ui.weak("This will permanently remove all instance files.");
-                }
+                ui.label(
+                    self.theme
+                        .subtext("This will permanently remove all instance files."),
+                );
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
-                    let delete_clicked = if let Some(t) = self.theme.as_ref() {
-                        ui.add(t.danger_button("Delete")).clicked()
-                    } else {
-                        ui.button(egui::RichText::new("Delete").color(egui::Color32::RED))
-                            .clicked()
-                    };
+                    let delete_clicked = ui.add(self.theme.danger_button("Delete")).clicked();
                     if delete_clicked {
                         let del_id_owned = del_id.to_string();
                         if let Some(pos) = instances.iter().position(|i| i.id == del_id_owned) {

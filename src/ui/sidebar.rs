@@ -10,7 +10,7 @@ pub enum View {
     Console,
 }
 
-pub fn show(ui: &mut egui::Ui, current_view: &mut View, theme: Option<&Theme>) {
+pub fn show(ui: &mut egui::Ui, current_view: &mut View, theme: &Theme) {
     ui.vertical(|ui| {
         ui.add_space(4.0);
 
@@ -40,11 +40,7 @@ pub fn show(ui: &mut egui::Ui, current_view: &mut View, theme: Option<&Theme>) {
         // Push version info to bottom with separator
         ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
             ui.add_space(4.0);
-            if let Some(t) = theme {
-                ui.label(t.subtext(concat!("Lurch v", env!("CARGO_PKG_VERSION"))));
-            } else {
-                ui.weak(concat!("Lurch v", env!("CARGO_PKG_VERSION")));
-            }
+            ui.label(theme.subtext(concat!("Lurch v", env!("CARGO_PKG_VERSION"))));
             ui.separator();
         });
     });
@@ -53,7 +49,7 @@ pub fn show(ui: &mut egui::Ui, current_view: &mut View, theme: Option<&Theme>) {
 /// Custom nav item with accent-colored active indicator
 fn nav_item(
     ui: &mut egui::Ui,
-    theme: Option<&Theme>,
+    theme: &Theme,
     icon: &str,
     label: &str,
     active: bool,
@@ -62,37 +58,21 @@ fn nav_item(
     let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
 
     if ui.is_rect_visible(rect) {
-        let (bg, text_color, accent) = if let Some(t) = theme {
-            let bg = if active {
-                t.color("surface")
-            } else if response.hovered() {
-                t.color("surface_hover")
-            } else {
-                egui::Color32::TRANSPARENT
-            };
-            let text_color = if active {
-                t.color("accent")
-            } else if response.hovered() {
-                t.color("fg")
-            } else {
-                t.color("fg_dim")
-            };
-            (bg, text_color, t.color("accent"))
+        let bg = if active {
+            theme.color("surface")
+        } else if response.hovered() {
+            theme.color("surface_hover")
         } else {
-            let bg = if active {
-                ui.visuals().widgets.active.bg_fill
-            } else if response.hovered() {
-                ui.visuals().widgets.hovered.bg_fill
-            } else {
-                egui::Color32::TRANSPARENT
-            };
-            let text_color = if active {
-                ui.visuals().widgets.active.fg_stroke.color
-            } else {
-                ui.visuals().widgets.inactive.fg_stroke.color
-            };
-            (bg, text_color, egui::Color32::LIGHT_BLUE)
+            egui::Color32::TRANSPARENT
         };
+        let text_color = if active {
+            theme.color("accent")
+        } else if response.hovered() {
+            theme.color("fg")
+        } else {
+            theme.color("fg_dim")
+        };
+        let accent = theme.color("accent");
 
         ui.painter()
             .rect_filled(rect, egui::CornerRadius::same(6), bg);

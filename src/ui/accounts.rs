@@ -36,7 +36,7 @@ impl AccountsView {
         &mut self,
         ui: &mut egui::Ui,
         store: &mut AccountStore,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
     ) {
         ui.label(crate::ui::helpers::section_heading("Accounts", theme));
         ui.separator();
@@ -61,7 +61,7 @@ impl AccountsView {
                     format!("https://mc-heads.net/avatar/{}/64", identifier)
                 };
 
-                let mut show_card = |ui: &mut egui::Ui| {
+                let show_card = |ui: &mut egui::Ui| {
                     let row_h = ui.spacing().interact_size.y + 4.0;
                     ui.allocate_ui_with_layout(
                         egui::vec2(ui.available_width(), row_h),
@@ -79,73 +79,35 @@ impl AccountsView {
                                 username.clone()
                             };
                             if is_active {
-                                if let Some(t) = theme {
-                                    ui.label(t.title(&display_name));
-                                } else {
-                                    ui.label(egui::RichText::new(&display_name).strong());
-                                }
-                                if let Some(t) = theme {
-                                    ui.label(
-                                        egui::RichText::new("Active")
-                                            .small()
-                                            .color(t.color("success")),
-                                    );
-                                } else {
-                                    ui.label(
-                                        egui::RichText::new("Active")
-                                            .small()
-                                            .color(egui::Color32::from_rgb(76, 175, 80)),
-                                    );
-                                }
-                            } else if let Some(t) = theme {
-                                ui.label(t.title(&display_name));
+                                ui.label(theme.title(&display_name));
+                                ui.label(
+                                    egui::RichText::new("Active")
+                                        .small()
+                                        .color(theme.color("success")),
+                                );
                             } else {
-                                ui.label(egui::RichText::new(&display_name).strong());
+                                ui.label(theme.title(&display_name));
                             }
-                            if let Some(t) = theme {
-                                ui.label(t.subtext(&uuid_str));
-                            } else {
-                                ui.label(egui::RichText::new(&uuid_str).weak().small());
-                            }
+                            ui.label(theme.subtext(&uuid_str));
                         });
 
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            if let Some(t) = theme {
-                                if ui.add(t.ghost_button(egui_phosphor::regular::TRASH))
-                                    .on_hover_text("Remove account")
+                            if ui.add(theme.ghost_button(egui_phosphor::regular::TRASH))
+                                .on_hover_text("Remove account")
+                                .clicked()
+                            {
+                                remove_uuid = Some(uuid_str.clone());
+                            }
+                            if !is_offline {
+                                if ui.add(theme.ghost_button(egui_phosphor::regular::ARROWS_CLOCKWISE))
+                                    .on_hover_text("Refresh session")
                                     .clicked()
                                 {
-                                    remove_uuid = Some(uuid_str.clone());
+                                    refresh_uuid = Some(uuid_str.clone());
                                 }
-                                if !is_offline {
-                                    if ui.add(t.ghost_button(egui_phosphor::regular::ARROWS_CLOCKWISE))
-                                        .on_hover_text("Refresh session")
-                                        .clicked()
-                                    {
-                                        refresh_uuid = Some(uuid_str.clone());
-                                    }
-                                }
-                                if !is_active {
-                                    if ui.add(t.accent_button("Set Active")).clicked() {
-                                        set_active_uuid = Some(uuid_str.clone());
-                                    }
-                                }
-                            } else {
-                                if ui.small_button(egui_phosphor::regular::TRASH)
-                                    .on_hover_text("Remove account")
-                                    .clicked()
-                                {
-                                    remove_uuid = Some(uuid_str.clone());
-                                }
-                                if !is_offline {
-                                    if ui.small_button(egui_phosphor::regular::ARROWS_CLOCKWISE)
-                                        .on_hover_text("Refresh session")
-                                        .clicked()
-                                    {
-                                        refresh_uuid = Some(uuid_str.clone());
-                                    }
-                                }
-                                if !is_active && ui.small_button("Set Active").clicked() {
+                            }
+                            if !is_active {
+                                if ui.add(theme.accent_button("Set Active")).clicked() {
                                     set_active_uuid = Some(uuid_str.clone());
                                 }
                             }
@@ -153,17 +115,11 @@ impl AccountsView {
                     });
                 };
 
-                if let Some(t) = theme {
-                    let mut frame = t.card_frame();
-                    if is_active {
-                        frame = frame.stroke(egui::Stroke::new(1.5, t.color("accent")));
-                    }
-                    frame.show(ui, show_card);
-                } else {
-                    egui::Frame::group(ui.style())
-                        .inner_margin(egui::Margin::same(6))
-                        .show(ui, |ui| show_card(ui));
+                let mut frame = theme.card_frame();
+                if is_active {
+                    frame = frame.stroke(egui::Stroke::new(1.5, theme.color("accent")));
                 }
+                frame.show(ui, show_card);
             }
         }
 
@@ -173,17 +129,9 @@ impl AccountsView {
                 ui.add_space(32.0);
                 ui.label(egui::RichText::new(egui_phosphor::regular::USERS).size(48.0).weak());
                 ui.add_space(8.0);
-                if let Some(t) = theme {
-                    ui.label(t.title("No accounts added"));
-                } else {
-                    ui.label(egui::RichText::new("No accounts added").size(18.0).strong());
-                }
+                ui.label(theme.title("No accounts added"));
                 ui.add_space(4.0);
-                if let Some(t) = theme {
-                    ui.label(t.subtext("Add a Microsoft or offline account to start playing."));
-                } else {
-                    ui.weak("Add a Microsoft or offline account to start playing.");
-                }
+                ui.label(theme.subtext("Add a Microsoft or offline account to start playing."));
             });
         }
 
@@ -273,19 +221,11 @@ impl AccountsView {
         // Show error state (styled alert) and allow retry
         if let AuthFlowState::Error(msg) = &self.auth_state {
             let msg = msg.clone();
-            let error_frame = if let Some(t) = theme {
-                egui::Frame::new()
-                    .fill(t.color("error").linear_multiply(0.15))
-                    .stroke(egui::Stroke::new(1.0, t.color("error")))
-                    .inner_margin(egui::Margin::same(12))
-                    .corner_radius(egui::CornerRadius::same(6))
-            } else {
-                egui::Frame::new()
-                    .fill(egui::Color32::from_rgba_unmultiplied(255, 0, 0, 30))
-                    .stroke(egui::Stroke::new(1.0, egui::Color32::RED))
-                    .inner_margin(egui::Margin::same(12))
-                    .corner_radius(egui::CornerRadius::same(6))
-            };
+            let error_frame = egui::Frame::new()
+                .fill(theme.color("error").linear_multiply(0.15))
+                .stroke(egui::Stroke::new(1.0, theme.color("error")))
+                .inner_margin(egui::Margin::same(12))
+                .corner_radius(egui::CornerRadius::same(6));
             error_frame.show(ui, |ui| {
                 let row_h = ui.spacing().interact_size.y + 4.0;
                 ui.allocate_ui_with_layout(
@@ -293,10 +233,10 @@ impl AccountsView {
                     egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
                     |ui| {
                     ui.label(egui::RichText::new(egui_phosphor::regular::WARNING_CIRCLE).color(
-                        if let Some(t) = theme { t.color("error") } else { egui::Color32::RED }
+                        theme.color("error")
                     ));
                     ui.label(egui::RichText::new(&msg).color(
-                        if let Some(t) = theme { t.color("error") } else { egui::Color32::RED }
+                        theme.color("error")
                     ));
                 });
             });
@@ -309,21 +249,11 @@ impl AccountsView {
 
         match &self.auth_state {
             AuthFlowState::Idle | AuthFlowState::Error(_) => {
-                if let Some(t) = theme {
-                    if ui
-                        .add(t.accent_button(&format!(
-                            "{} Add Microsoft Account",
-                            egui_phosphor::regular::KEY
-                        )))
-                        .clicked()
-                    {
-                        self.start_microsoft_login(ui);
-                    }
-                } else if ui
-                    .button(format!(
+                if ui
+                    .add(theme.accent_button(&format!(
                         "{} Add Microsoft Account",
                         egui_phosphor::regular::KEY
-                    ))
+                    )))
                     .clicked()
                 {
                     self.start_microsoft_login(ui);
@@ -336,11 +266,7 @@ impl AccountsView {
                 // --- Offline account section ---
                 let offline_frame = crate::ui::helpers::card_frame(ui, theme);
                 offline_frame.show(ui, |ui| {
-                    if let Some(t) = theme {
-                        ui.label(t.section_header("Add Offline Account"));
-                    } else {
-                        ui.label(egui::RichText::new("Add Offline Account").strong());
-                    }
+                    ui.label(theme.section_header("Add Offline Account"));
                     ui.add_space(4.0);
                     let row_h = ui.spacing().interact_size.y + 4.0;
                     ui.allocate_ui_with_layout(
@@ -354,11 +280,8 @@ impl AccountsView {
                                 .margin(egui::Margin::symmetric(4, 9)),
                         );
                         let can_add = !self.offline_username.trim().is_empty();
-                        let add_clicked = if let Some(t) = theme {
-                            ui.add_enabled(can_add, t.accent_button("Add")).clicked()
-                        } else {
-                            ui.add_enabled(can_add, egui::Button::new("Add")).clicked()
-                        };
+                        let add_clicked =
+                            ui.add_enabled(can_add, theme.accent_button("Add")).clicked();
                         let enter_pressed =
                             response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
 
@@ -407,25 +330,14 @@ impl AccountsView {
 
                 // Show login card
                 let mut cancel_clicked = false;
-                let frame = if let Some(t) = theme {
-                    egui::Frame::default()
-                        .inner_margin(egui::Margin::same(16i8))
-                        .fill(t.color("bg_secondary"))
-                        .stroke(egui::Stroke::new(1.0, t.color("surface")))
-                        .corner_radius(egui::CornerRadius::same(8))
-                } else {
-                    egui::Frame::default()
-                        .inner_margin(egui::Margin::same(16i8))
-                        .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
-                        .corner_radius(egui::CornerRadius::same(8))
-                };
+                let frame = egui::Frame::default()
+                    .inner_margin(egui::Margin::same(16i8))
+                    .fill(theme.color("bg_secondary"))
+                    .stroke(egui::Stroke::new(1.0, theme.color("surface")))
+                    .corner_radius(egui::CornerRadius::same(8));
                 frame.show(ui, |ui| {
                     ui.vertical_centered(|ui| {
-                        if let Some(t) = theme {
-                            ui.label(t.title("Microsoft Login").heading());
-                        } else {
-                            ui.label(egui::RichText::new("Microsoft Login").heading());
-                        }
+                        ui.label(theme.title("Microsoft Login").heading());
                         ui.add_space(8.0);
                         ui.label("1. Go to:");
                         ui.hyperlink_to(&verification_uri, &verification_uri);
@@ -434,23 +346,15 @@ impl AccountsView {
                         let code_text = egui::RichText::new(&user_code)
                             .monospace()
                             .size(28.0)
-                            .strong();
-                        let code_text = if let Some(t) = theme {
-                            code_text.color(t.color("fg"))
-                        } else {
-                            code_text
-                        };
+                            .strong()
+                            .color(theme.color("fg"));
                         ui.label(code_text);
                         ui.add_space(4.0);
                         if ui.button(format!("{} Copy Code", egui_phosphor::regular::COPY)).clicked() {
                             ui.output_mut(|o| o.commands.push(egui::OutputCommand::CopyText(user_code.clone())));
                         }
                         ui.add_space(8.0);
-                        if let Some(t) = theme {
-                            ui.add(egui::Spinner::new().color(t.color("accent")));
-                        } else {
-                            ui.spinner();
-                        }
+                        ui.add(egui::Spinner::new().color(theme.color("accent")));
                         ui.add_space(8.0);
                         if ui.button("Cancel").clicked() {
                             cancel_clicked = true;
@@ -484,19 +388,10 @@ impl AccountsView {
                 .open(&mut open)
                 .show(ui.ctx(), |ui| {
                     ui.label(format!("Remove account \"{username}\"?"));
-                    if let Some(t) = theme {
-                        ui.label(t.subtext("You can re-add this account later."));
-                    } else {
-                        ui.weak("You can re-add this account later.");
-                    }
+                    ui.label(theme.subtext("You can re-add this account later."));
                     ui.add_space(8.0);
                     ui.horizontal(|ui| {
-                        let remove_clicked = if let Some(t) = theme {
-                            ui.add(t.danger_button("Remove")).clicked()
-                        } else {
-                            ui.button(egui::RichText::new("Remove").color(egui::Color32::RED))
-                                .clicked()
-                        };
+                        let remove_clicked = ui.add(theme.danger_button("Remove")).clicked();
                         if remove_clicked {
                             store.remove(uuid);
                             let _ = store.save();

@@ -9,7 +9,7 @@ impl InstanceDetailView {
         &mut self,
         ui: &mut egui::Ui,
         servers_dat: &std::path::Path,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
     ) {
         ui.add_space(4.0);
 
@@ -19,17 +19,8 @@ impl InstanceDetailView {
             egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
             |ui| {
             let is_editing = self.editing_server_idx.is_some();
-            let form_label = if is_editing {
-                "Edit Server"
-            } else {
-                "Add Server"
-            };
-
-            if let Some(t) = theme {
-                ui.label(t.subtext(form_label));
-            } else {
-                ui.label(form_label);
-            }
+            let form_label = if is_editing { "Edit Server" } else { "Add Server" };
+            ui.label(theme.subtext(form_label));
         });
         let row_h = ui.spacing().interact_size.y + 4.0;
         ui.allocate_ui_with_layout(
@@ -53,13 +44,7 @@ impl InstanceDetailView {
                 !self.server_edit_name.trim().is_empty() && !self.server_edit_ip.trim().is_empty();
 
             if let Some(edit_idx) = self.editing_server_idx {
-                let save_clicked = if let Some(t) = theme {
-                    ui.add_enabled(can_save, t.accent_button("Save")).clicked()
-                } else {
-                    ui.add_enabled(can_save, egui::Button::new("Save"))
-                        .clicked()
-                };
-                if save_clicked && can_save {
+                if ui.add_enabled(can_save, theme.accent_button("Save")).clicked() && can_save {
                     if edit_idx < self.server_list.len() {
                         self.server_list[edit_idx].name = self.server_edit_name.trim().to_string();
                         self.server_list[edit_idx].ip = self.server_edit_ip.trim().to_string();
@@ -70,19 +55,13 @@ impl InstanceDetailView {
                     self.editing_server_idx = None;
                     self.servers_needs_rescan = true;
                 }
-                let cancel_clicked = ui.button("Cancel").clicked();
-                if cancel_clicked {
+                if ui.button("Cancel").clicked() {
                     self.server_edit_name.clear();
                     self.server_edit_ip.clear();
                     self.editing_server_idx = None;
                 }
             } else {
-                let add_clicked = if let Some(t) = theme {
-                    ui.add_enabled(can_save, t.accent_button("Add")).clicked()
-                } else {
-                    ui.add_enabled(can_save, egui::Button::new("Add")).clicked()
-                };
-                if add_clicked && can_save {
+                if ui.add_enabled(can_save, theme.accent_button("Add")).clicked() && can_save {
                     self.server_list.push(Server {
                         name: self.server_edit_name.trim().to_string(),
                         ip: self.server_edit_ip.trim().to_string(),
@@ -101,27 +80,17 @@ impl InstanceDetailView {
         if self.server_list.is_empty() {
             ui.add_space(20.0);
             ui.vertical_centered(|ui| {
-                if let Some(t) = theme {
-                    ui.label(
-                        egui::RichText::new(egui_phosphor::regular::WIFI_HIGH)
-                            .size(48.0)
-                            .color(t.color("fg_muted")),
-                    );
-                    ui.add_space(8.0);
-                    ui.label(t.subtext("No servers configured."));
-                    ui.add_space(4.0);
-                    ui.label(t.subtext(
-                        "Add a server above. Changes are saved to servers.dat for use in-game.",
-                    ));
-                } else {
-                    ui.label(egui::RichText::new(egui_phosphor::regular::WIFI_HIGH).size(48.0));
-                    ui.add_space(8.0);
-                    ui.weak("No servers configured.");
-                    ui.add_space(4.0);
-                    ui.weak(
-                        "Add a server above. Changes are saved to servers.dat for use in-game.",
-                    );
-                }
+                ui.label(
+                    egui::RichText::new(egui_phosphor::regular::WIFI_HIGH)
+                        .size(48.0)
+                        .color(theme.color("fg_muted")),
+                );
+                ui.add_space(8.0);
+                ui.label(theme.subtext("No servers configured."));
+                ui.add_space(4.0);
+                ui.label(theme.subtext(
+                    "Add a server above. Changes are saved to servers.dat for use in-game.",
+                ));
             });
             return;
         }
@@ -168,35 +137,19 @@ impl InstanceDetailView {
                                 }
                             });
                             ui.vertical(|ui| {
-                                if let Some(t) = theme {
-                                    ui.label(t.title(&server.name));
-                                    ui.label(t.subtext(&server.ip));
-                                } else {
-                                    ui.strong(&server.name);
-                                    ui.weak(&server.ip);
-                                }
+                                ui.label(theme.title(&server.name));
+                                ui.label(theme.subtext(&server.ip));
                             });
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
-                                    let del_clicked = if let Some(t) = theme {
-                                        ui.add(t.danger_button(egui_phosphor::regular::TRASH))
-                                            .on_hover_text("Remove server")
-                                            .clicked()
-                                    } else {
-                                        ui.small_button(egui_phosphor::regular::TRASH)
-                                            .on_hover_text("Remove server")
-                                            .clicked()
-                                    };
-                                    if del_clicked {
+                                    if ui.add(theme.danger_button(egui_phosphor::regular::TRASH))
+                                        .on_hover_text("Remove server")
+                                        .clicked()
+                                    {
                                         remove_idx = Some(idx);
                                     }
-                                    let edit_clicked = if let Some(t) = theme {
-                                        ui.add(t.accent_button("Edit")).clicked()
-                                    } else {
-                                        ui.button("Edit").clicked()
-                                    };
-                                    if edit_clicked {
+                                    if ui.add(theme.accent_button("Edit")).clicked() {
                                         edit_idx = Some(idx);
                                     }
                                 },
@@ -225,22 +178,10 @@ impl InstanceDetailView {
                     .open(&mut open)
                     .show(ui.ctx(), |ui| {
                         ui.label(format!("Remove server \"{}\"?", server_name));
-                        if let Some(t) = theme {
-                            ui.label(
-                                t.subtext("This will remove the server from servers.dat."),
-                            );
-                        } else {
-                            ui.weak("This will remove the server from servers.dat.");
-                        }
+                        ui.label(theme.subtext("This will remove the server from servers.dat."));
                         ui.add_space(8.0);
                         ui.horizontal(|ui| {
-                            let confirm_clicked = if let Some(t) = theme {
-                                ui.add(t.danger_button("Delete")).clicked()
-                            } else {
-                                ui.button(egui::RichText::new("Delete").color(egui::Color32::RED))
-                                    .clicked()
-                            };
-                            if confirm_clicked {
+                            if ui.add(theme.danger_button("Delete")).clicked() {
                                 self.server_list.remove(del_idx);
                                 let _ = servers::write_servers(servers_dat, &self.server_list);
                                 self.servers_needs_rescan = true;

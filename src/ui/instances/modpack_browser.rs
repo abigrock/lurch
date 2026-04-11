@@ -99,7 +99,7 @@ impl ModpackBrowser {
         &mut self,
         ui: &mut egui::Ui,
         source: ModpackSource,
-        theme: Option<&Theme>,
+        theme: &Theme,
         pending_toasts: &mut Vec<crate::app::Toast>,
     ) {
         match source {
@@ -130,7 +130,7 @@ impl ModpackBrowser {
     fn show_modrinth(
         &mut self,
         ui: &mut egui::Ui,
-        theme: Option<&Theme>,
+        theme: &Theme,
         pending_toasts: &mut Vec<crate::app::Toast>,
     ) {
         ui.set_min_width(ui.available_width());
@@ -284,31 +284,15 @@ impl ModpackBrowser {
 
         if is_searching {
             ui.horizontal(|ui| {
-                if let Some(t) = theme {
-                    ui.add(egui::Spinner::new().color(t.color("accent")));
-                } else {
-                    ui.spinner();
-                }
-                if let Some(t) = theme {
-                    ui.label(t.subtext("Searching..."));
-                } else {
-                    ui.label("Searching...");
-                }
+                ui.add(egui::Spinner::new().color(theme.color("accent")));
+                ui.label(theme.subtext("Searching..."));
             });
         } else if !self.mr_results.is_empty() {
-            if let Some(t) = theme {
-                ui.label(t.subtext(&format!(
-                    "Showing {} of {}",
-                    self.mr_results.len(),
-                    self.mr_search.total
-                )));
-            } else {
-                ui.weak(format!(
-                    "Showing {} of {}",
-                    self.mr_results.len(),
-                    self.mr_search.total
-                ));
-            }
+            ui.label(theme.subtext(&format!(
+                "Showing {} of {}",
+                self.mr_results.len(),
+                self.mr_search.total
+            )));
 
             let results = &self.mr_results;
             let mut open_mr_picker = None;
@@ -332,7 +316,6 @@ impl ModpackBrowser {
                                     let tip_desc = hit.description.clone();
                                     let tip_downloads = hit.downloads;
                                     let tip_tags: Vec<String> = hit.categories.clone();
-                                    let tip_theme = theme.cloned();
 
                                     let row_resp = ui.horizontal(|ui| {
                                         let icon_resp = if let Some(url) = &hit.icon_url {
@@ -353,29 +336,20 @@ impl ModpackBrowser {
                                                 &tip_desc,
                                                 tip_downloads,
                                                 &tip_tags,
-                                                tip_theme.as_ref(),
+                                                theme,
                                             );
                                         });
                                         ui.vertical(|ui| {
                                             ui.set_max_width(ui.available_width() - 220.0);
-                                            if let Some(t) = theme {
-                                                ui.label(t.title(&hit.title));
-                                                ui.label(t.subtext(&truncate_desc(
-                                                    &hit.description,
-                                                    120,
-                                                )));
-                                                ui.label(t.subtext(&format!(
-                                                    "{} downloads",
-                                                    format_downloads(hit.downloads)
-                                                )));
-                                            } else {
-                                                ui.strong(&hit.title);
-                                                ui.weak(truncate_desc(&hit.description, 120));
-                                                ui.weak(format!(
-                                                    "{} downloads",
-                                                    format_downloads(hit.downloads)
-                                                ));
-                                            }
+                                            ui.label(theme.title(&hit.title));
+                                            ui.label(
+                                                theme
+                                                    .subtext(&truncate_desc(&hit.description, 120)),
+                                            );
+                                            ui.label(theme.subtext(&format!(
+                                                "{} downloads",
+                                                format_downloads(hit.downloads)
+                                            )));
                                             let tags: Vec<&str> =
                                                 hit.categories.iter().map(|s| s.as_str()).collect();
                                             show_category_tags(ui, &tags, 3, theme);
@@ -383,12 +357,8 @@ impl ModpackBrowser {
                                         ui.with_layout(
                                             egui::Layout::right_to_left(egui::Align::Center),
                                             |ui| {
-                                                let install_clicked = if let Some(t) = theme {
-                                                    ui.add(t.accent_button("Install")).clicked()
-                                                } else {
-                                                    ui.button("Install").clicked()
-                                                };
-                                                if install_clicked {
+                                                if ui.add(theme.accent_button("Install")).clicked()
+                                                {
                                                     open_mr_picker = Some((
                                                         hit.project_id.clone(),
                                                         hit.title.clone(),
@@ -396,11 +366,8 @@ impl ModpackBrowser {
                                                     ));
                                                 }
                                                 let open_page_lbl = egui_phosphor::regular::GLOBE;
-                                                let open_page = if let Some(t) = theme {
-                                                    ui.add(t.ghost_button(open_page_lbl))
-                                                } else {
-                                                    ui.button(open_page_lbl)
-                                                };
+                                                let open_page =
+                                                    ui.add(theme.ghost_button(open_page_lbl));
                                                 if open_page.on_hover_text("Open Page").clicked() {
                                                     let url =
                                                         modrinth::modrinth_project_url(&hit.slug);
@@ -440,7 +407,6 @@ impl ModpackBrowser {
                             let tip_desc = hit.description.clone();
                             let tip_downloads = hit.downloads;
                             let tip_tags: Vec<String> = hit.categories.clone();
-                            let tip_theme = theme.cloned();
 
                             ui.horizontal(|ui| {
                                 let icon_resp = if let Some(url) = &hit.icon_url {
@@ -461,53 +427,32 @@ impl ModpackBrowser {
                                         &tip_desc,
                                         tip_downloads,
                                         &tip_tags,
-                                        tip_theme.as_ref(),
+                                        theme,
                                     );
                                 });
-                                if let Some(t) = theme {
-                                    ui.add(egui::Label::new(t.title(&hit.title)).truncate());
-                                } else {
-                                    ui.add(
-                                        egui::Label::new(egui::RichText::new(&hit.title).strong())
-                                            .truncate(),
-                                    );
-                                }
+                                ui.add(egui::Label::new(theme.title(&hit.title)).truncate());
                             });
                             ui.add_space(8.0);
-                            if let Some(t) = theme {
-                                ui.label(t.subtext(&truncate_desc(&hit.description, 75)));
-                            } else {
-                                ui.weak(truncate_desc(&hit.description, 75));
-                            }
+                            ui.label(theme.subtext(&truncate_desc(&hit.description, 75)));
                             ui.add_space(4.0);
                             let tags: Vec<&str> =
                                 hit.categories.iter().map(|s| s.as_str()).collect();
                             show_category_tags(ui, &tags, 2, theme);
                             let dl = format!("{} downloads", format_downloads(hit.downloads));
-                            if let Some(t) = theme {
-                                ui.label(
-                                    egui::RichText::new(dl).size(10.0).color(t.color("fg_dim")),
-                                );
-                            } else {
-                                ui.label(egui::RichText::new(dl).size(10.0));
-                            }
+                            ui.label(
+                                egui::RichText::new(dl)
+                                    .size(10.0)
+                                    .color(theme.color("fg_dim")),
+                            );
                         },
                         |ui, _i, hit| {
-                            let open_page = if let Some(t) = theme {
-                                ui.add(t.ghost_button(egui_phosphor::regular::GLOBE))
-                            } else {
-                                ui.button(egui_phosphor::regular::GLOBE)
-                            };
+                            let open_page =
+                                ui.add(theme.ghost_button(egui_phosphor::regular::GLOBE));
                             if open_page.on_hover_text("Open Page").clicked() {
                                 let url = crate::core::modrinth::modrinth_project_url(&hit.slug);
                                 let _ = open::that(&url);
                             }
-                            let install_clicked = if let Some(t) = theme {
-                                ui.add(t.accent_button("Install")).clicked()
-                            } else {
-                                ui.button("Install").clicked()
-                            };
-                            if install_clicked {
+                            if ui.add(theme.accent_button("Install")).clicked() {
                                 open_mr_picker = Some((
                                     hit.project_id.clone(),
                                     hit.title.clone(),
@@ -565,7 +510,7 @@ impl ModpackBrowser {
     fn show_curseforge(
         &mut self,
         ui: &mut egui::Ui,
-        theme: Option<&Theme>,
+        theme: &Theme,
         pending_toasts: &mut Vec<crate::app::Toast>,
     ) {
         ui.set_min_width(ui.available_width());
@@ -722,31 +667,15 @@ impl ModpackBrowser {
 
         if is_searching {
             ui.horizontal(|ui| {
-                if let Some(t) = theme {
-                    ui.add(egui::Spinner::new().color(t.color("accent")));
-                } else {
-                    ui.spinner();
-                }
-                if let Some(t) = theme {
-                    ui.label(t.subtext("Searching..."));
-                } else {
-                    ui.label("Searching...");
-                }
+                ui.add(egui::Spinner::new().color(theme.color("accent")));
+                ui.label(theme.subtext("Searching..."));
             });
         } else if !self.cf_results.is_empty() {
-            if let Some(t) = theme {
-                ui.label(t.subtext(&format!(
-                    "Showing {} of {}",
-                    self.cf_results.len(),
-                    self.cf_search.total
-                )));
-            } else {
-                ui.weak(format!(
-                    "Showing {} of {}",
-                    self.cf_results.len(),
-                    self.cf_search.total
-                ));
-            }
+            ui.label(theme.subtext(&format!(
+                "Showing {} of {}",
+                self.cf_results.len(),
+                self.cf_search.total
+            )));
 
             let results = &self.cf_results;
             let mut open_cf_picker = None;
@@ -772,7 +701,6 @@ impl ModpackBrowser {
                                     let tip_downloads = cf_mod.download_count;
                                     let tip_tags: Vec<String> =
                                         cf_mod.categories.iter().map(|c| c.name.clone()).collect();
-                                    let tip_theme = theme.cloned();
 
                                     let row_resp = ui.horizontal(|ui| {
                                         let icon_resp = if let Some(logo) = &cf_mod.logo {
@@ -796,28 +724,19 @@ impl ModpackBrowser {
                                                 &tip_desc,
                                                 tip_downloads,
                                                 &tip_tags,
-                                                tip_theme.as_ref(),
+                                                theme,
                                             );
                                         });
                                         ui.vertical(|ui| {
                                             ui.set_max_width(ui.available_width() - 220.0);
-                                            if let Some(t) = theme {
-                                                ui.label(t.title(&cf_mod.name));
-                                                ui.label(
-                                                    t.subtext(&truncate_desc(&cf_mod.summary, 120)),
-                                                );
-                                                ui.label(t.subtext(&format!(
-                                                    "{} downloads",
-                                                    format_downloads(cf_mod.download_count)
-                                                )));
-                                            } else {
-                                                ui.strong(&cf_mod.name);
-                                                ui.weak(truncate_desc(&cf_mod.summary, 120));
-                                                ui.weak(format!(
-                                                    "{} downloads",
-                                                    format_downloads(cf_mod.download_count)
-                                                ));
-                                            }
+                                            ui.label(theme.title(&cf_mod.name));
+                                            ui.label(
+                                                theme.subtext(&truncate_desc(&cf_mod.summary, 120)),
+                                            );
+                                            ui.label(theme.subtext(&format!(
+                                                "{} downloads",
+                                                format_downloads(cf_mod.download_count)
+                                            )));
                                             let tags: Vec<&str> = cf_mod
                                                 .categories
                                                 .iter()
@@ -828,12 +747,8 @@ impl ModpackBrowser {
                                         ui.with_layout(
                                             egui::Layout::right_to_left(egui::Align::Center),
                                             |ui| {
-                                                let install_clicked = if let Some(t) = theme {
-                                                    ui.add(t.accent_button("Install")).clicked()
-                                                } else {
-                                                    ui.button("Install").clicked()
-                                                };
-                                                if install_clicked {
+                                                if ui.add(theme.accent_button("Install")).clicked()
+                                                {
                                                     open_cf_picker = Some((
                                                         cf_mod.id,
                                                         cf_mod.name.clone(),
@@ -844,11 +759,8 @@ impl ModpackBrowser {
                                                     ));
                                                 }
                                                 let open_page_lbl = egui_phosphor::regular::GLOBE;
-                                                let open_page = if let Some(t) = theme {
-                                                    ui.add(t.ghost_button(open_page_lbl))
-                                                } else {
-                                                    ui.button(open_page_lbl)
-                                                };
+                                                let open_page =
+                                                    ui.add(theme.ghost_button(open_page_lbl));
                                                 if open_page.on_hover_text("Open Page").clicked() {
                                                     let url = curseforge::curseforge_modpack_url(
                                                         cf_mod.id,
@@ -892,7 +804,6 @@ impl ModpackBrowser {
                             let tip_downloads = cf_mod.download_count;
                             let tip_tags: Vec<String> =
                                 cf_mod.categories.iter().map(|c| c.name.clone()).collect();
-                            let tip_theme = theme.cloned();
 
                             ui.horizontal(|ui| {
                                 let icon_resp = if let Some(logo) = &cf_mod.logo {
@@ -916,57 +827,34 @@ impl ModpackBrowser {
                                         &tip_desc,
                                         tip_downloads,
                                         &tip_tags,
-                                        tip_theme.as_ref(),
+                                        theme,
                                     );
                                 });
-                                if let Some(t) = theme {
-                                    ui.add(egui::Label::new(t.title(&cf_mod.name)).truncate());
-                                } else {
-                                    ui.add(
-                                        egui::Label::new(
-                                            egui::RichText::new(&cf_mod.name).strong(),
-                                        )
-                                        .truncate(),
-                                    );
-                                }
+                                ui.add(egui::Label::new(theme.title(&cf_mod.name)).truncate());
                             });
                             ui.add_space(8.0);
-                            if let Some(t) = theme {
-                                ui.label(t.subtext(&truncate_desc(&cf_mod.summary, 75)));
-                            } else {
-                                ui.weak(truncate_desc(&cf_mod.summary, 75));
-                            }
+                            ui.label(theme.subtext(&truncate_desc(&cf_mod.summary, 75)));
                             ui.add_space(4.0);
                             let tags: Vec<&str> =
                                 cf_mod.categories.iter().map(|c| c.name.as_str()).collect();
                             show_category_tags(ui, &tags, 2, theme);
                             let dl =
                                 format!("{} downloads", format_downloads(cf_mod.download_count));
-                            if let Some(t) = theme {
-                                ui.label(
-                                    egui::RichText::new(dl).size(10.0).color(t.color("fg_dim")),
-                                );
-                            } else {
-                                ui.label(egui::RichText::new(dl).size(10.0));
-                            }
+                            ui.label(
+                                egui::RichText::new(dl)
+                                    .size(10.0)
+                                    .color(theme.color("fg_dim")),
+                            );
                         },
                         |ui, _i, cf_mod| {
-                            let open_page = if let Some(t) = theme {
-                                ui.add(t.ghost_button(egui_phosphor::regular::GLOBE))
-                            } else {
-                                ui.button(egui_phosphor::regular::GLOBE)
-                            };
+                            let open_page =
+                                ui.add(theme.ghost_button(egui_phosphor::regular::GLOBE));
                             if open_page.on_hover_text("Open Page").clicked() {
                                 let url =
                                     curseforge::curseforge_modpack_url(cf_mod.id, &cf_mod.slug);
                                 let _ = open::that(&url);
                             }
-                            let install_clicked = if let Some(t) = theme {
-                                ui.add(t.accent_button("Install")).clicked()
-                            } else {
-                                ui.button("Install").clicked()
-                            };
-                            if install_clicked {
+                            if ui.add(theme.accent_button("Install")).clicked() {
                                 open_cf_picker = Some((
                                     cf_mod.id,
                                     cf_mod.name.clone(),
@@ -1106,7 +994,7 @@ impl ModpackBrowser {
         }
     }
 
-    fn show_version_picker(&mut self, ui: &mut egui::Ui, theme: Option<&Theme>) {
+    fn show_version_picker(&mut self, ui: &mut egui::Ui, theme: &Theme) {
         if self.version_picker.is_none() {
             return;
         }
@@ -1125,21 +1013,13 @@ impl ModpackBrowser {
             .show(ui.ctx(), |ui| {
                 if is_loading {
                     ui.horizontal(|ui| {
-                        if let Some(t) = theme {
-                            ui.add(egui::Spinner::new().color(t.color("accent")));
-                        } else {
-                            ui.spinner();
-                        }
+                        ui.add(egui::Spinner::new().color(theme.color("accent")));
                         ui.label("Fetching versions...");
                     });
                     return;
                 }
 
-                if let Some(t) = theme {
-                    ui.label(t.subtext("Select a version to install:"));
-                } else {
-                    ui.weak("Select a version to install:");
-                }
+                ui.label(theme.subtext("Select a version to install:"));
                 ui.add_space(4.0);
 
                 match vp.source {
@@ -1200,14 +1080,10 @@ impl ModpackBrowser {
                         ModpackSource::Modrinth => !vp.mr_versions.is_empty(),
                         ModpackSource::CurseForge => !vp.cf_files.is_empty(),
                     };
-                    let install_clicked = if let Some(t) = theme {
-                        ui.add_enabled(has_versions, t.accent_button("Install"))
-                            .clicked()
-                    } else {
-                        ui.add_enabled(has_versions, egui::Button::new("Install"))
-                            .clicked()
-                    };
-                    if install_clicked {
+                    if ui
+                        .add_enabled(has_versions, theme.accent_button("Install"))
+                        .clicked()
+                    {
                         action = Some(VersionPickerAction::Install);
                     }
                     if ui.button("Cancel").clicked() {

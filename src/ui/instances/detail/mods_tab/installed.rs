@@ -17,7 +17,7 @@ impl InstanceDetailView {
         &mut self,
         ui: &mut egui::Ui,
         mods_dir: &std::path::Path,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
     ) {
         ui.add_space(4.0);
 
@@ -28,12 +28,7 @@ impl InstanceDetailView {
             egui::vec2(ui.available_width(), row_h),
             egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
             |ui| {
-            let add_clicked = if let Some(t) = theme {
-                ui.add(t.accent_button("Add Mod")).clicked()
-            } else {
-                ui.button("Add Mod").clicked()
-            };
-            if add_clicked
+            if ui.add(theme.accent_button("Add Mod")).clicked()
                 && let Some(paths) = rfd::FileDialog::new()
                     .add_filter("Mod Files", &["jar"])
                     .set_title("Select mod file(s)")
@@ -62,12 +57,7 @@ impl InstanceDetailView {
                     }
                 }
 
-            let folder_clicked = if let Some(t) = theme {
-                ui.add(t.accent_button("Open Folder")).clicked()
-            } else {
-                ui.button("Open Folder").clicked()
-            };
-            if folder_clicked {
+            if ui.add(theme.accent_button("Open Folder")).clicked() {
                 let _ = std::fs::create_dir_all(mods_dir);
                 let _ = open::that(mods_dir);
             }
@@ -77,25 +67,17 @@ impl InstanceDetailView {
         if self.installed.is_empty() {
             ui.add_space(20.0);
             ui.vertical_centered(|ui| {
-                if let Some(t) = theme {
-                    ui.label(
-                        egui::RichText::new(egui_phosphor::regular::PUZZLE_PIECE)
-                            .size(48.0)
-                            .color(t.color("fg_muted")),
-                    );
-                    ui.add_space(8.0);
-                    ui.label(t.subtext("No mods installed yet."));
-                    ui.add_space(4.0);
-                    ui.label(t.subtext(
-                        "Switch to Browse Modrinth or CurseForge to find and install mods.",
-                    ));
-                } else {
-                    ui.label(egui::RichText::new(egui_phosphor::regular::PUZZLE_PIECE).size(48.0));
-                    ui.add_space(8.0);
-                    ui.weak("No mods installed yet.");
-                    ui.add_space(4.0);
-                    ui.weak("Switch to Browse Modrinth or CurseForge to find and install mods.");
-                }
+                ui.label(
+                    egui::RichText::new(egui_phosphor::regular::PUZZLE_PIECE)
+                        .size(48.0)
+                        .color(theme.color("fg_muted")),
+                );
+                ui.add_space(8.0);
+                ui.label(theme.subtext("No mods installed yet."));
+                ui.add_space(4.0);
+                ui.label(theme.subtext(
+                    "Switch to Browse Modrinth or CurseForge to find and install mods.",
+                ));
             });
             return;
         }
@@ -107,53 +89,26 @@ impl InstanceDetailView {
         );
 
         if self.mod_update_check.is_some() {
-            if let Some(t) = theme {
-                ui.label(t.subtext("Checking for updates..."));
-            } else {
-                ui.weak("Checking for updates...");
-            }
+            ui.label(theme.subtext("Checking for updates..."));
         } else if update_count > 0 {
             let row_h2 = ui.spacing().interact_size.y + 4.0;
             ui.allocate_ui_with_layout(
                 egui::vec2(ui.available_width(), row_h2),
                 egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
                 |ui| {
-                let update_fill = if let Some(t) = theme {
-                    t.color("accent")
-                } else {
-                    egui::Color32::from_rgb(76, 175, 80)
-                };
-                if let Some(t) = theme {
-                    t.badge_frame(update_fill).show(ui, |ui| {
-                        ui.label(
-                            egui::RichText::new(format!(
-                                "{} {} update{} available",
-                                egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                update_count,
-                                if update_count == 1 { "" } else { "s" }
-                            ))
-                            .size(12.0)
-                            .color(t.button_fg()),
-                        );
-                    });
-                } else {
-                    egui::Frame::new()
-                        .fill(update_fill)
-                        .corner_radius(4.0)
-                        .inner_margin(egui::Margin::symmetric(6, 2))
-                        .show(ui, |ui| {
-                            ui.label(
-                                egui::RichText::new(format!(
-                                    "{} {} update{} available",
-                                    egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                    update_count,
-                                    if update_count == 1 { "" } else { "s" }
-                                ))
-                                .size(12.0)
-                                .color(egui::Color32::WHITE),
-                            );
-                        });
-                }
+                let update_fill = theme.color("accent");
+                theme.badge_frame(update_fill).show(ui, |ui| {
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "{} {} update{} available",
+                            egui_phosphor::regular::ARROW_CIRCLE_UP,
+                            update_count,
+                            if update_count == 1 { "" } else { "s" }
+                        ))
+                        .size(12.0)
+                        .color(theme.button_fg()),
+                    );
+                });
             });
         }
 
@@ -197,11 +152,7 @@ impl InstanceDetailView {
                             } else {
                                 egui_phosphor::regular::CIRCLE
                             };
-                            let toggle = if let Some(t) = theme {
-                                ui.add(t.ghost_button(icon))
-                            } else {
-                                ui.small_button(icon)
-                            };
+                            let toggle = ui.add(theme.ghost_button(icon));
                             if toggle
                                 .on_hover_text(if m.enabled { "Disable" } else { "Enable" })
                                 .clicked()
@@ -221,58 +172,27 @@ impl InstanceDetailView {
                                 } else {
                                     "Open on CurseForge"
                                 };
-                                let link_resp = if let Some(t) = theme {
-                                    ui.add(
-                                        egui::Label::new(t.title(&m.title))
-                                            .sense(egui::Sense::click()),
-                                    )
-                                } else {
-                                    ui.add(
-                                        egui::Label::new(
-                                            egui::RichText::new(&m.title).strong(),
-                                        )
+                                let link_resp = ui.add(
+                                    egui::Label::new(theme.title(&m.title))
                                         .sense(egui::Sense::click()),
-                                    )
-                                };
+                                );
                                 if link_resp.on_hover_text(tooltip).clicked() {
                                     let _ = open::that(url);
                                 }
-                            } else if let Some(t) = theme {
-                                ui.label(t.title(&m.title));
                             } else {
-                                ui.strong(&m.title);
+                                ui.label(theme.title(&m.title));
                             }
                             if has_update {
-                                let update_fill = if let Some(t) = theme {
-                                    t.color("accent")
-                                } else {
-                                    egui::Color32::from_rgb(76, 175, 80)
-                                };
-                                let badge_inner = if let Some(t) = theme {
-                                    t.badge_frame(update_fill).show(ui, |ui| {
-                                        ui.label(
-                                            egui::RichText::new(
-                                                egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                            )
-                                            .size(11.0)
-                                            .color(t.button_fg()),
-                                        );
-                                    })
-                                } else {
-                                    egui::Frame::new()
-                                        .fill(update_fill)
-                                        .corner_radius(4.0)
-                                        .inner_margin(egui::Margin::symmetric(6, 2))
-                                        .show(ui, |ui| {
-                                            ui.label(
-                                                egui::RichText::new(
-                                                    egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                                )
-                                                .size(11.0)
-                                                .color(egui::Color32::WHITE),
-                                            );
-                                        })
-                                };
+                                let update_fill = theme.color("accent");
+                                let badge_inner = theme.badge_frame(update_fill).show(ui, |ui| {
+                                    ui.label(
+                                        egui::RichText::new(
+                                            egui_phosphor::regular::ARROW_CIRCLE_UP,
+                                        )
+                                        .size(11.0)
+                                        .color(theme.button_fg()),
+                                    );
+                                });
                                 badge_inner
                                     .response
                                     .on_hover_text(format!(
@@ -286,41 +206,25 @@ impl InstanceDetailView {
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
                                 |ui| {
-                                    let clicked = if let Some(t) = theme {
-                                        ui.add(t.danger_button(egui_phosphor::regular::TRASH))
-                                            .on_hover_text("Remove")
-                                            .clicked()
-                                    } else {
-                                        ui.small_button(egui_phosphor::regular::TRASH)
-                                            .on_hover_text("Remove")
-                                            .clicked()
-                                    };
-                                    if clicked {
+                                    if ui
+                                        .add(theme.danger_button(egui_phosphor::regular::TRASH))
+                                        .on_hover_text("Remove")
+                                        .clicked()
+                                    {
                                         remove_idx = Some(orig_idx);
                                     }
                                     if has_update {
-                                        let update_clicked = if let Some(t) = theme {
-                                            ui.add(t.accent_button(
+                                        if ui
+                                            .add(theme.accent_button(
                                                 egui_phosphor::regular::ARROW_CIRCLE_UP,
                                             ))
                                             .on_hover_text("Update mod")
                                             .clicked()
-                                        } else {
-                                            ui.small_button(
-                                                egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                            )
-                                            .on_hover_text("Update mod")
-                                            .clicked()
-                                        };
-                                        if update_clicked {
+                                        {
                                             update_filename = Some(base_name.to_string());
                                         }
                                     }
-                                    if let Some(t) = theme {
-                                        ui.label(t.subtext(&m.filename));
-                                    } else {
-                                        ui.weak(&m.filename);
-                                    }
+                                    ui.label(theme.subtext(&m.filename));
                                 },
                             );
                         });
@@ -462,22 +366,10 @@ impl InstanceDetailView {
                     .open(&mut open)
                     .show(ui.ctx(), |ui| {
                         ui.label(format!("Remove mod \"{}\"?", mod_name));
-                        if let Some(t) = theme {
-                            ui.label(
-                                t.subtext("This will permanently delete the mod file."),
-                            );
-                        } else {
-                            ui.weak("This will permanently delete the mod file.");
-                        }
+                        ui.label(theme.subtext("This will permanently delete the mod file."));
                         ui.add_space(8.0);
                         ui.horizontal(|ui| {
-                            let confirm_clicked = if let Some(t) = theme {
-                                ui.add(t.danger_button("Delete")).clicked()
-                            } else {
-                                ui.button(egui::RichText::new("Delete").color(egui::Color32::RED))
-                                    .clicked()
-                            };
-                            if confirm_clicked {
+                            if ui.add(theme.danger_button("Delete")).clicked() {
                                 let m = &self.installed[del_idx];
                                 match local_mods::remove_mod(mods_dir, &m.filename) {
                                     Ok(()) => self.needs_rescan = true,

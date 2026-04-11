@@ -12,7 +12,7 @@ impl ConsoleView {
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,
-        theme: Option<&crate::theme::Theme>,
+        theme: &crate::theme::Theme,
         running_processes: &mut Vec<RunningProcess>,
     ) {
         if running_processes.is_empty() {
@@ -54,9 +54,9 @@ impl ConsoleView {
                             if !rp.is_alive() {
                                 // Tight spacing to group X with its tab
                                 ui.spacing_mut().item_spacing.x = 2.0;
-                                let x_clicked = if let Some(t) = theme {
-                                    let err = t.color("error");
-                                    ui.add(
+                                let err = theme.color("error");
+                                let x_clicked = ui
+                                    .add(
                                         egui::Button::new(
                                             egui::RichText::new(egui_phosphor::regular::X)
                                                 .color(err)
@@ -67,14 +67,7 @@ impl ConsoleView {
                                         .corner_radius(egui::CornerRadius::same(6))
                                         .min_size(egui::vec2(0.0, 32.0)),
                                     )
-                                    .clicked()
-                                } else {
-                                    ui.small_button(
-                                        egui::RichText::new(egui_phosphor::regular::X)
-                                            .color(egui::Color32::RED),
-                                    )
-                                    .clicked()
-                                };
+                                    .clicked();
                                 ui.spacing_mut().item_spacing.x = default_spacing;
                                 // Extra gap after X to separate from next tab group
                                 ui.add_space(8.0);
@@ -95,12 +88,7 @@ impl ConsoleView {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if running_processes.iter().any(|rp| !rp.is_alive()) {
                     let lbl = format!("{} Clear Finished", egui_phosphor::regular::BROOM);
-                    let clicked = if let Some(t) = theme {
-                        ui.add(t.ghost_button(&lbl)).clicked()
-                    } else {
-                        ui.button(&lbl).clicked()
-                    };
-                    if clicked {
+                    if ui.add(theme.ghost_button(&lbl)).clicked() {
                         running_processes.retain(|rp| rp.is_alive());
                         if let Some(ref active_id) = self.active_instance_id {
                             if !running_processes
@@ -132,12 +120,7 @@ impl ConsoleView {
 
                         if is_running {
                             let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
-                            let clicked = if let Some(t) = theme {
-                                ui.add(t.danger_button(&kill_lbl)).clicked()
-                            } else {
-                                ui.button(&kill_lbl).clicked()
-                            };
-                            if clicked {
+                            if ui.add(theme.danger_button(&kill_lbl)).clicked() {
                                 self.confirm_kill = Some(active_id.clone());
                             }
                         }
@@ -172,29 +155,18 @@ impl ConsoleView {
                 .open(&mut open)
                 .show(ui.ctx(), |ui| {
                     ui.label(format!("Kill \"{}\"?", inst_name));
-                    if let Some(t) = theme {
-                        ui.label(t.subtext("This will forcefully terminate the running instance."));
-                    } else {
-                        ui.weak("This will forcefully terminate the running instance.");
-                    }
+                    ui.label(theme.subtext("This will forcefully terminate the running instance."));
                     ui.add_space(8.0);
                     ui.horizontal(|ui| {
-                        let confirm_clicked = if let Some(t) = theme {
-                            ui.add(
-                                t.danger_button(&format!("{} Kill", egui_phosphor::regular::SKULL)),
-                            )
-                            .clicked()
-                        } else {
-                            ui.button(
-                                egui::RichText::new(format!(
+                        if ui
+                            .add(
+                                theme.danger_button(&format!(
                                     "{} Kill",
                                     egui_phosphor::regular::SKULL
-                                ))
-                                .color(egui::Color32::RED),
+                                )),
                             )
                             .clicked()
-                        };
-                        if confirm_clicked {
+                        {
                             kill_process = true;
                             self.confirm_kill = None;
                         }
@@ -262,9 +234,7 @@ impl ConsoleView {
             };
 
             if let Some(err) = error {
-                let color = theme
-                    .map(|t| t.color("error"))
-                    .unwrap_or(egui::Color32::RED);
+                let color = theme.color("error");
                 ui.label(
                     egui::RichText::new(format!(
                         "{} Error: {err}",
@@ -275,16 +245,8 @@ impl ConsoleView {
                 ui.add_space(4.0);
             } else if !done {
                 ui.horizontal(|ui| {
-                    if let Some(t) = theme {
-                        ui.add(egui::Spinner::new().color(t.color("accent")));
-                    } else {
-                        ui.spinner();
-                    }
-                    if let Some(t) = theme {
-                        ui.label(t.subtext(&msg));
-                    } else {
-                        ui.weak(&msg);
-                    }
+                    ui.add(egui::Spinner::new().color(theme.color("accent")));
+                    ui.label(theme.subtext(&msg));
                 });
                 ui.add_space(4.0);
             }
@@ -306,42 +268,27 @@ impl ConsoleView {
                     .stick_to_bottom(auto_scroll)
                     .show(ui, |ui| {
                         for line in &lines {
-                            if theme.is_some() {
-                                ui.label(
-                                    egui::RichText::new(line)
-                                        .font(crate::theme::Theme::mono_font()),
-                                );
-                            } else {
-                                ui.monospace(line);
-                            }
+                            ui.label(
+                                egui::RichText::new(line).font(crate::theme::Theme::mono_font()),
+                            );
                         }
                     });
             };
 
-            if let Some(t) = theme {
-                t.code_frame().show(ui, show_scroll);
-            } else {
-                show_scroll(ui);
-            }
+            theme.code_frame().show(ui, show_scroll);
         }
     }
 
-    fn show_empty(&self, ui: &mut egui::Ui, theme: Option<&crate::theme::Theme>) {
+    fn show_empty(&self, ui: &mut egui::Ui, theme: &crate::theme::Theme) {
         ui.vertical_centered(|ui| {
             ui.add_space(80.0);
-            if let Some(t) = theme {
-                ui.label(
-                    egui::RichText::new(egui_phosphor::regular::TERMINAL_WINDOW)
-                        .size(48.0)
-                        .color(t.color("fg_muted")),
-                );
-                ui.add_space(8.0);
-                ui.label(t.subtext("Launch an instance to see output here."));
-            } else {
-                ui.label(egui::RichText::new(egui_phosphor::regular::TERMINAL_WINDOW).size(48.0));
-                ui.add_space(8.0);
-                ui.weak("Launch an instance to see output here.");
-            }
+            ui.label(
+                egui::RichText::new(egui_phosphor::regular::TERMINAL_WINDOW)
+                    .size(48.0)
+                    .color(theme.color("fg_muted")),
+            );
+            ui.add_space(8.0);
+            ui.label(theme.subtext("Launch an instance to see output here."));
         });
     }
 }
