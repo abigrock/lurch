@@ -1,4 +1,5 @@
 use crate::core::curseforge;
+use super::MutexExt;
 use crate::core::instance::{Instance, ModLoader};
 use anyhow::Context;
 use eframe::egui;
@@ -415,7 +416,7 @@ pub fn update_curseforge_modpack(
         .map_err(|_| anyhow::anyhow!("Invalid CurseForge file_id"))?;
 
     {
-        let mut p = progress.lock().unwrap();
+        let mut p = progress.lock_or_recover();
         p.message = "Fetching new modpack version...".to_string();
     }
     ctx.request_repaint();
@@ -428,7 +429,7 @@ pub fn update_curseforge_modpack(
     let temp_dir = std::env::temp_dir().join("lurch_cf_modpack_update");
     let zip_path = if let Some(url) = file.download_url.as_ref() {
         {
-            let mut p = progress.lock().unwrap();
+            let mut p = progress.lock_or_recover();
             p.message = "Downloading modpack update...".to_string();
         }
         ctx.request_repaint();
@@ -452,7 +453,7 @@ pub fn update_curseforge_modpack(
     };
 
     {
-        let mut p = progress.lock().unwrap();
+        let mut p = progress.lock_or_recover();
         p.message = "Parsing modpack...".to_string();
     }
     ctx.request_repaint();
@@ -493,7 +494,7 @@ pub fn update_curseforge_modpack(
         &zip_path,
         minecraft_dir,
         move |done, total, stage| {
-            let mut p = progress_for_files.lock().unwrap();
+            let mut p = progress_for_files.lock_or_recover();
             p.message = if total > 0 {
                 format!("{stage} ({done}/{total})")
             } else {
@@ -528,7 +529,7 @@ pub fn update_curseforge_modpack(
         }
     }
 
-    *skipped_slot.lock().unwrap() = skipped_mods;
+    *skipped_slot.lock_or_recover() = skipped_mods;
 
     let _ = std::fs::remove_dir_all(&temp_dir);
     Ok(crate::core::update::UpdatedModpackMeta {
@@ -556,7 +557,7 @@ pub fn wait_for_cf_manual_download(
         .ok_or_else(|| anyhow::anyhow!("Could not find Downloads directory"))?;
 
     {
-        let mut p = progress.lock().unwrap();
+        let mut p = progress.lock_or_recover();
         p.message = format!(
             "Waiting for manual download of \"{}\"…\n\
              Download from CurseForge (opened in browser)",

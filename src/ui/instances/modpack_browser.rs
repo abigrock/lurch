@@ -1,4 +1,5 @@
 use crate::core::curseforge::{self, CfCategory, CfFile, CfSortField, CLASS_MODPACKS};
+use crate::core::MutexExt;
 use crate::core::modrinth::{self, MrCategory, MrSortIndex, ProjectVersion};
 use crate::theme::Theme;
 use crate::ui::browse_common::{
@@ -127,7 +128,7 @@ impl ModpackBrowser {
             let ctx = ui.ctx().clone();
             std::thread::spawn(move || {
                 let result = modrinth::fetch_mr_categories("modpack").map_err(|e| e.to_string());
-                *slot_c.lock().unwrap() = Some(result);
+                *slot_c.lock_or_recover() = Some(result);
                 ctx.request_repaint();
             });
             self.mr_categories_fetch = Some(slot);
@@ -135,7 +136,7 @@ impl ModpackBrowser {
         let mr_cat_result = self
             .mr_categories_fetch
             .as_ref()
-            .and_then(|f| f.lock().unwrap().take());
+            .and_then(|f| f.lock_or_recover().take());
         if let Some(result) = mr_cat_result {
             match result {
                 Ok(cats) => self.mr_categories = Some(cats),
@@ -254,7 +255,7 @@ impl ModpackBrowser {
             std::thread::spawn(move || {
                 let result =
                     curseforge::fetch_cf_categories(CLASS_MODPACKS).map_err(|e| e.to_string());
-                *slot_c.lock().unwrap() = Some(result);
+                *slot_c.lock_or_recover() = Some(result);
                 ctx.request_repaint();
             });
             self.cf_categories_fetch = Some(slot);
@@ -262,7 +263,7 @@ impl ModpackBrowser {
         let cf_cats_result = self
             .cf_categories_fetch
             .as_ref()
-            .and_then(|f| f.lock().unwrap().take());
+            .and_then(|f| f.lock_or_recover().take());
         if let Some(result) = cf_cats_result {
             match result {
                 Ok(cats) => self.cf_categories = Some(cats),
@@ -388,7 +389,7 @@ impl ModpackBrowser {
         std::thread::spawn(move || {
             let result =
                 modrinth::get_project_versions(&pid, None, None).map_err(|e| e.to_string());
-            *slot_clone.lock().unwrap() = Some(VersionFetchResult::MrVersions(result));
+            *slot_clone.lock_or_recover() = Some(VersionFetchResult::MrVersions(result));
             ctx_clone.request_repaint();
         });
 
@@ -417,7 +418,7 @@ impl ModpackBrowser {
         let ctx_clone = ctx.clone();
         std::thread::spawn(move || {
             let result = curseforge::get_cf_mod_files(mod_id, "", None).map_err(|e| e.to_string());
-            *slot_clone.lock().unwrap() = Some(VersionFetchResult::CfFiles(result));
+            *slot_clone.lock_or_recover() = Some(VersionFetchResult::CfFiles(result));
             ctx_clone.request_repaint();
         });
 
@@ -441,7 +442,7 @@ impl ModpackBrowser {
         let Some(handle) = &vp.fetch_handle else {
             return;
         };
-        let taken = handle.lock().unwrap().take();
+        let taken = handle.lock_or_recover().take();
         if let Some(result) = taken {
             vp.fetch_handle = None;
             match result {

@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use super::super::InstanceDetailView;
 use crate::core::instance::Instance;
+use crate::core::MutexExt;
 use crate::core::modrinth;
 use crate::ui::browse_common::{BrowseAction, BrowseConfig, BrowseItem, BrowseSearchResult};
 
@@ -22,7 +23,7 @@ impl InstanceDetailView {
             let ctx = ui.ctx().clone();
             std::thread::spawn(move || {
                 let result = modrinth::fetch_mr_categories("mod").map_err(|e| e.to_string());
-                *slot_c.lock().unwrap() = Some(result);
+                *slot_c.lock_or_recover() = Some(result);
                 ctx.request_repaint();
             });
             self.mr_categories_fetch = Some(slot);
@@ -30,7 +31,7 @@ impl InstanceDetailView {
         if let Some(result) = self
             .mr_categories_fetch
             .as_ref()
-            .and_then(|f| f.lock().unwrap().take())
+            .and_then(|f| f.lock_or_recover().take())
         {
             match result {
                 Ok(cats) => self.mr_categories = Some(cats),

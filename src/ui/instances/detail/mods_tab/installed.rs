@@ -1,6 +1,7 @@
 use eframe::egui;
 use super::super::InstanceDetailView;
 use crate::core::curseforge;
+use crate::core::MutexExt;
 use crate::core::instance::ModOrigin;
 use crate::core::local_mods;
 use crate::core::modrinth;
@@ -298,7 +299,7 @@ impl InstanceDetailView {
                             })();
                             match result {
                                 Ok(r) => {
-                                    pending.lock().unwrap().push(r.origin);
+                                    pending.lock_or_recover().push(r.origin);
                                 }
                                 Err(e) => {
                                     log::warn!("Mod update failed for {old_filename}: {e}");
@@ -338,7 +339,7 @@ impl InstanceDetailView {
                             })();
                             match result {
                                 Ok(r) => {
-                                    pending.lock().unwrap().push(r.origin);
+                                    pending.lock_or_recover().push(r.origin);
                                 }
                                 Err(e) => {
                                     log::warn!("Mod update failed for {old_filename}: {e}");

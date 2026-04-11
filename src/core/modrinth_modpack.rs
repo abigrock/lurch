@@ -1,4 +1,5 @@
 use crate::core::instance::{Instance, ModLoader};
+use super::MutexExt;
 use anyhow::Context;
 use eframe::egui;
 use serde::Deserialize;
@@ -263,7 +264,7 @@ pub fn update_modrinth_modpack(
     ctx: &egui::Context,
 ) -> anyhow::Result<crate::core::update::UpdatedModpackMeta> {
     {
-        let mut p = progress.lock().unwrap();
+        let mut p = progress.lock_or_recover();
         p.message = "Fetching new modpack version...".to_string();
     }
     ctx.request_repaint();
@@ -281,7 +282,7 @@ pub fn update_modrinth_modpack(
         .ok_or_else(|| anyhow::anyhow!("No files in modpack version"))?;
 
     {
-        let mut p = progress.lock().unwrap();
+        let mut p = progress.lock_or_recover();
         p.message = "Downloading modpack update...".to_string();
     }
     ctx.request_repaint();
@@ -298,7 +299,7 @@ pub fn update_modrinth_modpack(
     std::fs::write(&mrpack_path, &bytes)?;
 
     {
-        let mut p = progress.lock().unwrap();
+        let mut p = progress.lock_or_recover();
         p.message = "Parsing modpack...".to_string();
     }
     ctx.request_repaint();
@@ -335,7 +336,7 @@ pub fn update_modrinth_modpack(
         minecraft_dir,
         client,
         move |done, total, stage| {
-            let mut p = progress_for_files.lock().unwrap();
+            let mut p = progress_for_files.lock_or_recover();
             p.message = if total > 0 {
                 format!("{stage} ({done}/{total})")
             } else {

@@ -1,4 +1,5 @@
 use crate::app::RunningProcess;
+use crate::core::MutexExt;
 use crate::ui::helpers::tab_button;
 use eframe::egui;
 
@@ -115,7 +116,7 @@ impl ConsoleView {
                         let is_running = rp
                             .process
                             .as_ref()
-                            .map(|p| p.lock().unwrap().running)
+                            .map(|p| p.lock_or_recover().running)
                             .unwrap_or(false);
 
                         if is_running {
@@ -198,7 +199,7 @@ impl ConsoleView {
                     .find(|rp| rp.instance_id == *active_id)
                 {
                     if let Some(proc) = &rp.process {
-                        proc.lock().unwrap().kill();
+                        proc.lock_or_recover().kill();
                     }
                 }
             }
@@ -229,7 +230,7 @@ impl ConsoleView {
         // ── Contextual Status Banner ─────────────────────────────────
         {
             let (msg, done, error) = {
-                let p = running_processes[idx].progress.lock().unwrap();
+                let p = running_processes[idx].progress.lock_or_recover();
                 (p.message.clone(), p.done, p.error.clone())
             };
 
@@ -263,7 +264,7 @@ impl ConsoleView {
                     .auto_shrink([false, false])
                     .stick_to_bottom(auto_scroll)
                     .show(ui, |ui| {
-                        let s = proc.lock().unwrap();
+                        let s = proc.lock_or_recover();
                         for line in &s.log_lines {
                             ui.label(
                                 egui::RichText::new(line).font(crate::theme::Theme::mono_font()),

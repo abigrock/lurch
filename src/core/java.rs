@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use super::MutexExt;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -743,7 +744,7 @@ pub fn download_mojang_java(
 
             for handle in handles {
                 if let Ok(Err(e)) = handle.join() {
-                    let mut guard = thread_error.lock().unwrap();
+                    let mut guard = thread_error.lock_or_recover();
                     if guard.is_none() {
                         *guard = Some(e);
                     }

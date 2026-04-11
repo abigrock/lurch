@@ -103,6 +103,27 @@ pub fn maven_path(name: &str) -> Option<String> {
     Some(format!("{group_path}/{artifact}/{version}/{filename}"))
 }
 
+// ── Mutex poison recovery ──────────────────────────────────────────────────
+
+use std::sync::Mutex;
+
+/// Extension trait that adds poison-recovering lock to [`Mutex`].
+///
+/// All shared state in Lurch is simple (progress strings, result slots,
+/// log buffers) — not transactional — so it is always safe to access after
+/// a panic on the other side.  Recovering avoids cascade panics that would
+/// crash the whole app when a background thread fails.
+pub trait MutexExt<T> {
+    /// Lock the mutex, recovering from poison rather than panicking.
+    fn lock_or_recover(&self) -> std::sync::MutexGuard<'_, T>;
+}
+
+impl<T> MutexExt<T> for Mutex<T> {
+    fn lock_or_recover(&self) -> std::sync::MutexGuard<'_, T> {
+        self.lock().unwrap_or_else(|e| e.into_inner())
+    }
+}
+
 /// Extract files matching a given prefix from a zip archive into `dest_dir`.
 ///
 /// Used by both Modrinth (`"overrides/"`, `"client-overrides/"`) and CurseForge

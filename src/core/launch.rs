@@ -1,4 +1,5 @@
 use crate::core::account::Account;
+use super::MutexExt;
 use crate::core::instance::{Instance, ModLoader};
 use crate::core::java::{self, JavaInstall};
 use crate::core::version::{self, ArgumentValue, VersionInfo};
@@ -249,7 +250,7 @@ pub fn spawn_minecraft(
         .spawn()?;
 
     {
-        let mut s = state.lock().unwrap();
+        let mut s = state.lock_or_recover();
         s.pid = Some(child.id());
     }
 
@@ -277,7 +278,7 @@ fn read_process_output(
     let stderr_thread = child.stderr.take().map(|stderr| std::thread::spawn(move || {
             let reader = std::io::BufReader::new(stderr);
             for line in reader.lines().map_while(|l| l.ok()) {
-                let mut s = stderr_state.lock().unwrap();
+                let mut s = stderr_state.lock_or_recover();
                 s.log_lines.push(format!("[ERR] {line}"));
                 drop(s);
                 stderr_ctx.request_repaint();
@@ -288,7 +289,7 @@ fn read_process_output(
     if let Some(stdout) = child.stdout.take() {
         let reader = std::io::BufReader::new(stdout);
         for line in reader.lines().map_while(|l| l.ok()) {
-            let mut s = state.lock().unwrap();
+            let mut s = state.lock_or_recover();
             s.log_lines.push(line);
             drop(s);
             ctx.request_repaint();
@@ -302,7 +303,7 @@ fn read_process_output(
 
     // Wait for process to finish
     let exit_code = child.wait().ok().and_then(|s| s.code());
-    let mut s = state.lock().unwrap();
+    let mut s = state.lock_or_recover();
     s.running = false;
     s.exit_code = exit_code;
     s.log_lines
@@ -399,7 +400,7 @@ pub fn prepare_and_launch(
                 let progress_for_dl = Arc::clone(&progress);
                 let ctx_for_dl = ctx.clone();
                 let progress_cb = move |msg: &str| {
-                    let mut p = progress_for_dl.lock().unwrap();
+                    let mut p = progress_for_dl.lock_or_recover();
                     p.message = msg.to_string();
                     drop(p);
                     ctx_for_dl.request_repaint();
@@ -456,7 +457,7 @@ pub fn prepare_and_launch(
                 &java.path,
                 &client_jar,
                 |msg| {
-                    let mut p = progress_for_proc.lock().unwrap();
+                    let mut p = progress_for_proc.lock_or_recover();
                     p.message = msg.to_string();
                     drop(p);
                     ctx_for_proc.request_repaint();
@@ -475,7 +476,7 @@ pub fn prepare_and_launch(
     let progress_for_assets = Arc::clone(&progress);
     let ctx_for_assets = ctx.clone();
     version::download_assets(&version_info, &client, move |done, total| {
-        let mut p = progress_for_assets.lock().unwrap();
+        let mut p = progress_for_assets.lock_or_recover();
         p.message = format!("Downloading assets ({done}/{total})...");
         drop(p);
         ctx_for_assets.request_repaint();
@@ -553,6 +554,6 @@ fn select_java(installs: &[JavaInstall], required: u32) -> anyhow::Result<JavaIn
 }
 
 fn set_progress(progress: &Arc<Mutex<LaunchProgress>>, msg: &str) {
-    let mut p = progress.lock().unwrap();
+    let mut p = progress.lock_or_recover();
     p.message = msg.to_string();
 }

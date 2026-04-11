@@ -1,4 +1,5 @@
 use crate::core::config::AppConfig;
+use crate::core::MutexExt;
 use crate::core::java::{self, JavaInstall};
 use crate::theme::Theme;
 use eframe::egui;
@@ -21,7 +22,7 @@ impl SettingsView {
             let ctx = ctx.clone();
             std::thread::spawn(move || {
                 if let Ok(versions) = java::fetch_available_versions() {
-                    *slot.lock().unwrap() = Some(versions);
+                    *slot.lock_or_recover() = Some(versions);
                     ctx.request_repaint();
                 }
             });
@@ -38,7 +39,7 @@ impl SettingsView {
     /// Poll background java version fetch. Call this every frame.
     pub fn poll(&mut self) {
         if let Some(fetch) = &self.java_versions_fetch {
-            let taken = fetch.lock().unwrap().take();
+            let taken = fetch.lock_or_recover().take();
             if let Some(versions) = taken {
                 self.available_java_versions = versions;
                 self.java_versions_fetch = None;
@@ -189,7 +190,7 @@ impl SettingsView {
 
                     // Download progress (if active)
                     if let Some(state) = java_download.as_ref() {
-                        let s = state.lock().unwrap();
+                        let s = state.lock_or_recover();
                         if !s.done {
                             let row_h = ui.spacing().interact_size.y + 4.0;
                             ui.allocate_ui_with_layout(
@@ -205,7 +206,7 @@ impl SettingsView {
 
                     let is_downloading = java_download
                         .as_ref()
-                        .is_some_and(|s| !s.lock().unwrap().done);
+                        .is_some_and(|s| !s.lock_or_recover().done);
 
                     let all_installed_majors: std::collections::HashSet<u32> =
                         java_installs.iter().map(|j| j.major).collect();
@@ -310,12 +311,12 @@ impl SettingsView {
                                     let state_for_cb = Arc::clone(&state);
                                     let ctx_for_cb = ctx.clone();
                                     java::download_mojang_java(&c, &component, move |msg| {
-                                        state_for_cb.lock().unwrap().message = msg.to_string();
+                                        state_for_cb.lock_or_recover().message = msg.to_string();
                                         ctx_for_cb.request_repaint();
                                     })
                                     .map_err(|e| e.to_string())
                                 });
-                                let mut s = state.lock().unwrap();
+                                let mut s = state.lock_or_recover();
                                 s.result = Some(result);
                                 s.done = true;
                                 drop(s);
@@ -332,12 +333,12 @@ impl SettingsView {
                                     let state_for_cb = Arc::clone(&state);
                                     let ctx_for_cb = ctx.clone();
                                     java::download_java(&c, version, move |msg| {
-                                        state_for_cb.lock().unwrap().message = msg.to_string();
+                                        state_for_cb.lock_or_recover().message = msg.to_string();
                                         ctx_for_cb.request_repaint();
                                     })
                                     .map_err(|e| e.to_string())
                                 });
-                                let mut s = state.lock().unwrap();
+                                let mut s = state.lock_or_recover();
                                 s.result = Some(result);
                                 s.done = true;
                                 drop(s);

@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use super::super::InstanceDetailView;
 use crate::core::curseforge;
+use crate::core::MutexExt;
 use crate::core::instance::Instance;
 use crate::ui::browse_common::{BrowseAction, BrowseConfig, BrowseItem, BrowseSearchResult};
 
@@ -25,7 +26,7 @@ impl InstanceDetailView {
             std::thread::spawn(move || {
                 let result = curseforge::fetch_cf_categories(curseforge::CLASS_MODS)
                     .map_err(|e| e.to_string());
-                *slot_c.lock().unwrap() = Some(result);
+                *slot_c.lock_or_recover() = Some(result);
                 ctx.request_repaint();
             });
             self.cf_categories_fetch = Some(slot);
@@ -33,7 +34,7 @@ impl InstanceDetailView {
         if let Some(result) = self
             .cf_categories_fetch
             .as_ref()
-            .and_then(|f| f.lock().unwrap().take())
+            .and_then(|f| f.lock_or_recover().take())
         {
             match result {
                 Ok(cats) => self.cf_categories = Some(cats),

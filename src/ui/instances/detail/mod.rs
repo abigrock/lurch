@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use eframe::egui;
 
 use crate::core::curseforge::CfCategory;
+use crate::core::MutexExt;
 use crate::core::instance::{Instance, ModOrigin};
 use crate::core::local_mods::{self, InstalledMod};
 use crate::core::modrinth::MrCategory;
@@ -215,7 +216,7 @@ impl InstanceDetailView {
 
         // ── Drain pending mod origins from background install threads ─
         {
-            let mut pending = self.pending_origins.lock().unwrap();
+            let mut pending = self.pending_origins.lock_or_recover();
             self.mod_origin_updates.append(&mut *pending);
         }
 
@@ -233,7 +234,7 @@ impl InstanceDetailView {
             std::thread::spawn(move || {
                 let results =
                     crate::core::update::check_mod_updates(&origins, &mc_version, &loader);
-                *slot_clone.lock().unwrap() = Some(results);
+                *slot_clone.lock_or_recover() = Some(results);
                 ctx.request_repaint();
             });
             self.mod_update_check = Some(slot);
@@ -242,7 +243,7 @@ impl InstanceDetailView {
         if let Some(updates) = self
             .mod_update_check
             .as_ref()
-            .and_then(|slot| slot.lock().unwrap().take())
+            .and_then(|slot| slot.lock_or_recover().take())
         {
             self.mod_updates = updates;
             self.mod_update_check = None;

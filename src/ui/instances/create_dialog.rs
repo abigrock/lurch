@@ -1,6 +1,7 @@
 use super::{modpack_browser, AddInstanceTab, InstancesView};
 use crate::app::ManifestState;
 use crate::core::instance::{Instance, ModLoader};
+use crate::core::MutexExt;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 
@@ -136,7 +137,7 @@ impl InstancesView {
 
                 let prev_mc_version = self.new_mc_version.clone();
                 ui.label("MC Version:");
-                let manifest_snapshot = manifest.lock().unwrap();
+                let manifest_snapshot = manifest.lock_or_recover();
                 match &*manifest_snapshot {
                     ManifestState::Loading => {
                         drop(manifest_snapshot);

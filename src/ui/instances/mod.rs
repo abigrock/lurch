@@ -14,6 +14,7 @@ pub(crate) enum AddInstanceTab {
     Import,
 }
 use crate::core::instance::{Instance, ModLoader};
+use crate::core::MutexExt;
 use crate::core::java::JavaInstall;
 use crate::ui::helpers::ViewMode;
 use eframe::egui;
@@ -1032,7 +1033,7 @@ impl InstancesView {
                     ))
                 }
             };
-            *slot_clone.lock().unwrap() = Some(result);
+            *slot_clone.lock_or_recover() = Some(result);
             ctx_clone.request_repaint();
         });
 
@@ -1057,7 +1058,7 @@ impl InstancesView {
         let Some(handle) = &vp.fetch_handle else {
             return;
         };
-        let taken = handle.lock().unwrap().take();
+        let taken = handle.lock_or_recover().take();
         if let Some(result) = taken {
             vp.fetch_handle = None;
             match result {

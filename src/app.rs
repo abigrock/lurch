@@ -1,4 +1,5 @@
 use crate::core::account::AccountStore;
+use crate::core::MutexExt;
 use crate::core::config::AppConfig;
 use crate::core::curseforge_modpack;
 use crate::core::instance::{self, Instance};
@@ -36,12 +37,12 @@ pub struct BackgroundTask {
 
 impl BackgroundTask {
     pub fn is_done(&self) -> bool {
-        let p = self.progress.lock().unwrap();
+        let p = self.progress.lock_or_recover();
         p.done
     }
 
     pub fn error(&self) -> Option<String> {
-        self.progress.lock().unwrap().error.clone()
+        self.progress.lock_or_recover().error.clone()
     }
 }
 
@@ -94,11 +95,11 @@ impl RunningProcess {
     /// Returns true while the instance is preparing or the child process is still running.
     pub fn is_alive(&self) -> bool {
         if let Some(proc) = &self.process
-            && proc.lock().unwrap().running
+            && proc.lock_or_recover().running
         {
             return true;
         }
-        let p = self.progress.lock().unwrap();
+        let p = self.progress.lock_or_recover();
         !p.done || p.error.is_none() && self.process.is_none()
     }
 }
@@ -203,8 +204,8 @@ impl App {
             let ctx = ctx.clone();
             std::thread::spawn(move || {
                 match crate::core::version::fetch_manifest() {
-                    Ok(m) => *manifest.lock().unwrap() = ManifestState::Loaded(m),
-                    Err(e) => *manifest.lock().unwrap() = ManifestState::Failed(e.to_string()),
+                    Ok(m) => *manifest.lock_or_recover() = ManifestState::Loaded(m),
+                    Err(e) => *manifest.lock_or_recover() = ManifestState::Failed(e.to_string()),
                 }
                 ctx.request_repaint();
             });
@@ -229,7 +230,7 @@ impl App {
             let ctx_clone = ctx.clone();
             std::thread::spawn(move || {
                 let results = crate::core::update::check_modpack_updates(&origins);
-                *slot_clone.lock().unwrap() = Some(results);
+                *slot_clone.lock_or_recover() = Some(results);
                 ctx_clone.request_repaint();
             });
             Some(slot)
@@ -402,7 +403,7 @@ impl App {
 
         // Extract manifest versions
         let manifest_versions: Vec<(String, String)> = {
-            let m = self.manifest.lock().unwrap();
+            let m = self.manifest.lock_or_recover();
             match &*m {
                 ManifestState::Loaded(vm) => vm
                     .versions
@@ -456,7 +457,7 @@ impl App {
             // Refresh auth token before launch (MC tokens expire in ~24h)
             let account = if !account.offline && !account.refresh_token.is_empty() {
                 {
-                    let mut p = progress_clone.lock().unwrap();
+                    let mut p = progress_clone.lock_or_recover();
                     p.message = "Refreshing authentication...".to_string();
                 }
                 ctx_clone.request_repaint();
@@ -483,12 +484,12 @@ impl App {
                 progress_clone.clone(),
             ) {
                 Ok(proc_state) => {
-                    *slot_clone.lock().unwrap() = Some(proc_state);
-                    let mut p = progress_clone.lock().unwrap();
+                    *slot_clone.lock_or_recover() = Some(proc_state);
+                    let mut p = progress_clone.lock_or_recover();
                     p.done = true;
                 }
                 Err(e) => {
-                    let mut p = progress_clone.lock().unwrap();
+                    let mut p = progress_clone.lock_or_recover();
                     p.done = true;
                     p.error = Some(e.to_string());
                 }
@@ -550,13 +551,13 @@ impl App {
 
             match result {
                 Ok(inst) => {
-                    *slot_clone.lock().unwrap() = Some(inst);
-                    let mut p = progress_clone.lock().unwrap();
+                    *slot_clone.lock_or_recover() = Some(inst);
+                    let mut p = progress_clone.lock_or_recover();
                     p.message = "Modpack installed successfully!".to_string();
                     p.done = true;
                 }
                 Err(e) => {
-                    let mut p = progress_clone.lock().unwrap();
+                    let mut p = progress_clone.lock_or_recover();
                     p.done = true;
                     p.error = Some(e.to_string());
                 }
@@ -583,7 +584,7 @@ impl App {
             move |progress, ctx, client, min_mem, max_mem| {
                 // Fetch version from Modrinth (specific or latest)
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = format!("Fetching modpack info for \"{}\"...", display_title);
                 }
                 ctx.request_repaint();
@@ -608,7 +609,7 @@ impl App {
 
                 // Download .mrpack to temp dir
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = "Downloading modpack...".to_string();
                 }
                 ctx.request_repaint();
@@ -626,7 +627,7 @@ impl App {
 
                 // Parse and install
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = "Parsing modpack...".to_string();
                 }
                 ctx.request_repaint();
@@ -634,7 +635,7 @@ impl App {
                 let index = modrinth_modpack::parse_mrpack(&mrpack_path)?;
 
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = format!("Creating instance \"{}\"...", index.name);
                 }
                 ctx.request_repaint();
@@ -650,7 +651,7 @@ impl App {
                     &minecraft_dir,
                     &client,
                     move |done, total, stage| {
-                        let mut p = progress_for_files.lock().unwrap();
+                        let mut p = progress_for_files.lock_or_recover();
                         p.message = if total > 0 {
                             format!("{stage} ({done}/{total})")
                         } else {
@@ -700,7 +701,7 @@ impl App {
             ctx,
             move |progress, ctx, client, min_mem, max_mem| {
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = format!("Fetching modpack info for \"{}\"...", display_title);
                 }
                 ctx.request_repaint();
@@ -719,7 +720,7 @@ impl App {
                 let temp_dir = std::env::temp_dir().join("lurch_cf_modpack_install");
                 let zip_path = if let Some(url) = file.download_url.as_ref() {
                     {
-                        let mut p = progress.lock().unwrap();
+                        let mut p = progress.lock_or_recover();
                         p.message = "Downloading modpack...".to_string();
                     }
                     ctx.request_repaint();
@@ -741,7 +742,7 @@ impl App {
 
                 // Parse and install
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = "Parsing modpack...".to_string();
                 }
                 ctx.request_repaint();
@@ -749,7 +750,7 @@ impl App {
                 let manifest = curseforge_modpack::parse_cf_modpack(&zip_path)?;
 
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = format!("Creating instance \"{}\"...", manifest.name);
                 }
                 ctx.request_repaint();
@@ -764,7 +765,7 @@ impl App {
                     &zip_path,
                     &minecraft_dir,
                     move |done, total, stage| {
-                        let mut p = progress_for_files.lock().unwrap();
+                        let mut p = progress_for_files.lock_or_recover();
                         p.message = if total > 0 {
                             format!("{stage} ({done}/{total})")
                         } else {
@@ -776,7 +777,7 @@ impl App {
                 )?;
 
                 // Store skipped mods for the main thread to handle
-                *skipped_clone.lock().unwrap() = skipped_mods;
+                *skipped_clone.lock_or_recover() = skipped_mods;
 
                 let _ = std::fs::remove_dir_all(&temp_dir);
 
@@ -813,7 +814,7 @@ use crate::core::modrinth_modpack;
             ctx,
             move |progress, ctx, client, min_mem, max_mem| {
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = "Parsing modpack...".to_string();
                 }
                 ctx.request_repaint();
@@ -821,7 +822,7 @@ use crate::core::modrinth_modpack;
                 let index = modrinth_modpack::parse_mrpack(&path)?;
 
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = format!("Creating instance \"{}\"...", index.name);
                 }
                 ctx.request_repaint();
@@ -837,7 +838,7 @@ use crate::core::modrinth_modpack;
                     &minecraft_dir,
                     &client,
                     move |done, total, stage| {
-                        let mut p = progress_for_files.lock().unwrap();
+                        let mut p = progress_for_files.lock_or_recover();
                         p.message = if total > 0 {
                             format!("{stage} ({done}/{total})")
                         } else {
@@ -865,7 +866,7 @@ use crate::core::modrinth_modpack;
         // Promote pending processes in running_processes
         for rp in &mut self.running_processes {
             if rp.process.is_none() {
-                let mut guard = rp.pending_process.lock().unwrap();
+                let mut guard = rp.pending_process.lock_or_recover();
                 if let Some(proc_state) = guard.take() {
                     rp.process = Some(proc_state);
                 }
@@ -895,10 +896,10 @@ use crate::core::modrinth_modpack;
 
             // Check for completed modpack install (instance slot)
             if let Some(slot) = &task.instance_slot {
-                if let Some(inst) = slot.lock().unwrap().take() {
+                if let Some(inst) = slot.lock_or_recover().take() {
                     // Handle skipped (distribution-blocked) mods
                     if let Some(skipped_slot) = &task.skipped_slot {
-                        let skipped = skipped_slot.lock().unwrap();
+                        let skipped = skipped_slot.lock_or_recover();
                         if !skipped.is_empty() {
                             let mods_dir = inst.minecraft_dir().ok().map(|d| d.join("mods"));
                             for sm in skipped.iter() {
@@ -941,7 +942,7 @@ use crate::core::modrinth_modpack;
 
             // Check for completed modpack update (in-place)
             if let Some(slot) = &task.update_slot {
-                if let Some((instance_id, new_origin, meta)) = slot.lock().unwrap().take() {
+                if let Some((instance_id, new_origin, meta)) = slot.lock_or_recover().take() {
                     let mods_dir = self
                         .instances
                         .iter()
@@ -965,7 +966,7 @@ use crate::core::modrinth_modpack;
 
                     // Handle skipped (distribution-blocked) mods from CF update
                     if let Some(skipped_slot) = &task.skipped_slot {
-                        let skipped = skipped_slot.lock().unwrap();
+                        let skipped = skipped_slot.lock_or_recover();
                         if !skipped.is_empty() {
                             if let Some(ref target) = mods_dir {
                                 for sm in skipped.iter() {
@@ -1011,7 +1012,7 @@ use crate::core::modrinth_modpack;
 
         // Poll for completed Java downloads
         if let Some(ref state) = self.java_download {
-            let mut s = state.lock().unwrap();
+            let mut s = state.lock_or_recover();
             if s.done {
                 if let Some(Ok(install)) = s.result.take() {
                     self.java_installs.push(install);
@@ -1031,7 +1032,7 @@ use crate::core::modrinth_modpack;
         if let Some(updates) = self
             .modpack_update_check
             .as_ref()
-            .and_then(|slot| slot.lock().unwrap().take())
+            .and_then(|slot| slot.lock_or_recover().take())
         {
             self.modpack_updates = updates.clone();
             self.instances_view.modpack_updates = updates;
@@ -1140,7 +1141,7 @@ use crate::core::modrinth_modpack;
         if let Some(id) = self.instances_view.kill_requested.take() {
             if let Some(rp) = self.running_processes.iter().find(|rp| rp.instance_id == id) {
                 if let Some(proc) = &rp.process {
-                    proc.lock().unwrap().kill();
+                    proc.lock_or_recover().kill();
                 }
             }
         }
@@ -1239,7 +1240,7 @@ use crate::core::modrinth_modpack;
                 let ctx_clone = ctx.clone();
                 std::thread::spawn(move || {
                     let results = crate::core::update::check_modpack_updates(&origins);
-                    *slot_clone.lock().unwrap() = Some(results);
+                    *slot_clone.lock_or_recover() = Some(results);
                     ctx_clone.request_repaint();
                 });
                 self.modpack_update_check = Some(slot);
@@ -1306,11 +1307,11 @@ use crate::core::modrinth_modpack;
         let is_downloading = self
             .java_download
             .as_ref()
-            .is_some_and(|s| !s.lock().unwrap().done);
+            .is_some_and(|s| !s.lock_or_recover().done);
         let download_message = self
             .java_download
             .as_ref()
-            .map(|s| s.lock().unwrap().message.clone());
+            .map(|s| s.lock_or_recover().message.clone());
         let _has_launch_pending = self.launch_after_java_download.is_some();
 
         let mut action: Option<JavaPromptAction> = None;
@@ -1398,7 +1399,7 @@ use crate::core::modrinth_modpack;
                     let state_for_cb = Arc::clone(&state);
                     let ctx_for_cb = ctx2.clone();
                     let progress_cb = move |msg: &str| {
-                        state_for_cb.lock().unwrap().message = msg.to_string();
+                        state_for_cb.lock_or_recover().message = msg.to_string();
                         ctx_for_cb.request_repaint();
                     };
 
@@ -1411,7 +1412,7 @@ use crate::core::modrinth_modpack;
                         None => java::download_java(&client, version, &progress_cb)
                             .map_err(|e| e.to_string()),
                     };
-                    let mut s = state.lock().unwrap();
+                    let mut s = state.lock_or_recover();
                     s.result = Some(result);
                     s.done = true;
                     drop(s);
@@ -1592,7 +1593,7 @@ use crate::core::modrinth_modpack;
                                     if success == 1 { "" } else { "s" }
                                 )
                             };
-                            *slot.lock().unwrap() = Some(msg);
+                            *slot.lock_or_recover() = Some(msg);
                             ctx2.request_repaint();
                         });
                     }
@@ -1704,7 +1705,7 @@ use crate::core::modrinth_modpack;
             ctx,
             move |progress, ctx, _client, min_mem, max_mem| {
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = "Parsing modpack...".to_string();
                 }
                 ctx.request_repaint();
@@ -1712,7 +1713,7 @@ use crate::core::modrinth_modpack;
                 let manifest = curseforge_modpack::parse_cf_modpack(&path)?;
 
                 {
-                    let mut p = progress.lock().unwrap();
+                    let mut p = progress.lock_or_recover();
                     p.message = format!("Creating instance \"{}\"...", manifest.name);
                 }
                 ctx.request_repaint();
@@ -1727,7 +1728,7 @@ use crate::core::modrinth_modpack;
                     &path,
                     &minecraft_dir,
                     move |done, total, stage| {
-                        let mut p = progress_for_files.lock().unwrap();
+                        let mut p = progress_for_files.lock_or_recover();
                         p.message = if total > 0 {
                             format!("{stage} ({done}/{total})")
                         } else {
@@ -1738,7 +1739,7 @@ use crate::core::modrinth_modpack;
                     },
                 )?;
 
-                *skipped_clone.lock().unwrap() = skipped_mods;
+                *skipped_clone.lock_or_recover() = skipped_mods;
 
                 let mut instance = instance;
                 instance.min_memory_mb = min_mem;
@@ -1828,13 +1829,13 @@ use crate::core::modrinth_modpack;
                         version_id,
                         version_name,
                     };
-                    *slot_clone.lock().unwrap() = Some((instance_id, new_origin, meta));
-                    let mut p = progress_clone.lock().unwrap();
+                    *slot_clone.lock_or_recover() = Some((instance_id, new_origin, meta));
+                    let mut p = progress_clone.lock_or_recover();
                     p.message = "Modpack updated successfully!".to_string();
                     p.done = true;
                 }
                 Err(e) => {
-                    let mut p = progress_clone.lock().unwrap();
+                    let mut p = progress_clone.lock_or_recover();
                     p.done = true;
                     p.error = Some(e.to_string());
                 }
@@ -2124,7 +2125,7 @@ impl eframe::App for App {
                     continue;
                 }
                 let progress_msg = {
-                    let progress = task.progress.lock().unwrap();
+                    let progress = task.progress.lock_or_recover();
                     progress.message.clone()
                 };
 

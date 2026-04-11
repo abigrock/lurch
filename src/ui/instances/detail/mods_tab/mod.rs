@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use super::{InstanceDetailView, ModsSubTab};
 use crate::core::curseforge::{self, CfFile};
+use crate::core::MutexExt;
 use crate::core::instance::ModOrigin;
 use crate::core::modrinth::{self, ProjectVersion};
 
@@ -88,7 +89,7 @@ impl InstanceDetailView {
             let result =
                 modrinth::get_project_versions(&pid, Some(&mc_ver), Some(&loader_str))
                     .map_err(|e| e.to_string());
-            *slot_clone.lock().unwrap() = Some(ModVersionFetchResult::MrVersions(result));
+            *slot_clone.lock_or_recover() = Some(ModVersionFetchResult::MrVersions(result));
             ctx_clone.request_repaint();
         });
 
@@ -122,7 +123,7 @@ impl InstanceDetailView {
             let result =
                 curseforge::get_cf_mod_files(mod_id, &mc_ver, loader_type)
                     .map_err(|e| e.to_string());
-            *slot_clone.lock().unwrap() = Some(ModVersionFetchResult::CfFiles(result));
+            *slot_clone.lock_or_recover() = Some(ModVersionFetchResult::CfFiles(result));
             ctx_clone.request_repaint();
         });
 
@@ -146,7 +147,7 @@ impl InstanceDetailView {
         let Some(handle) = &vp.fetch_handle else {
             return;
         };
-        let taken = handle.lock().unwrap().take();
+        let taken = handle.lock_or_recover().take();
         if let Some(result) = taken {
             vp.fetch_handle = None;
             match result {
@@ -293,7 +294,7 @@ impl InstanceDetailView {
                                 let msg = match file {
                                     Some(f) => match modrinth::download_mod_file(f, &mods_dir) {
                                         Ok(filename) => {
-                                            origins.lock().unwrap().push(ModOrigin {
+                                            origins.lock_or_recover().push(ModOrigin {
                                                 filename: f.filename.clone(),
                                                 source: "modrinth".to_string(),
                                                 project_id: Some(project_id),
@@ -306,7 +307,7 @@ impl InstanceDetailView {
                                     },
                                     None => "Install failed: no files in version".to_string(),
                                 };
-                                *status_clone.lock().unwrap() = Some(msg);
+                                *status_clone.lock_or_recover() = Some(msg);
                                 ctx.request_repaint();
                             });
 
@@ -331,7 +332,7 @@ impl InstanceDetailView {
                                 let msg = match curseforge::download_cf_file(&file, &mods_dir)
                                 {
                                     Ok(filename) => {
-                                        origins.lock().unwrap().push(ModOrigin {
+                                        origins.lock_or_recover().push(ModOrigin {
                                             filename: file.file_name.clone(),
                                             source: "curseforge".to_string(),
                                             project_id: Some(mod_id.to_string()),
@@ -342,7 +343,7 @@ impl InstanceDetailView {
                                     }
                                     Err(e) => format!("Install failed: {e}"),
                                 };
-                                *status_clone.lock().unwrap() = Some(msg);
+                                *status_clone.lock_or_recover() = Some(msg);
                                 ctx.request_repaint();
                             });
 

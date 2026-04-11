@@ -1,6 +1,7 @@
 use super::InstancesView;
 use crate::app::ManifestState;
 use crate::core::instance::{Instance, ModLoader};
+use crate::core::MutexExt;
 use crate::core::java::JavaInstall;
 use crate::core::version::{VersionEntry, VersionType};
 use eframe::egui;
@@ -87,7 +88,7 @@ impl InstancesView {
                         // MC Version selector
                         let prev_edit_mc = self.edit_mc_version.clone();
                         ui.label("MC Version:");
-                        let manifest_snapshot = manifest.lock().unwrap();
+                        let manifest_snapshot = manifest.lock_or_recover();
                         match &*manifest_snapshot {
                             ManifestState::Loading => {
                                 drop(manifest_snapshot);
