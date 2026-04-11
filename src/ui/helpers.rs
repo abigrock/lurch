@@ -82,11 +82,15 @@ pub fn tab_button(ui: &mut egui::Ui, label: &str, active: bool, theme: Option<&T
                 })
                 .strong(),
         )
-        .fill(if active {
-            t.color("surface_active")
-        } else {
-            egui::Color32::TRANSPARENT
-        })
+        .fill(egui::Color32::TRANSPARENT)
+        .stroke(egui::Stroke::new(
+            1.0,
+            if active {
+                t.color("accent")
+            } else {
+                t.color("surface_hover")
+            },
+        ))
         .corner_radius(egui::CornerRadius::same(6))
         .min_size(egui::vec2(0.0, 32.0));
         ui.add(btn).clicked()

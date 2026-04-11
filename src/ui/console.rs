@@ -25,38 +25,74 @@ impl ConsoleView {
         let mut kill_process = false;
 
         ui.horizontal(|ui| {
-            // Left: instance tabs
-            let mut switch_to: Option<String> = None;
-            for rp in running_processes.iter() {
-                let is_active = self.active_instance_id.as_deref() == Some(&rp.instance_id);
-                let status_icon = if rp.is_alive() {
-                    egui_phosphor::regular::PLAY_CIRCLE
-                } else {
-                    egui_phosphor::regular::STOP_CIRCLE
-                };
-                let tab_label = format!("{status_icon} {}", rp.instance_name);
+            // ── Left: scrollable instance tabs (bounded width) ──
+            ui.style_mut().always_scroll_the_only_direction = true;
+            let controls_reserve = 300.0;
+            let tabs_max_w = (ui.available_width() - controls_reserve).max(100.0);
 
-                if tab_button(ui, &tab_label, is_active, theme) {
-                    switch_to = Some(rp.instance_id.clone());
-                }
-                if !rp.is_alive() {
-                    let x_clicked = if let Some(t) = theme {
-                        ui.add(t.ghost_button(egui_phosphor::regular::X)).clicked()
-                    } else {
-                        ui.small_button(egui_phosphor::regular::X).clicked()
-                    };
-                    if x_clicked {
-                        tab_to_remove = Some(rp.instance_id.clone());
-                    }
-                }
-            }
+            let mut switch_to: Option<String> = None;
+            egui::ScrollArea::horizontal()
+                .id_salt("console_tabs_scroll")
+                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+                .max_width(tabs_max_w)
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        let default_spacing = ui.spacing().item_spacing.x;
+                        for rp in running_processes.iter() {
+                            let is_active =
+                                self.active_instance_id.as_deref() == Some(&rp.instance_id);
+                            let status_icon = if rp.is_alive() {
+                                egui_phosphor::regular::PLAY_CIRCLE
+                            } else {
+                                egui_phosphor::regular::STOP_CIRCLE
+                            };
+                            let tab_label = format!("{status_icon} {}", rp.instance_name);
+
+                            if tab_button(ui, &tab_label, is_active, theme) {
+                                switch_to = Some(rp.instance_id.clone());
+                            }
+                            if !rp.is_alive() {
+                                // Tight spacing to group X with its tab
+                                ui.spacing_mut().item_spacing.x = 2.0;
+                                let x_clicked = if let Some(t) = theme {
+                                    let err = t.color("error");
+                                    ui.add(
+                                        egui::Button::new(
+                                            egui::RichText::new(egui_phosphor::regular::X)
+                                                .color(err)
+                                                .strong(),
+                                        )
+                                        .fill(egui::Color32::TRANSPARENT)
+                                        .stroke(egui::Stroke::new(1.0, err))
+                                        .corner_radius(egui::CornerRadius::same(6))
+                                        .min_size(egui::vec2(0.0, 32.0)),
+                                    )
+                                    .clicked()
+                                } else {
+                                    ui.small_button(
+                                        egui::RichText::new(egui_phosphor::regular::X)
+                                            .color(egui::Color32::RED),
+                                    )
+                                    .clicked()
+                                };
+                                ui.spacing_mut().item_spacing.x = default_spacing;
+                                // Extra gap after X to separate from next tab group
+                                ui.add_space(8.0);
+                                if x_clicked {
+                                    tab_to_remove = Some(rp.instance_id.clone());
+                                }
+                            }
+                        }
+                    });
+                });
             if let Some(id) = switch_to {
                 self.active_instance_id = Some(id);
             }
 
-            // Right: controls
+            ui.separator();
+
+            // ── Right: fixed controls ──
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                // Clear Finished (right-most)
                 if running_processes.iter().any(|rp| !rp.is_alive()) {
                     let lbl = format!("{} Clear Finished", egui_phosphor::regular::BROOM);
                     let clicked = if let Some(t) = theme {
@@ -78,7 +114,6 @@ impl ConsoleView {
                     }
                 }
 
-                // Resolve active for controls
                 let active_id = self
                     .active_instance_id
                     .clone()
@@ -96,52 +131,19 @@ impl ConsoleView {
                             .unwrap_or(false);
 
                         if is_running {
-                            // Inline kill confirmation
-                            if self.confirm_kill.as_deref() == Some(active_id.as_str()) {
-                                let cancel_clicked = if let Some(t) = theme {
-                                    ui.add(t.ghost_button("Cancel")).clicked()
-                                } else {
-                                    ui.button("Cancel").clicked()
-                                };
-                                if cancel_clicked {
-                                    self.confirm_kill = None;
-                                }
-                                let confirm_clicked = if let Some(t) = theme {
-                                    ui.add(t.danger_button(&format!(
-                                        "{} Confirm Kill",
-                                        egui_phosphor::regular::SKULL
-                                    )))
-                                    .clicked()
-                                } else {
-                                    ui.button(
-                                        egui::RichText::new(format!(
-                                            "{} Confirm Kill",
-                                            egui_phosphor::regular::SKULL
-                                        ))
-                                        .color(egui::Color32::RED),
-                                    )
-                                    .clicked()
-                                };
-                                if confirm_clicked {
-                                    kill_process = true;
-                                    self.confirm_kill = None;
-                                }
+                            let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
+                            let clicked = if let Some(t) = theme {
+                                ui.add(t.ghost_button(&kill_lbl)).clicked()
                             } else {
-                                let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
-                                let clicked = if let Some(t) = theme {
-                                    ui.add(t.ghost_button(&kill_lbl)).clicked()
-                                } else {
-                                    ui.button(&kill_lbl).clicked()
-                                };
-                                if clicked {
-                                    self.confirm_kill = Some(active_id.clone());
-                                }
+                                ui.button(&kill_lbl).clicked()
+                            };
+                            if clicked {
+                                self.confirm_kill = Some(active_id.clone());
                             }
                         }
                     }
                 }
 
-                // Auto-scroll checkbox
                 if let Some(ref active_id) = active_id {
                     if let Some(rp) = running_processes
                         .iter_mut()
@@ -152,6 +154,60 @@ impl ConsoleView {
                 }
             });
         });
+
+        // ── Kill confirmation dialog ────────────────────────────────
+        if let Some(ref kill_id) = self.confirm_kill.clone() {
+            let inst_name = running_processes
+                .iter()
+                .find(|rp| rp.instance_id == *kill_id)
+                .map(|rp| rp.instance_name.clone())
+                .unwrap_or_default();
+
+            let mut open = true;
+            egui::Window::new("Confirm Kill")
+                .id(egui::Id::new(format!("confirm_kill_{kill_id}")))
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .open(&mut open)
+                .show(ui.ctx(), |ui| {
+                    ui.label(format!("Kill \"{}\"?", inst_name));
+                    if let Some(t) = theme {
+                        ui.label(t.subtext("This will forcefully terminate the running instance."));
+                    } else {
+                        ui.weak("This will forcefully terminate the running instance.");
+                    }
+                    ui.add_space(8.0);
+                    ui.horizontal(|ui| {
+                        let confirm_clicked = if let Some(t) = theme {
+                            ui.add(
+                                t.danger_button(&format!("{} Kill", egui_phosphor::regular::SKULL)),
+                            )
+                            .clicked()
+                        } else {
+                            ui.button(
+                                egui::RichText::new(format!(
+                                    "{} Kill",
+                                    egui_phosphor::regular::SKULL
+                                ))
+                                .color(egui::Color32::RED),
+                            )
+                            .clicked()
+                        };
+                        if confirm_clicked {
+                            kill_process = true;
+                            self.confirm_kill = None;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            self.confirm_kill = None;
+                        }
+                    });
+                });
+
+            if !open {
+                self.confirm_kill = None;
+            }
+        }
 
         // Handle tab removal
         if let Some(ref remove_id) = tab_to_remove {

@@ -437,8 +437,6 @@ impl App {
             Arc::new(Mutex::new(None));
         let slot_clone = Arc::clone(&console_process_slot);
 
-        let is_first_launch = self.running_processes.iter().all(|rp| !rp.is_alive());
-
         self.running_processes.push(RunningProcess {
             instance_id: instance_id.to_string(),
             instance_name: instance.name.clone(),
@@ -448,11 +446,7 @@ impl App {
             auto_scroll: true,
         });
         self.console_view.active_instance_id = Some(instance_id.to_string());
-
-        // Auto-switch to Console only on first active launch
-        if is_first_launch {
-            self.current_view = View::Console;
-        }
+        self.current_view = View::Console;
 
         // Spawn background thread
         let ctx_clone = ctx.clone();
