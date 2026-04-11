@@ -646,6 +646,8 @@ impl SettingsView {
                         } else {
                             Some(key_text)
                         };
+                        // Save immediately so get_api_key() (which reads from disk) picks it up
+                        let _ = config.save();
                     }
                 });
             ui.add_space(16.0);
