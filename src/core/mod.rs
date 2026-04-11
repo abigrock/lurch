@@ -9,6 +9,7 @@ pub mod java;
 pub mod launch;
 pub mod loader_profiles;
 pub mod local_mods;
+pub mod mod_cache;
 pub mod modrinth;
 pub mod modrinth_modpack;
 pub mod servers;
@@ -16,6 +17,42 @@ pub mod shaders;
 pub mod version;
 pub mod update;
 pub mod worlds;
+
+// ── Modpack mod manifest entry ──────────────────────────────────────────────
+
+/// A single entry in `.modpack_mods.json`, the modpack mod manifest.
+///
+/// Stores enough information to re-download a missing mod:
+/// - For directly downloadable mods: `download_url` is the CDN URL.
+/// - For distribution-blocked CurseForge mods: `manual` is true, and
+///   `slug` / `file_id` / `website_url` allow constructing the manual download page.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ModpackModEntry {
+    /// Filename inside the `mods/` directory (e.g. `"fabric-api-0.92.jar"`).
+    pub name: String,
+    /// Direct download URL (CDN).  `None` for distribution-blocked mods.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub download_url: Option<String>,
+    /// Human-readable display name (for UI).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// `true` when the mod requires manual download (CurseForge distribution-blocked).
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub manual: bool,
+    /// CurseForge project slug (for constructing manual download URL).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub slug: Option<String>,
+    /// CurseForge file ID (for constructing manual download URL).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_id: Option<u64>,
+    /// CurseForge project website URL (for constructing manual download URL).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub website_url: Option<String>,
+}
+
+fn is_false(v: &bool) -> bool {
+    !v
+}
 
 // ── Shared constants & helpers ──────────────────────────────────────────────
 

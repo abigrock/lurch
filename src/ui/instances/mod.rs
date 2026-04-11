@@ -88,6 +88,26 @@ pub struct InstancesView {
     #[allow(clippy::type_complexity)]
     pub edit_loader_versions_fetch: Option<Arc<Mutex<Option<Result<Vec<(String, bool)>, String>>>>>,
     edit_initialized_for: Option<String>,
+    modpack_version_picker: Option<ModpackVersionPickerState>,
+    pub change_modpack_version: Option<(String, crate::core::update::ModpackUpdateInfo)>,
+}
+
+struct ModpackVersionPickerState {
+    instance_id: String,
+    instance_name: String,
+    source: String,
+    project_id: String,
+    current_version_id: String,
+    mr_versions: Vec<crate::core::modrinth::ProjectVersion>,
+    cf_files: Vec<crate::core::curseforge::CfFile>,
+    selected_index: usize,
+    preselect_latest: bool,
+    fetch_handle: Option<Arc<Mutex<Option<modpack_browser::VersionFetchResult>>>>,
+}
+
+enum ModpackVersionPickerAction {
+    Apply,
+    Cancel,
 }
 
 impl Default for InstancesView {
@@ -137,6 +157,8 @@ impl Default for InstancesView {
             edit_loader_versions_error: None,
             edit_loader_versions_fetch: None,
             edit_initialized_for: None,
+            modpack_version_picker: None,
+            change_modpack_version: None,
         }
     }
 }
@@ -168,6 +190,11 @@ impl InstancesView {
             }
             if let Some(del_id) = self.confirm_delete.clone() {
                 self.delete_confirm_dialog(&ctx, instances, &del_id);
+            }
+            self.poll_modpack_version_picker();
+            self.show_modpack_version_picker(ui);
+            if self.modpack_version_picker.as_ref().is_some_and(|vp| vp.fetch_handle.is_some()) {
+                ui.ctx().request_repaint();
             }
         }
 
@@ -700,7 +727,7 @@ impl InstancesView {
                         } else {
                             ui.label(egui::RichText::new(format!("{} {lp_text}", egui_phosphor::regular::CLOCK)).size(11.0).weak());
                         }
-                        if let Some(update_info) = self.modpack_updates.get(&inst.id) {
+                        if self.modpack_updates.contains_key(&inst.id) {
                             let update_fill = if let Some(t) = self.theme.as_ref() {
                                 t.color("accent")
                             } else {
@@ -713,10 +740,8 @@ impl InstancesView {
                                 .show(ui, |ui| {
                                     ui.label(
                                         egui::RichText::new(format!(
-                                            "{} {} → {}",
+                                            "{} Update available",
                                             egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                            update_info.current_version_name,
-                                            update_info.latest_version_name,
                                         ))
                                         .size(11.0)
                                         .color(egui::Color32::WHITE),
@@ -813,6 +838,20 @@ impl InstancesView {
                                             let _ = open::that(&url);
                                         }
                                     }
+                                    if ui.add_enabled(!is_running, egui::Button::new(format!(
+                                        "{} Change Version",
+                                        egui_phosphor::regular::ARROWS_DOWN_UP
+                                    ))).clicked() {
+                                        self.open_modpack_version_picker(
+                                            &inst.id,
+                                            &inst.name,
+                                            &origin.source,
+                                            &origin.project_id,
+                                            &origin.version_id,
+                                            false,
+                                            ui.ctx(),
+                                        );
+                                    }
                                 }
                                 ui.separator();
                                 let del_lbl =
@@ -893,6 +932,8 @@ impl InstancesView {
                 let rename_cell = std::cell::RefCell::new(
                     std::mem::take(&mut self.rename_text),
                 );
+                // Collected request to open version picker (can't call &mut self inside closure)
+                let mut open_version_picker_req: Option<(String, String, String, String, String)> = None;
 
                 crate::ui::helpers::grid_card(
                     ui,
@@ -962,7 +1003,7 @@ impl InstancesView {
                         }
                         let tag_refs: Vec<&str> = meta_parts.iter().map(|s| s.as_str()).collect();
                         crate::ui::helpers::show_category_tags(ui, &tag_refs, 10, self.theme.as_ref());
-                        if let Some(update_info) = self.modpack_updates.get(&inst.id) {
+                        if self.modpack_updates.contains_key(&inst.id) {
                             let update_fill = if let Some(t) = self.theme.as_ref() {
                                 t.color("accent")
                             } else {
@@ -975,10 +1016,8 @@ impl InstancesView {
                                 .show(ui, |ui| {
                                     ui.label(
                                         egui::RichText::new(format!(
-                                            "{} {} → {}",
+                                            "{} Update available",
                                             egui_phosphor::regular::ARROW_CIRCLE_UP,
-                                            update_info.current_version_name,
-                                            update_info.latest_version_name,
                                         ))
                                         .size(11.0)
                                         .color(egui::Color32::WHITE),
@@ -1100,6 +1139,18 @@ impl InstancesView {
                                         let _ = open::that(&url);
                                     }
                                 }
+                                if ui.add_enabled(!is_running, egui::Button::new(format!(
+                                    "{} Change Version",
+                                    egui_phosphor::regular::ARROWS_DOWN_UP
+                                ))).clicked() {
+                                    open_version_picker_req = Some((
+                                        inst.id.clone(),
+                                        inst.name.clone(),
+                                        origin.source.clone(),
+                                        origin.project_id.clone(),
+                                        origin.version_id.clone(),
+                                    ));
+                                }
                             }
                             ui.separator();
                             let del_lbl = format!(
@@ -1125,8 +1176,261 @@ impl InstancesView {
 
                 self.rename_text = rename_cell.into_inner();
 
+                if let Some((id, name, source, pid, vid)) = open_version_picker_req {
+                    self.open_modpack_version_picker(&id, &name, &source, &pid, &vid, false, ui.ctx());
+                }
+
                 x += card_w + gap;
             }
+        }
+    }
+
+    pub fn open_modpack_version_picker(
+        &mut self,
+        instance_id: &str,
+        instance_name: &str,
+        source: &str,
+        project_id: &str,
+        current_version_id: &str,
+        preselect_latest: bool,
+        ctx: &egui::Context,
+    ) {
+        let slot: Arc<Mutex<Option<modpack_browser::VersionFetchResult>>> =
+            Arc::new(Mutex::new(None));
+        let slot_clone = Arc::clone(&slot);
+        let ctx_clone = ctx.clone();
+
+        let src = source.to_string();
+        let pid = project_id.to_string();
+
+        std::thread::spawn(move || {
+            let result = match src.as_str() {
+                "modrinth" => {
+                    let r = crate::core::modrinth::get_project_versions(&pid, None, None)
+                        .map_err(|e| e.to_string());
+                    modpack_browser::VersionFetchResult::MrVersions(r)
+                }
+                "curseforge" => {
+                    let mod_id: u64 = pid.parse().unwrap_or(0);
+                    let r = crate::core::curseforge::get_cf_mod_files(mod_id, "", None)
+                        .map_err(|e| e.to_string());
+                    modpack_browser::VersionFetchResult::CfFiles(r)
+                }
+                _ => {
+                    modpack_browser::VersionFetchResult::MrVersions(Err(
+                        format!("Unknown source: {src}"),
+                    ))
+                }
+            };
+            *slot_clone.lock().unwrap() = Some(result);
+            ctx_clone.request_repaint();
+        });
+
+        self.modpack_version_picker = Some(ModpackVersionPickerState {
+            instance_id: instance_id.to_string(),
+            instance_name: instance_name.to_string(),
+            source: source.to_string(),
+            project_id: project_id.to_string(),
+            current_version_id: current_version_id.to_string(),
+            mr_versions: Vec::new(),
+            cf_files: Vec::new(),
+            selected_index: 0,
+            preselect_latest,
+            fetch_handle: Some(slot),
+        });
+    }
+
+    fn poll_modpack_version_picker(&mut self) {
+        let Some(vp) = &mut self.modpack_version_picker else {
+            return;
+        };
+        let Some(handle) = &vp.fetch_handle else {
+            return;
+        };
+        let taken = handle.lock().unwrap().take();
+        if let Some(result) = taken {
+            vp.fetch_handle = None;
+            match result {
+                modpack_browser::VersionFetchResult::MrVersions(Ok(versions)) => {
+                    if !vp.preselect_latest {
+                        vp.selected_index = versions.iter().position(|v| v.id == vp.current_version_id).unwrap_or(0);
+                    }
+                    vp.mr_versions = versions;
+                }
+                modpack_browser::VersionFetchResult::CfFiles(Ok(files)) => {
+                    if !vp.preselect_latest {
+                        vp.selected_index = files.iter().position(|f| f.id.to_string() == vp.current_version_id).unwrap_or(0);
+                    }
+                    vp.cf_files = files;
+                }
+                modpack_browser::VersionFetchResult::MrVersions(Err(e))
+                | modpack_browser::VersionFetchResult::CfFiles(Err(e)) => {
+                    log::warn!("Failed to fetch modpack versions: {e}");
+                    self.modpack_version_picker = None;
+                }
+            }
+        }
+    }
+
+    fn show_modpack_version_picker(&mut self, ui: &mut egui::Ui) {
+        if self.modpack_version_picker.is_none() {
+            return;
+        }
+
+        let mut action: Option<ModpackVersionPickerAction> = None;
+
+        // Extract scalars without holding a borrow across the closure
+        let is_loading = self.modpack_version_picker.as_ref().unwrap().fetch_handle.is_some();
+        let title = self.modpack_version_picker.as_ref().unwrap().instance_name.clone();
+        let theme = self.theme.clone();
+
+        egui::Window::new(format!("Change Version — \"{}\"", title))
+            .collapsible(false)
+            .resizable(true)
+            .default_size([500.0, 420.0])
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ui.ctx(), |ui| {
+                if is_loading {
+                    ui.horizontal(|ui| {
+                        if let Some(ref t) = theme {
+                            ui.add(egui::Spinner::new().color(t.color("accent")));
+                        } else {
+                            ui.spinner();
+                        }
+                        ui.label("Fetching versions...");
+                    });
+                    return;
+                }
+
+                if let Some(ref t) = theme {
+                    ui.label(t.subtext("Select a version:"));
+                } else {
+                    ui.weak("Select a version:");
+                }
+                ui.add_space(4.0);
+
+                let vp = self.modpack_version_picker.as_mut().unwrap();
+
+                match vp.source.as_str() {
+                    "modrinth" => {
+                        if vp.mr_versions.is_empty() {
+                            ui.label("No versions available.");
+                        } else {
+                            egui::ScrollArea::vertical()
+                                .max_height(300.0)
+                                .show(ui, |ui| {
+                                    for (i, version) in vp.mr_versions.iter().enumerate() {
+                                        let selected = vp.selected_index == i;
+                                        let is_current = version.id == vp.current_version_id;
+                                        let game_vers = version.game_versions.join(", ");
+                                        let loaders = version.loaders.join(", ");
+                                        let mut label = format!(
+                                            "{} (MC {}) [{}]",
+                                            version.name, game_vers, loaders
+                                        );
+                                        if is_current {
+                                            label = format!("{} {label}", egui_phosphor::regular::CHECK_CIRCLE);
+                                        }
+                                        if ui.selectable_label(selected, &label).clicked() {
+                                            vp.selected_index = i;
+                                        }
+                                    }
+                                });
+                        }
+                    }
+                    "curseforge" => {
+                        if vp.cf_files.is_empty() {
+                            ui.label("No versions available.");
+                        } else {
+                            egui::ScrollArea::vertical()
+                                .max_height(300.0)
+                                .show(ui, |ui| {
+                                    for (i, file) in vp.cf_files.iter().enumerate() {
+                                        let selected = vp.selected_index == i;
+                                        let is_current = file.id.to_string() == vp.current_version_id;
+                                        let release_tag = match file.release_type {
+                                            1 => "Release",
+                                            2 => "Beta",
+                                            3 => "Alpha",
+                                            _ => "Unknown",
+                                        };
+                                        let game_vers = file.game_versions.join(", ");
+                                        let mut label = format!(
+                                            "{} [{}] ({})",
+                                            file.display_name, release_tag, game_vers
+                                        );
+                                        if is_current {
+                                            label = format!("{} {label}", egui_phosphor::regular::CHECK_CIRCLE);
+                                        }
+                                        if ui.selectable_label(selected, &label).clicked() {
+                                            vp.selected_index = i;
+                                        }
+                                    }
+                                });
+                        }
+                    }
+                    _ => {
+                        ui.label("Unknown source.");
+                    }
+                }
+
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    let has_versions = match vp.source.as_str() {
+                        "modrinth" => !vp.mr_versions.is_empty(),
+                        "curseforge" => !vp.cf_files.is_empty(),
+                        _ => false,
+                    };
+                    let apply_clicked = if let Some(ref t) = theme {
+                        ui.add_enabled(has_versions, t.accent_button("Apply")).clicked()
+                    } else {
+                        ui.add_enabled(has_versions, egui::Button::new("Apply")).clicked()
+                    };
+                    if apply_clicked {
+                        action = Some(ModpackVersionPickerAction::Apply);
+                    }
+                    if ui.button("Cancel").clicked() {
+                        action = Some(ModpackVersionPickerAction::Cancel);
+                    }
+                });
+            });
+
+        match action {
+            Some(ModpackVersionPickerAction::Apply) => {
+                let vp = self.modpack_version_picker.take().unwrap();
+                let (version_id, version_name) = match vp.source.as_str() {
+                    "modrinth" => {
+                        if let Some(v) = vp.mr_versions.get(vp.selected_index) {
+                            (v.id.clone(), v.name.clone())
+                        } else {
+                            return;
+                        }
+                    }
+                    "curseforge" => {
+                        if let Some(f) = vp.cf_files.get(vp.selected_index) {
+                            (f.id.to_string(), f.display_name.clone())
+                        } else {
+                            return;
+                        }
+                    }
+                    _ => return,
+                };
+                self.change_modpack_version = Some((
+                    vp.instance_id,
+                    crate::core::update::ModpackUpdateInfo {
+                        latest_version_id: version_id,
+                        latest_version_name: version_name,
+                        current_version_id: vp.current_version_id.clone(),
+                        current_version_name: String::new(),
+                        source: vp.source,
+                        project_id: vp.project_id,
+                    },
+                ));
+            }
+            Some(ModpackVersionPickerAction::Cancel) => {
+                self.modpack_version_picker = None;
+            }
+            None => {}
         }
     }
 }

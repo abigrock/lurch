@@ -115,52 +115,27 @@ fn download_modpack_file(
     client: &reqwest::blocking::Client,
 ) -> anyhow::Result<()> {
     let dest = minecraft_dir.join(&file.path);
+    let sha1 = file.hashes.get("sha1").map(|s| s.as_str());
+    let filename = std::path::Path::new(&file.path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&file.path);
 
-    // Skip if already exists with correct hash
-    if dest.exists()
-        && let Some(expected_sha1) = file.hashes.get("sha1")
-            && let Ok(data) = std::fs::read(&dest) {
-                let actual = crate::core::sha1_hex(&data);
-                if actual == *expected_sha1 {
-                    return Ok(());
-                }
-            }
-
-    // Create parent dirs
-    if let Some(parent) = dest.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-
-    // Try each download URL
     let url = file
         .downloads
         .first()
         .ok_or_else(|| anyhow::anyhow!("No download URLs for {}", file.path))?;
 
-    let resp = client
-        .get(url)
-        .send()
-        .with_context(|| format!("Failed to download {}", file.path))?;
-
-    if !resp.status().is_success() {
-        anyhow::bail!("HTTP {} downloading {}", resp.status(), file.path);
-    }
-
-    let bytes = resp.bytes()?;
-
-    // Verify SHA1
-    if let Some(expected_sha1) = file.hashes.get("sha1") {
-        let actual = crate::core::sha1_hex(&bytes);
-        if actual != *expected_sha1 {
-            anyhow::bail!(
-                "SHA1 mismatch for {}: expected {expected_sha1}, got {actual}",
-                file.path
-            );
+    crate::core::mod_cache::resolve_or_download(filename, sha1, &dest, || {
+        let resp = client
+            .get(url)
+            .send()
+            .with_context(|| format!("Failed to download {}", file.path))?;
+        if !resp.status().is_success() {
+            anyhow::bail!("HTTP {} downloading {}", resp.status(), file.path);
         }
-    }
-
-    std::fs::write(&dest, &bytes)?;
-    Ok(())
+        Ok(resp.bytes()?.to_vec())
+    })
 }
 
 /// Install all modpack files (parallel, with progress reporting)
@@ -223,6 +198,35 @@ pub fn install_modpack_files(
     extract_overrides(mrpack_path, minecraft_dir, "client-overrides/")?;
     let _ = crate::core::servers::merge_modpack_servers(&servers_dat, &pre_existing_servers);
 
+    // Persist list of modpack mod filenames for pre-launch integrity check.
+    let mod_entries: Vec<crate::core::ModpackModEntry> = client_files
+        .iter()
+        .filter_map(|f| {
+            let p = std::path::Path::new(&f.path);
+            if p.starts_with("mods") || p.starts_with("mods/") {
+                p.file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|name| crate::core::ModpackModEntry {
+                        name: name.to_string(),
+                        download_url: f.downloads.first().cloned(),
+                        display_name: None,
+                        manual: false,
+                        slug: None,
+                        file_id: None,
+                        website_url: None,
+                    })
+            } else {
+                None
+            }
+        })
+        .collect();
+    if !mod_entries.is_empty() {
+        let manifest_path = minecraft_dir.join(".modpack_mods.json");
+        if let Ok(json) = serde_json::to_string_pretty(&mod_entries) {
+            let _ = std::fs::write(&manifest_path, json);
+        }
+    }
+
     Ok(())
 }
 
@@ -257,7 +261,7 @@ pub fn update_modrinth_modpack(
     minecraft_dir: &std::path::Path,
     progress: &Arc<Mutex<LaunchProgress>>,
     ctx: &egui::Context,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<crate::core::update::UpdatedModpackMeta> {
     {
         let mut p = progress.lock().unwrap();
         p.message = "Fetching new modpack version...".to_string();
@@ -301,6 +305,28 @@ pub fn update_modrinth_modpack(
 
     let index = parse_mrpack(&mrpack_path)?;
 
+    let mc_ver = minecraft_version(&index.dependencies)
+        .unwrap_or("unknown")
+        .to_string();
+    let (loader, loader_ver) = determine_loader(&index.dependencies);
+
+    // Snapshot old modpack mod list so we can remove stale mods after install.
+    let old_mod_names: std::collections::HashSet<String> = {
+        let manifest_path = minecraft_dir.join(".modpack_mods.json");
+        if let Ok(data) = std::fs::read_to_string(&manifest_path) {
+            // Try enriched format first, fall back to legacy Vec<String>
+            if let Ok(entries) = serde_json::from_str::<Vec<crate::core::ModpackModEntry>>(&data) {
+                entries.into_iter().map(|e| e.name).collect()
+            } else if let Ok(names) = serde_json::from_str::<Vec<String>>(&data) {
+                names.into_iter().collect()
+            } else {
+                std::collections::HashSet::new()
+            }
+        } else {
+            std::collections::HashSet::new()
+        }
+    };
+
     let progress_for_files = Arc::clone(progress);
     let ctx_for_files = ctx.clone();
     install_modpack_files(
@@ -320,6 +346,34 @@ pub fn update_modrinth_modpack(
         },
     )?;
 
+    // Remove stale mods that were in the old version but not in the new one.
+    {
+        let manifest_path = minecraft_dir.join(".modpack_mods.json");
+        let new_mod_names: std::collections::HashSet<String> = if let Ok(data) =
+            std::fs::read_to_string(&manifest_path)
+        {
+            if let Ok(entries) = serde_json::from_str::<Vec<crate::core::ModpackModEntry>>(&data) {
+                entries.into_iter().map(|e| e.name).collect()
+            } else {
+                std::collections::HashSet::new()
+            }
+        } else {
+            std::collections::HashSet::new()
+        };
+        let mods_dir = minecraft_dir.join("mods");
+        for stale in old_mod_names.difference(&new_mod_names) {
+            let path = mods_dir.join(stale);
+            if path.exists() {
+                log::info!("Removing stale mod: {}", stale);
+                let _ = std::fs::remove_file(&path);
+            }
+        }
+    }
+
     let _ = std::fs::remove_dir_all(&temp_dir);
-    Ok(())
+    Ok(crate::core::update::UpdatedModpackMeta {
+        mc_version: mc_ver,
+        loader,
+        loader_version: loader_ver,
+    })
 }

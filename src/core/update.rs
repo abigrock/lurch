@@ -8,9 +8,18 @@ pub struct ModpackUpdateInfo {
     pub latest_version_name: String,
     #[allow(dead_code)]
     pub current_version_id: String,
+    #[allow(dead_code)]
     pub current_version_name: String,
     pub source: String,
     pub project_id: String,
+}
+
+/// Metadata extracted from the modpack pack file during an update.
+#[derive(Debug, Clone)]
+pub struct UpdatedModpackMeta {
+    pub mc_version: String,
+    pub loader: crate::core::instance::ModLoader,
+    pub loader_version: Option<String>,
 }
 
 #[derive(Debug, Clone)]

@@ -6,6 +6,7 @@ use crate::core::java::{self, JavaInstall};
 use crate::core::launch::{prepare_and_launch, LaunchProgress, ProcessState};
 use crate::core::modrinth_modpack;
 use crate::core::version::VersionManifest;
+use crate::core::ModpackModEntry;
 use crate::theme::{bundled_themes, load_user_themes, seed_user_themes_dir, Theme};
 use crate::ui::accounts::AccountsView;
 use crate::ui::console::ConsoleView;
@@ -17,7 +18,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
 type ModpackUpdateMap = std::collections::HashMap<String, crate::core::update::ModpackUpdateInfo>;
-type PendingModpackUpdate = Arc<Mutex<Option<(String, crate::core::instance::ModpackOrigin)>>>;
+type PendingModpackUpdate = Arc<Mutex<Option<(String, crate::core::instance::ModpackOrigin, crate::core::update::UpdatedModpackMeta)>>>;
 
 /// A background task (modpack install, update, etc.) — NOT a running game process.
 /// Displayed in the sidebar task tray, not the Console.
@@ -129,6 +130,12 @@ pub struct App {
     pub pending_manual_downloads: Vec<PendingManualDownload>,
     /// Show the manual-downloads dialog (set when blocked mods are detected).
     pub show_manual_downloads_dialog: bool,
+    /// Pre-launch missing mods dialog state.
+    pub missing_mods: Option<MissingModsState>,
+    /// Set by "Launch Anyway" in the missing-mods dialog; bypasses the mod check.
+    pub force_launch_requested: Option<String>,
+    /// Completion signal from background mod re-download thread.
+    pub mod_redownload_toast: Option<Arc<Mutex<Option<String>>>>,
     /// Throttle for checking the Downloads directory.
     last_download_check: Option<Instant>,
     /// Timestamp of the last rendered frame — used to cap frame rate during resize.
@@ -154,6 +161,13 @@ pub struct JavaPromptState {
     pub instance_name: String,
     pub required_java: u32,
     pub component: Option<String>,
+}
+
+/// Shown when a modpack instance is missing expected mod files before launch.
+pub struct MissingModsState {
+    pub instance_id: String,
+    pub instance_name: String,
+    pub missing_files: Vec<ModpackModEntry>,
 }
 
 impl App {
@@ -246,6 +260,9 @@ impl App {
             modpack_update_check,
             pending_manual_downloads: Vec::new(),
             show_manual_downloads_dialog: false,
+            missing_mods: None,
+            force_launch_requested: None,
+            mod_redownload_toast: None,
             last_download_check: None,
             last_frame_time: None,
         }
@@ -287,6 +304,59 @@ impl App {
     }
 
     fn do_launch(&mut self, instance_id: &str, ctx: &egui::Context) {
+        // Pre-launch check: verify modpack mods are present
+        if let Some(instance) = self.instances.iter().find(|i| i.id == instance_id) {
+            if instance.modpack_origin.is_some() {
+                if let Ok(mc_dir) = instance.minecraft_dir() {
+                    let manifest_path = mc_dir.join(".modpack_mods.json");
+                    if manifest_path.exists() {
+                        if let Ok(data) = std::fs::read_to_string(&manifest_path) {
+                            // Support both enriched (Vec<ModpackModEntry>) and legacy (Vec<String>) formats
+                            let expected: Option<Vec<ModpackModEntry>> =
+                                serde_json::from_str::<Vec<ModpackModEntry>>(&data)
+                                    .ok()
+                                    .or_else(|| {
+                                        serde_json::from_str::<Vec<String>>(&data)
+                                            .ok()
+                                            .map(|names| {
+                                                names
+                                                    .into_iter()
+                                                    .map(|name| ModpackModEntry {
+                                                        name,
+                                                        download_url: None,
+                                                        display_name: None,
+                                                        manual: false,
+                                                        slug: None,
+                                                        file_id: None,
+                                                        website_url: None,
+                                                    })
+                                                    .collect()
+                                            })
+                                    });
+                            if let Some(expected) = expected {
+                                let mods_dir = mc_dir.join("mods");
+                                let missing: Vec<ModpackModEntry> = expected
+                                    .into_iter()
+                                    .filter(|f| !mods_dir.join(&f.name).exists())
+                                    .collect();
+                                if !missing.is_empty() {
+                                    self.missing_mods = Some(MissingModsState {
+                                        instance_id: instance_id.to_string(),
+                                        instance_name: instance.name.clone(),
+                                        missing_files: missing,
+                                    });
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        self.do_launch_inner(instance_id, ctx);
+    }
+
+    fn do_launch_inner(&mut self, instance_id: &str, ctx: &egui::Context) {
         let Some(instance) = self
             .instances
             .iter()
@@ -868,12 +938,16 @@ use crate::core::modrinth_modpack;
                     // Navigate back to instances list (closes modpack browser / add-instance view)
                     self.instances_view.show_add_instance = false;
                     self.current_view = View::Instances;
+
+                    // Trigger modpack update recheck so a newly-installed
+                    // modpack gets an update badge immediately if applicable
+                    self.instances_view.recheck_modpack_updates = true;
                 }
             }
 
             // Check for completed modpack update (in-place)
             if let Some(slot) = &task.update_slot {
-                if let Some((instance_id, new_origin)) = slot.lock().unwrap().take() {
+                if let Some((instance_id, new_origin, meta)) = slot.lock().unwrap().take() {
                     let mods_dir = self
                         .instances
                         .iter()
@@ -885,6 +959,9 @@ use crate::core::modrinth_modpack;
                         self.instances.iter_mut().find(|i| i.id == instance_id)
                     {
                         instance.modpack_origin = Some(new_origin);
+                        instance.mc_version = meta.mc_version;
+                        instance.loader = meta.loader;
+                        instance.loader_version = meta.loader_version;
                         if let Err(e) = instance.save_to_dir() {
                             log::warn!("Failed to save updated instance {instance_id}: {e}");
                         }
@@ -923,6 +1000,10 @@ use crate::core::modrinth_modpack;
                     self.toasts
                         .push(Toast::success(format!("{} complete", task.label)));
                     self.current_view = View::Instances;
+
+                    // Re-check modpack updates — if the user used "Change Version"
+                    // to install an older version, the badge should reappear.
+                    self.instances_view.recheck_modpack_updates = true;
                 }
             }
 
@@ -963,6 +1044,16 @@ use crate::core::modrinth_modpack;
             self.modpack_update_check = None;
         }
 
+        // Check for background mod re-download completion
+        let redownload_msg = self
+            .mod_redownload_toast
+            .as_ref()
+            .and_then(|slot| slot.try_lock().ok().and_then(|mut g| g.take()));
+        if let Some(msg) = redownload_msg {
+            self.toasts.push(Toast::success(msg));
+            self.mod_redownload_toast = None;
+        }
+
         // Poll Downloads directory for pending manual downloads (blocked CF mods)
         if !self.pending_manual_downloads.is_empty() {
             let now = Instant::now();
@@ -992,6 +1083,11 @@ use crate::core::modrinth_modpack;
                             });
                             match moved {
                                 Ok(_) => {
+                                    // Cache the manually-downloaded file for future installs.
+                                    crate::core::mod_cache::cache_file(
+                                        &pending.file_name,
+                                        &dst,
+                                    );
                                     self.toasts.push(Toast::success(format!(
                                         "Auto-installed \"{}\"",
                                         pending.display_name
@@ -1040,6 +1136,11 @@ use crate::core::modrinth_modpack;
             self.launch_instance(&id, ctx);
         }
 
+        // Handle "Launch Anyway" from missing-mods dialog (bypasses mod check)
+        if let Some(id) = self.force_launch_requested.take() {
+            self.do_launch_inner(&id, ctx);
+        }
+
         // Handle modpack install requests from instances view
         if let Some(req) = self.instances_view.modpack_browser.install_requested.take() {
             self.install_modpack(
@@ -1077,26 +1178,39 @@ use crate::core::modrinth_modpack;
             self.import_local_cf_modpack(path, ctx);
         }
 
-        if let Some(instance_id) = self.instances_view.update_modpack_requested.take()
-            && let Some(update_info) = self.modpack_updates.get(&instance_id).cloned()
-            && let Some(instance) = self.instances.iter().find(|i| i.id == instance_id)
-        {
-            let title = instance.name.clone();
-            let minecraft_dir = match instance.minecraft_dir() {
-                Ok(d) => d,
-                Err(e) => {
-                    log::warn!("Failed to get minecraft dir for {instance_id}: {e}");
-                    return;
+        if let Some(instance_id) = self.instances_view.update_modpack_requested.take() {
+            if let Some(instance) = self.instances.iter().find(|i| i.id == instance_id) {
+                if let Some(origin) = &instance.modpack_origin {
+                    let name = instance.name.clone();
+                    let source = origin.source.clone();
+                    let project_id = origin.project_id.clone();
+                    let version_id = origin.version_id.clone();
+                    self.instances_view.open_modpack_version_picker(
+                        &instance_id,
+                        &name,
+                        &source,
+                        &project_id,
+                        &version_id,
+                        true,
+                        ctx,
+                    );
                 }
-            };
-            let inst_id = instance_id.clone();
-            self.run_modpack_update(
-                title,
-                inst_id,
-                minecraft_dir,
-                update_info,
-                ctx,
-            );
+            }
+        }
+
+        if let Some((instance_id, update_info)) = self.instances_view.change_modpack_version.take() {
+            if let Some(instance) = self.instances.iter().find(|i| i.id == instance_id) {
+                let title = instance.name.clone();
+                match instance.minecraft_dir() {
+                    Ok(minecraft_dir) => {
+                        let inst_id = instance_id.clone();
+                        self.run_modpack_update(title, inst_id, minecraft_dir, update_info, ctx);
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to get minecraft dir for {instance_id}: {e}");
+                    }
+                }
+            }
         }
 
         if self.instances_view.recheck_modpack_updates {
@@ -1329,6 +1443,204 @@ use crate::core::modrinth_modpack;
                 self.launch_after_java_download = None;
             }
             None => {}
+        }
+    }
+
+    fn show_missing_mods_dialog(&mut self, ctx: &egui::Context, theme: &Option<Theme>) {
+        if self.missing_mods.is_none() {
+            return;
+        }
+
+        let state = self.missing_mods.as_ref().unwrap();
+        let instance_name = state.instance_name.clone();
+        let instance_id = state.instance_id.clone();
+        let missing_files = state.missing_files.clone();
+
+        // Check if any missing mods are downloadable (auto or manual)
+        let any_downloadable = missing_files
+            .iter()
+            .any(|m| m.download_url.is_some() || m.manual);
+
+        let mut launch_anyway = false;
+        let mut cancel = false;
+        let mut download = false;
+
+        egui::Window::new("Missing Mods")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ctx, |ui| {
+                if let Some(t) = theme.as_ref() {
+                    ui.label(t.title(&format!(
+                        "\"{}\" is missing {} mod file{}",
+                        instance_name,
+                        missing_files.len(),
+                        if missing_files.len() == 1 { "" } else { "s" },
+                    )));
+                    ui.add_space(4.0);
+                    ui.label(t.subtext(
+                        "The following mods from the modpack were not found. They may have been \
+                         accidentally deleted.",
+                    ));
+                } else {
+                    ui.strong(format!(
+                        "\"{}\" is missing {} mod file{}",
+                        instance_name,
+                        missing_files.len(),
+                        if missing_files.len() == 1 { "" } else { "s" },
+                    ));
+                    ui.add_space(4.0);
+                    ui.label(
+                        "The following mods from the modpack were not found. They may have been \
+                         accidentally deleted.",
+                    );
+                }
+
+                ui.add_space(8.0);
+
+                egui::ScrollArea::vertical()
+                    .max_height(200.0)
+                    .show(ui, |ui| {
+                        for entry in &missing_files {
+                            let label =
+                                entry.display_name.as_deref().unwrap_or(&entry.name);
+                            if let Some(t) = theme.as_ref() {
+                                ui.label(t.subtext(&format!("  • {label}")));
+                            } else {
+                                ui.label(format!("  • {label}"));
+                            }
+                        }
+                    });
+
+                ui.add_space(8.0);
+                ui.separator();
+                ui.add_space(4.0);
+
+                ui.horizontal(|ui| {
+                    if any_downloadable {
+                        let dl_clicked = if let Some(t) = theme.as_ref() {
+                            ui.add(t.accent_button("Download Missing")).clicked()
+                        } else {
+                            ui.button("Download Missing").clicked()
+                        };
+                        if dl_clicked {
+                            download = true;
+                        }
+                    }
+
+                    let launch_clicked = if let Some(t) = theme.as_ref() {
+                        ui.add(t.danger_button("Launch Anyway")).clicked()
+                    } else {
+                        ui.button("Launch Anyway").clicked()
+                    };
+                    if launch_clicked {
+                        launch_anyway = true;
+                    }
+
+                    if ui.button("Cancel").clicked() {
+                        cancel = true;
+                    }
+                });
+            });
+
+        if download {
+            self.missing_mods = None;
+            if let Some(inst) = self.instances.iter().find(|i| i.id == instance_id) {
+                if let Ok(mc_dir) = inst.minecraft_dir() {
+                    let mods_dir = mc_dir.join("mods");
+
+                    // Separate auto-downloadable from manual (distribution-blocked)
+                    let (auto_mods, manual_mods): (Vec<_>, Vec<_>) = missing_files
+                        .into_iter()
+                        .partition(|m| !m.manual && m.download_url.is_some());
+
+                    // Handle manual/blocked mods — create PendingManualDownload entries
+                    for m in manual_mods {
+                        let url = if let (Some(slug), Some(fid)) =
+                            (m.slug.as_deref(), m.file_id)
+                        {
+                            crate::core::curseforge::curseforge_file_download_url(
+                                slug,
+                                fid,
+                                m.website_url.as_deref(),
+                            )
+                        } else if let Some(u) = m.download_url {
+                            u
+                        } else {
+                            continue;
+                        };
+                        self.pending_manual_downloads.push(PendingManualDownload {
+                            file_name: m.name.clone(),
+                            display_name: m.display_name.unwrap_or_else(|| m.name),
+                            target_dir: mods_dir.clone(),
+                            download_url: url,
+                        });
+                    }
+                    if !self.pending_manual_downloads.is_empty() {
+                        self.show_manual_downloads_dialog = true;
+                    }
+
+                    // Handle auto-downloadable mods in a background thread
+                    if !auto_mods.is_empty() {
+                        let slot: Arc<Mutex<Option<String>>> =
+                            Arc::new(Mutex::new(None));
+                        self.mod_redownload_toast = Some(slot.clone());
+                        let client = self.http_client.clone();
+                        let ctx2 = ctx.clone();
+                        std::thread::spawn(move || {
+                            let mut success = 0usize;
+                            let mut failed = 0usize;
+                            for m in &auto_mods {
+                                if let Some(url) = &m.download_url {
+                                    match client
+                                        .get(url)
+                                        .send()
+                                        .and_then(|r| r.error_for_status())
+                                        .and_then(|r| r.bytes())
+                                    {
+                                        Ok(bytes) => {
+                                            let dest = mods_dir.join(&m.name);
+                                            if std::fs::write(&dest, &bytes).is_ok() {
+                                                crate::core::mod_cache::cache_file(
+                                                    &m.name, &dest,
+                                                );
+                                                success += 1;
+                                            } else {
+                                                failed += 1;
+                                            }
+                                        }
+                                        Err(e) => {
+                                            log::warn!(
+                                                "Failed to download {}: {e}",
+                                                m.name
+                                            );
+                                            failed += 1;
+                                        }
+                                    }
+                                }
+                            }
+                            let msg = if failed == 0 {
+                                format!(
+                                    "Downloaded {success} missing mod{}",
+                                    if success == 1 { "" } else { "s" }
+                                )
+                            } else {
+                                format!(
+                                    "Downloaded {success} mod{}, {failed} failed",
+                                    if success == 1 { "" } else { "s" }
+                                )
+                            };
+                            *slot.lock().unwrap() = Some(msg);
+                            ctx2.request_repaint();
+                        });
+                    }
+                }
+            }
+        } else if launch_anyway {
+            self.missing_mods = None;
+            self.force_launch_requested = Some(instance_id);
+        } else if cancel {
+            self.missing_mods = None;
         }
     }
 
@@ -1570,14 +1882,14 @@ use crate::core::modrinth_modpack;
             };
 
             match result {
-                Ok(()) => {
+                Ok(meta) => {
                     let new_origin = crate::core::instance::ModpackOrigin {
                         source: source.clone(),
                         project_id,
                         version_id,
                         version_name,
                     };
-                    *slot_clone.lock().unwrap() = Some((instance_id, new_origin));
+                    *slot_clone.lock().unwrap() = Some((instance_id, new_origin, meta));
                     let mut p = progress_clone.lock().unwrap();
                     p.message = "Modpack updated successfully!".to_string();
                     p.done = true;
@@ -1653,6 +1965,8 @@ impl eframe::App for App {
             } else if self.java_prompt.is_some() {
                 self.java_prompt = None;
                 self.launch_after_java_download = None;
+            } else if self.missing_mods.is_some() {
+                self.missing_mods = None;
             } else if self.instances_view.has_detail_view() {
                 self.instances_view.close_detail_view();
             }
@@ -1795,6 +2109,7 @@ impl eframe::App for App {
 
         self.handle_view_requests(&ctx);
         self.show_java_prompt(&ctx, &theme);
+        self.show_missing_mods_dialog(&ctx, &theme);
         self.show_manual_downloads_dialog(&ctx, &theme);
 
         // Toast overlay — floating notifications in bottom-right corner

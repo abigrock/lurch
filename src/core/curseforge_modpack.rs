@@ -213,17 +213,37 @@ pub fn install_cf_modpack_files(
         let distribution_blocked =
             cf_file.download_url.is_none() || distribution_map.get(&mf.project_id) == Some(&false);
         if distribution_blocked {
-            log::warn!(
-                "Mod \"{}\" does not allow 3rd-party distribution — user must download manually",
-                cf_file.display_name
-            );
-            skipped_mods.push(SkippedMod {
-                file_name: cf_file.file_name.clone(),
-                display_name: cf_file.display_name.clone(),
-                file_id: mf.file_id,
-                slug: slug_map.get(&mf.project_id).cloned().unwrap_or_default(),
-                website_url: website_url_map.get(&mf.project_id).cloned().flatten(),
-            });
+            // Try to resolve from local cache / Downloads before requiring manual download.
+            let dest_dir = match class_map.get(&cf_file.mod_id).copied() {
+                Some(curseforge::CLASS_RESOURCE_PACKS) => &resourcepacks_dir,
+                Some(curseforge::CLASS_SHADERS) => &shaderpacks_dir,
+                _ => &mods_dir,
+            };
+            let dest = dest_dir.join(&cf_file.file_name);
+            let sha1 = cf_file
+                .hashes
+                .iter()
+                .find(|h| h.algo == 1)
+                .map(|h| h.value.as_str());
+            if crate::core::mod_cache::resolve_from_cache(&cf_file.file_name, sha1, &dest) {
+                log::info!(
+                    "Mod \"{}\" resolved from cache (distribution-blocked but locally available)",
+                    cf_file.display_name
+                );
+                downloadable.push(cf_file);
+            } else {
+                log::warn!(
+                    "Mod \"{}\" does not allow 3rd-party distribution — user must download manually",
+                    cf_file.display_name
+                );
+                skipped_mods.push(SkippedMod {
+                    file_name: cf_file.file_name.clone(),
+                    display_name: cf_file.display_name.clone(),
+                    file_id: mf.file_id,
+                    slug: slug_map.get(&mf.project_id).cloned().unwrap_or_default(),
+                    website_url: website_url_map.get(&mf.project_id).cloned().flatten(),
+                });
+            }
         } else {
             downloadable.push(cf_file);
         }
@@ -272,34 +292,32 @@ pub fn install_cf_modpack_files(
                             };
                             let dest = dest_dir.join(&cf_file.file_name);
 
+                            let sha1 = cf_file
+                                .hashes
+                                .iter()
+                                .find(|h| h.algo == 1)
+                                .map(|h| h.value.as_str());
                             let url = cf_file.download_url.as_ref().unwrap();
-                            let resp = client.get(url).send().with_context(|| {
-                                format!("Failed to download {}", cf_file.file_name)
-                            })?;
 
-                            if !resp.status().is_success() {
-                                anyhow::bail!(
-                                    "HTTP {} downloading {}",
-                                    resp.status(),
-                                    cf_file.file_name
-                                );
-                            }
+                            crate::core::mod_cache::resolve_or_download(
+                                &cf_file.file_name,
+                                sha1,
+                                &dest,
+                                || {
+                                    let resp = client.get(url).send().with_context(|| {
+                                        format!("Failed to download {}", cf_file.file_name)
+                                    })?;
+                                    if !resp.status().is_success() {
+                                        anyhow::bail!(
+                                            "HTTP {} downloading {}",
+                                            resp.status(),
+                                            cf_file.file_name
+                                        );
+                                    }
+                                    Ok(resp.bytes()?.to_vec())
+                                },
+                            )?;
 
-                            let bytes = resp.bytes()?;
-
-                            // Verify SHA1 if available
-                            if let Some(hash) = cf_file.hashes.iter().find(|h| h.algo == 1) {
-                                let actual = crate::core::sha1_hex(&bytes);
-                                if actual != hash.value {
-                                    anyhow::bail!(
-                                        "SHA1 mismatch for {}: expected {}, got {actual}",
-                                        cf_file.file_name,
-                                        hash.value
-                                    );
-                                }
-                            }
-
-                            std::fs::write(&dest, &bytes)?;
                             let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
                             progress(done, download_total, download_msg);
                         }
@@ -318,6 +336,43 @@ pub fn install_cf_modpack_files(
                 Ok(())
             }
         })?;
+    }
+
+    // Persist list of modpack mod filenames for pre-launch integrity check.
+    // Include both successfully downloaded mods and skipped (distribution-blocked) mods.
+    let mod_entries: Vec<crate::core::ModpackModEntry> = downloadable
+        .iter()
+        .filter(|f| {
+            // Only include files routed to the mods directory (not resourcepacks/shaderpacks)
+            match class_map.get(&f.mod_id).copied() {
+                Some(curseforge::CLASS_RESOURCE_PACKS) | Some(curseforge::CLASS_SHADERS) => false,
+                _ => true,
+            }
+        })
+        .map(|f| crate::core::ModpackModEntry {
+            name: f.file_name.clone(),
+            download_url: f.download_url.clone(),
+            display_name: Some(f.display_name.clone()),
+            manual: false,
+            slug: None,
+            file_id: None,
+            website_url: None,
+        })
+        .chain(skipped_mods.iter().map(|s| crate::core::ModpackModEntry {
+            name: s.file_name.clone(),
+            download_url: None,
+            display_name: Some(s.display_name.clone()),
+            manual: true,
+            slug: Some(s.slug.clone()),
+            file_id: Some(s.file_id),
+            website_url: s.website_url.clone(),
+        }))
+        .collect();
+    if !mod_entries.is_empty() {
+        let manifest_path = minecraft_dir.join(".modpack_mods.json");
+        if let Ok(json) = serde_json::to_string_pretty(&mod_entries) {
+            let _ = std::fs::write(&manifest_path, json);
+        }
     }
 
     // Step 4: Extract overrides (snapshot servers.dat first for merge)
@@ -351,7 +406,7 @@ pub fn update_curseforge_modpack(
     progress: &Arc<Mutex<LaunchProgress>>,
     ctx: &egui::Context,
     skipped_slot: &Arc<Mutex<Vec<SkippedMod>>>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<crate::core::update::UpdatedModpackMeta> {
     let mod_id: u64 = project_id
         .parse()
         .map_err(|_| anyhow::anyhow!("Invalid CurseForge mod_id"))?;
@@ -404,6 +459,33 @@ pub fn update_curseforge_modpack(
 
     let manifest = parse_cf_modpack(&zip_path)?;
 
+    let mc_ver = manifest.minecraft.version.clone();
+    let (loader, loader_ver) = manifest
+        .minecraft
+        .mod_loaders
+        .iter()
+        .find(|ml| ml.primary)
+        .or(manifest.minecraft.mod_loaders.first())
+        .map(|ml| parse_loader_id(&ml.id))
+        .unwrap_or((ModLoader::Vanilla, None));
+
+    // Snapshot old modpack mod list so we can remove stale mods after install.
+    let old_mod_names: std::collections::HashSet<String> = {
+        let manifest_path = minecraft_dir.join(".modpack_mods.json");
+        if let Ok(data) = std::fs::read_to_string(&manifest_path) {
+            // Try enriched format first, fall back to legacy Vec<String>
+            if let Ok(entries) = serde_json::from_str::<Vec<crate::core::ModpackModEntry>>(&data) {
+                entries.into_iter().map(|e| e.name).collect()
+            } else if let Ok(names) = serde_json::from_str::<Vec<String>>(&data) {
+                names.into_iter().collect()
+            } else {
+                std::collections::HashSet::new()
+            }
+        } else {
+            std::collections::HashSet::new()
+        }
+    };
+
     let progress_for_files = Arc::clone(progress);
     let ctx_for_files = ctx.clone();
     let skipped_mods = install_cf_modpack_files(
@@ -422,10 +504,38 @@ pub fn update_curseforge_modpack(
         },
     )?;
 
+    // Remove stale mods that were in the old version but not in the new one.
+    {
+        let manifest_path = minecraft_dir.join(".modpack_mods.json");
+        let new_mod_names: std::collections::HashSet<String> = if let Ok(data) =
+            std::fs::read_to_string(&manifest_path)
+        {
+            if let Ok(entries) = serde_json::from_str::<Vec<crate::core::ModpackModEntry>>(&data) {
+                entries.into_iter().map(|e| e.name).collect()
+            } else {
+                std::collections::HashSet::new()
+            }
+        } else {
+            std::collections::HashSet::new()
+        };
+        let mods_dir = minecraft_dir.join("mods");
+        for stale in old_mod_names.difference(&new_mod_names) {
+            let path = mods_dir.join(stale);
+            if path.exists() {
+                log::info!("Removing stale mod: {}", stale);
+                let _ = std::fs::remove_file(&path);
+            }
+        }
+    }
+
     *skipped_slot.lock().unwrap() = skipped_mods;
 
     let _ = std::fs::remove_dir_all(&temp_dir);
-    Ok(())
+    Ok(crate::core::update::UpdatedModpackMeta {
+        mc_version: mc_ver,
+        loader,
+        loader_version: loader_ver,
+    })
 }
 
 /// When a CurseForge file blocks third-party distribution, open its page in
@@ -473,6 +583,9 @@ pub fn wait_for_cf_manual_download(
         std::fs::copy(&expected, &dest)?;
         let _ = std::fs::remove_file(&expected);
     }
+
+    // Cache the manually-downloaded file so future installs can resolve it locally.
+    crate::core::mod_cache::cache_file(&file.file_name, &dest);
 
     Ok(dest)
 }
