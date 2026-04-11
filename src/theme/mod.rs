@@ -282,6 +282,22 @@ impl Theme {
         .corner_radius(CornerRadius::same(6))
     }
 
+    /// Menu item — themed text, transparent at rest, visible hover
+    pub fn menu_item(&self, label: &str) -> Button<'static> {
+        Button::new(
+            RichText::new(label.to_string())
+                .color(self.color("fg_dim"))
+                .strong(),
+        )
+    }
+
+    /// Apply menu styling to a popup Ui — items transparent at rest, themed hover
+    pub fn style_menu(&self, ui: &mut egui::Ui) {
+        ui.visuals_mut().widgets.inactive.bg_fill = Color32::TRANSPARENT;
+        ui.visuals_mut().widgets.inactive.bg_stroke = Stroke::NONE;
+        ui.visuals_mut().widgets.hovered.bg_fill = self.color("surface_hover");
+    }
+
     /// Monospace font for console/code
     pub fn mono_font() -> FontId {
         FontId::monospace(12.0)

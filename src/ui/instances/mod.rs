@@ -756,68 +756,65 @@ impl InstancesView {
                     ui.with_layout(
                         egui::Layout::right_to_left(egui::Align::Center),
                         |ui| {
-                            let more_btn = ui
-                                .add(
-                                    egui::Button::new(egui_phosphor::regular::DOTS_THREE)
-                                        .min_size(egui::vec2(32.0, 32.0)),
-                                )
-                                .on_hover_text("More actions");
+                            let more_btn = if let Some(t) = self.theme.as_ref() {
+                                ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)))
+                            } else {
+                                ui.add(egui::Button::new(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)))
+                            };
+                            let more_btn = more_btn.on_hover_text("More actions");
                             egui::Popup::menu(&more_btn).show(|ui| {
                                 ui.set_min_width(140.0);
-                                if ui
-                                    .add(egui::Button::new(format!(
-                                        "{} Manage",
-                                        egui_phosphor::regular::WRENCH
-                                    )))
-                                    .clicked()
+                                if let Some(t) = self.theme.as_ref() {
+                                    t.style_menu(ui);
+                                }
+                                if if let Some(t) = self.theme.as_ref() {
+                                    ui.add(t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH)))
+                                } else {
+                                    ui.add(egui::Button::new(format!("{} Manage", egui_phosphor::regular::WRENCH)).frame(false))
+                                }.clicked()
                                 {
                                     self.detail_view =
                                         Some(detail::InstanceDetailView::new(inst_id.clone()));
                                 }
-                                if ui
-                                    .add_enabled(!is_running, egui::Button::new(format!(
-                                        "{} Rename",
-                                        egui_phosphor::regular::PENCIL
-                                    )))
-                                    .clicked()
+                                if if let Some(t) = self.theme.as_ref() {
+                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Rename", egui_phosphor::regular::PENCIL)))
+                                } else {
+                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Rename", egui_phosphor::regular::PENCIL)).frame(false))
+                                }.clicked()
                                 {
                                     self.renaming = Some(inst_id.clone());
                                     self.rename_text = instances[idx].name.clone();
                                 }
-                                if ui
-                                    .add_enabled(!is_running, egui::Button::new(format!(
-                                        "{} Configure",
-                                        egui_phosphor::regular::GEAR_SIX
-                                    )))
-                                    .clicked()
+                                if if let Some(t) = self.theme.as_ref() {
+                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Configure", egui_phosphor::regular::GEAR_SIX)))
+                                } else {
+                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Configure", egui_phosphor::regular::GEAR_SIX)).frame(false))
+                                }.clicked()
                                 {
                                     self.editing = Some(inst_id.clone());
                                 }
-                                if ui
-                                    .button(format!(
-                                        "{} Open Folder",
-                                        egui_phosphor::regular::FOLDER
-                                    ))
-                                    .clicked()
+                                if if let Some(t) = self.theme.as_ref() {
+                                    ui.add(t.menu_item(&format!("{} Open Folder", egui_phosphor::regular::FOLDER)))
+                                } else {
+                                    ui.add(egui::Button::new(format!("{} Open Folder", egui_phosphor::regular::FOLDER)).frame(false))
+                                }.clicked()
                                     && let Ok(dir) = instances[idx].instance_dir()
                                 {
                                     let _ = open::that(dir);
                                 }
-                                if ui
-                                    .add_enabled(!is_running, egui::Button::new(format!(
-                                        "{} Duplicate",
-                                        egui_phosphor::regular::CLIPBOARD
-                                    )))
-                                    .clicked()
+                                if if let Some(t) = self.theme.as_ref() {
+                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD)))
+                                } else {
+                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD)).frame(false))
+                                }.clicked()
                                 {
                                     *to_duplicate = Some(idx);
                                 }
-                                if ui
-                                    .add_enabled(!is_running, egui::Button::new(format!(
-                                        "{} Export",
-                                        egui_phosphor::regular::EXPORT
-                                    )))
-                                    .clicked()
+                                if if let Some(t) = self.theme.as_ref() {
+                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Export", egui_phosphor::regular::EXPORT)))
+                                } else {
+                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Export", egui_phosphor::regular::EXPORT)).frame(false))
+                                }.clicked()
                                 {
                                     self.export_requested = Some(idx);
                                 }
@@ -827,21 +824,21 @@ impl InstancesView {
                                         "curseforge" => "CurseForge",
                                         _ => "source",
                                     };
-                                    if ui
-                                        .button(format!(
-                                            "{} Open on {source_name}",
-                                            egui_phosphor::regular::GLOBE
-                                        ))
-                                        .clicked()
+                                    if if let Some(t) = self.theme.as_ref() {
+                                        ui.add(t.menu_item(&format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE)))
+                                    } else {
+                                        ui.add(egui::Button::new(format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE)).frame(false))
+                                    }.clicked()
                                     {
                                         if let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
                                             let _ = open::that(&url);
                                         }
                                     }
-                                    if ui.add_enabled(!is_running, egui::Button::new(format!(
-                                        "{} Change Version",
-                                        egui_phosphor::regular::ARROWS_DOWN_UP
-                                    ))).clicked() {
+                                    if if let Some(t) = self.theme.as_ref() {
+                                        ui.add_enabled(!is_running, t.menu_item(&format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP)))
+                                    } else {
+                                        ui.add_enabled(!is_running, egui::Button::new(format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP)).frame(false))
+                                    }.clicked() {
                                         self.open_modpack_version_picker(
                                             &inst.id,
                                             &inst.name,
@@ -1056,69 +1053,66 @@ impl InstancesView {
                                 self.launch_requested = Some(inst_id.clone());
                             }
                         }
-                        let more_btn = ui
-                            .add(
-                                egui::Button::new(egui_phosphor::regular::DOTS_THREE)
-                                    .min_size(egui::vec2(32.0, 32.0)),
-                            )
-                            .on_hover_text("More actions");
+                        let more_btn = if let Some(t) = self.theme.as_ref() {
+                            ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)))
+                        } else {
+                            ui.add(egui::Button::new(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)))
+                        };
+                        let more_btn = more_btn.on_hover_text("More actions");
                         egui::Popup::menu(&more_btn).show(|ui| {
                             ui.set_min_width(140.0);
-                            if ui
-                                .add(egui::Button::new(format!(
-                                    "{} Manage",
-                                    egui_phosphor::regular::WRENCH
-                                )))
-                                .clicked()
+                            if let Some(t) = self.theme.as_ref() {
+                                t.style_menu(ui);
+                            }
+                            if if let Some(t) = self.theme.as_ref() {
+                                ui.add(t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH)))
+                            } else {
+                                ui.add(egui::Button::new(format!("{} Manage", egui_phosphor::regular::WRENCH)).frame(false))
+                            }.clicked()
                             {
                                 self.detail_view = Some(
                                     detail::InstanceDetailView::new(inst_id.clone()),
                                 );
                             }
-                            if ui
-                                .add_enabled(!is_running, egui::Button::new(format!(
-                                    "{} Rename",
-                                    egui_phosphor::regular::PENCIL
-                                )))
-                                .clicked()
+                            if if let Some(t) = self.theme.as_ref() {
+                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Rename", egui_phosphor::regular::PENCIL)))
+                            } else {
+                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Rename", egui_phosphor::regular::PENCIL)).frame(false))
+                            }.clicked()
                             {
                                 self.renaming = Some(inst_id.clone());
                                 *rename_cell.borrow_mut() = instances[idx].name.clone();
                             }
-                            if ui
-                                .add_enabled(!is_running, egui::Button::new(format!(
-                                    "{} Configure",
-                                    egui_phosphor::regular::GEAR_SIX
-                                )))
-                                .clicked()
+                            if if let Some(t) = self.theme.as_ref() {
+                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Configure", egui_phosphor::regular::GEAR_SIX)))
+                            } else {
+                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Configure", egui_phosphor::regular::GEAR_SIX)).frame(false))
+                            }.clicked()
                             {
                                 self.editing = Some(inst_id.clone());
                             }
-                            if ui
-                                .button(format!(
-                                    "{} Open Folder",
-                                    egui_phosphor::regular::FOLDER
-                                ))
-                                .clicked()
+                            if if let Some(t) = self.theme.as_ref() {
+                                ui.add(t.menu_item(&format!("{} Open Folder", egui_phosphor::regular::FOLDER)))
+                            } else {
+                                ui.add(egui::Button::new(format!("{} Open Folder", egui_phosphor::regular::FOLDER)).frame(false))
+                            }.clicked()
                                 && let Ok(dir) = instances[idx].instance_dir()
                             {
                                 let _ = open::that(dir);
                             }
-                            if ui
-                                .add_enabled(!is_running, egui::Button::new(format!(
-                                    "{} Duplicate",
-                                    egui_phosphor::regular::CLIPBOARD
-                                )))
-                                .clicked()
+                            if if let Some(t) = self.theme.as_ref() {
+                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD)))
+                            } else {
+                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD)).frame(false))
+                            }.clicked()
                             {
                                 *to_duplicate = Some(idx);
                             }
-                            if ui
-                                .add_enabled(!is_running, egui::Button::new(format!(
-                                    "{} Export",
-                                    egui_phosphor::regular::EXPORT
-                                )))
-                                .clicked()
+                            if if let Some(t) = self.theme.as_ref() {
+                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Export", egui_phosphor::regular::EXPORT)))
+                            } else {
+                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Export", egui_phosphor::regular::EXPORT)).frame(false))
+                            }.clicked()
                             {
                                 self.export_requested = Some(idx);
                             }
@@ -1128,21 +1122,21 @@ impl InstancesView {
                                     "curseforge" => "CurseForge",
                                     _ => "source",
                                 };
-                                if ui
-                                    .button(format!(
-                                        "{} Open on {source_name}",
-                                        egui_phosphor::regular::GLOBE
-                                    ))
-                                    .clicked()
+                                if if let Some(t) = self.theme.as_ref() {
+                                    ui.add(t.menu_item(&format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE)))
+                                } else {
+                                    ui.add(egui::Button::new(format!("{} Open on {source_name}", egui_phosphor::regular::GLOBE)).frame(false))
+                                }.clicked()
                                 {
                                     if let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
                                         let _ = open::that(&url);
                                     }
                                 }
-                                if ui.add_enabled(!is_running, egui::Button::new(format!(
-                                    "{} Change Version",
-                                    egui_phosphor::regular::ARROWS_DOWN_UP
-                                ))).clicked() {
+                                if if let Some(t) = self.theme.as_ref() {
+                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP)))
+                                } else {
+                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Change Version", egui_phosphor::regular::ARROWS_DOWN_UP)).frame(false))
+                                }.clicked() {
                                     open_version_picker_req = Some((
                                         inst.id.clone(),
                                         inst.name.clone(),

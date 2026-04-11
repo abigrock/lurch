@@ -49,31 +49,7 @@ impl InstanceDetailView {
                 (ModsSubTab::BrowseCurseForge, "Browse CurseForge"),
                 (ModsSubTab::BrowseModrinth, "Browse Modrinth"),
             ] {
-                if let Some(t) = theme {
-                    let active = self.mods_sub_tab == tab;
-                    let btn = egui::Button::new(
-                        egui::RichText::new(label)
-                            .color(if active {
-                                t.color("accent")
-                            } else {
-                                t.color("fg_dim")
-                            })
-                            .small(),
-                    )
-                    .fill(if active {
-                        t.color("surface_active")
-                    } else {
-                        egui::Color32::TRANSPARENT
-                    })
-                    .corner_radius(egui::CornerRadius::same(4))
-                    .min_size(egui::vec2(0.0, 26.0));
-                    if ui.add(btn).clicked() {
-                        self.mods_sub_tab = tab;
-                    }
-                } else if ui
-                    .selectable_label(self.mods_sub_tab == tab, label)
-                    .clicked()
-                {
+                if crate::ui::helpers::tab_button(ui, label, self.mods_sub_tab == tab, theme) {
                     self.mods_sub_tab = tab;
                 }
             }
