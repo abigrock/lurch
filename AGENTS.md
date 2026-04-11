@@ -15,7 +15,7 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 
 - **Language**: Rust (edition 2024)
 - **GUI**: eframe/egui (immediate mode)
-- **Entry**: `src/main.rs` → `src/app.rs` (central `App` struct, ~1980 LOC)
+- **Entry**: `src/main.rs` → `src/app.rs` (central `App` struct, ~2300 LOC)
 - **Pattern**: Background threads + `Arc<Mutex<T>>` polling, UI request flags → App dispatch
 - **Total**: ~15k LOC core/UI, ~8.4k LOC in UI layer, ~6.0k LOC in `core/` business logic
 
@@ -30,6 +30,8 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 - JSON persistence for config, instances, accounts in platform directories (`src/util/paths.rs`)
 - Mod loaders: Vanilla, Forge, NeoForge, Fabric, Quilt — profiles merged in `src/core/loader_profiles.rs`
 - **Image loading** — uses egui's built-in loaders (`egui_extras::install_image_loaders` in `main.rs`, `all_loaders` feature). Display with `egui::Image::new(url).fit_to_exact_size(size)`. No custom image cache.
+- **Missing mod detection** — modpack installs write `.modpack_mods.json` (JSON array of `ModpackModEntry` structs with name, download_url, manual flag, slug, file_id, website_url) into `<minecraft_dir>/`. Pre-launch check in `do_launch()` reads this file, verifies each mod exists in `mods/`, and shows `MissingModsState` dialog if any are missing. Dialog offers "Download Missing" (auto-downloads + manual download flow for blocked mods), "Launch Anyway" (bypasses via `force_launch_requested`), or "Cancel". Backward-compatible with legacy `Vec<String>` format.
+- **Modpack updates** — clicking "Update available" badge opens the version picker (pre-selects latest) instead of auto-updating. Updates propagate `mc_version`, `loader`, and `loader_version` to the instance via `UpdatedModpackMeta`. Stale mods (present in old `.modpack_mods.json` but absent from the new version) are automatically removed from `mods/` during version changes.
 
 ### Theme & Styling
 - Theme engine in `src/theme/mod.rs` — 33 bundled themes + user JSON themes
