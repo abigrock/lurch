@@ -785,9 +785,9 @@ impl InstancesView {
                                     t.style_menu(ui);
                                 }
                                 if if let Some(t) = self.theme.as_ref() {
-                                    ui.add(t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH)))
+                                    ui.add_enabled(!is_running, t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH)))
                                 } else {
-                                    ui.add(egui::Button::new(format!("{} Manage", egui_phosphor::regular::WRENCH)).frame(false))
+                                    ui.add_enabled(!is_running, egui::Button::new(format!("{} Manage", egui_phosphor::regular::WRENCH)).frame(false))
                                 }.clicked()
                                 {
                                     self.detail_view =
@@ -900,11 +900,10 @@ impl InstancesView {
 
                             if !is_running {
                                 let launch_clicked = if let Some(t) = self.theme.as_ref() {
-                                    ui.add(t.accent_button("▶"))
-                                        .on_hover_text("Launch")
+                                    ui.add(t.accent_button("▶ Launch"))
                                         .clicked()
                                 } else {
-                                    ui.button("▶").on_hover_text("Launch").clicked()
+                                    ui.button("▶ Launch").clicked()
                                 };
                                 if launch_clicked {
                                     self.launch_requested = Some(inst_id.clone());
@@ -1133,9 +1132,9 @@ impl InstancesView {
                                 t.style_menu(ui);
                             }
                             if if let Some(t) = self.theme.as_ref() {
-                                ui.add(t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH)))
+                                ui.add_enabled(!is_running, t.menu_item(&format!("{} Manage", egui_phosphor::regular::WRENCH)))
                             } else {
-                                ui.add(egui::Button::new(format!("{} Manage", egui_phosphor::regular::WRENCH)).frame(false))
+                                ui.add_enabled(!is_running, egui::Button::new(format!("{} Manage", egui_phosphor::regular::WRENCH)).frame(false))
                             }.clicked()
                             {
                                 self.detail_view = Some(
