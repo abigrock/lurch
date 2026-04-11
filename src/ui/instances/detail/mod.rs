@@ -167,6 +167,7 @@ impl InstanceDetailView {
             if ui.add(theme.ghost_button(egui_phosphor::regular::ARROW_LEFT)).clicked() {
                 self.back_requested = true;
             }
+            ui.separator();
             let version_info = if instance.loader != crate::core::instance::ModLoader::Vanilla {
                 format!("{} · {}", instance.mc_version, instance.loader)
             } else {
