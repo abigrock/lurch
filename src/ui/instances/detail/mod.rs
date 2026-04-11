@@ -167,6 +167,12 @@ impl InstanceDetailView {
             if ui.add(theme.ghost_button(egui_phosphor::regular::ARROW_LEFT)).clicked() {
                 self.back_requested = true;
             }
+            let version_info = if instance.loader != crate::core::instance::ModLoader::Vanilla {
+                format!("{} · {}", instance.mc_version, instance.loader)
+            } else {
+                instance.mc_version.clone()
+            };
+            // Icon + name/version on the left for all instances
             let icon_size = 40.0;
             if let Some(url) = &instance.icon {
                 ui.add(egui::Image::new(url).fit_to_exact_size(egui::vec2(icon_size, icon_size)).corner_radius(6));
@@ -175,11 +181,6 @@ impl InstanceDetailView {
             }
             ui.vertical(|ui| {
                 ui.add(egui::Label::new(crate::ui::helpers::section_heading(&instance.name, theme)).truncate());
-                let version_info = if instance.loader != crate::core::instance::ModLoader::Vanilla {
-                    format!("{} — {}", instance.mc_version, instance.loader)
-                } else {
-                    instance.mc_version.clone()
-                };
                 ui.add(egui::Label::new(theme.subtext(&version_info)).truncate());
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

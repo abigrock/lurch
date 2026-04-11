@@ -56,7 +56,7 @@ impl InstancesView {
         }
 
         let mut open = true;
-        egui::Window::new(format!("Configure — {}", inst.name))
+        egui::Window::new(format!("Configure: {}", inst.name))
             .id(egui::Id::new(format!("edit_dialog_{}", inst.id)))
             .collapsible(false)
             .resizable(true)
@@ -309,11 +309,11 @@ impl InstancesView {
                                 .map(|j| {
                                     if j.managed {
                                         format!(
-                                            "Java {} — {} · {} (Lurch)",
+                                            "Java {} · {} · {} (Lurch)",
                                             j.major, j.version, j.vendor
                                         )
                                     } else {
-                                        format!("Java {} — {} · {}", j.major, j.version, j.vendor)
+                                        format!("Java {} · {} · {}", j.major, j.version, j.vendor)
                                     }
                                 })
                                 .unwrap_or_else(|| {
@@ -341,11 +341,11 @@ impl InstancesView {
                                 for j in java_installs {
                                     let label = if j.managed {
                                         format!(
-                                            "Java {} — {} · {} (Lurch)",
+                                            "Java {} · {} · {} (Lurch)",
                                             j.major, j.version, j.vendor
                                         )
                                     } else {
-                                        format!("Java {} — {} · {}", j.major, j.version, j.vendor)
+                                        format!("Java {} · {} · {}", j.major, j.version, j.vendor)
                                     };
                                     let provider = if j.managed {
                                         format!("{} (Lurch)", j.vendor)

@@ -1,5 +1,5 @@
-use crate::core::curseforge;
 use super::MutexExt;
+use crate::core::curseforge;
 use crate::core::instance::{Instance, ModLoader};
 use anyhow::Context;
 use eframe::egui;
@@ -234,7 +234,7 @@ pub fn install_cf_modpack_files(
                 downloadable.push(cf_file);
             } else {
                 log::warn!(
-                    "Mod \"{}\" does not allow 3rd-party distribution — user must download manually",
+                    "Mod \"{}\" does not allow 3rd-party distribution. User must download manually",
                     cf_file.display_name
                 );
                 skipped_mods.push(SkippedMod {
@@ -255,7 +255,7 @@ pub fn install_cf_modpack_files(
         "Downloading modpack files...".to_string()
     } else {
         format!(
-            "Downloading files ({} skipped — blocked)...",
+            "Downloading files ({} skipped, blocked)...",
             skipped_mods.len()
         )
     };

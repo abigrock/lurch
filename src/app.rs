@@ -918,7 +918,7 @@ use crate::core::modrinth_modpack;
                                 }
                             }
                             self.toasts.push(Toast::error(format!(
-                                "{} mod(s) need manual download — watching your Downloads folder",
+                                "{} mod(s) need manual download. Watching your Downloads folder",
                                 skipped.len()
                             )));
                             self.show_manual_downloads_dialog = true;
@@ -985,7 +985,7 @@ use crate::core::modrinth_modpack;
                                 }
                             }
                             self.toasts.push(Toast::error(format!(
-                                "{} mod(s) need manual download — watching your Downloads folder",
+                                "{} mod(s) need manual download. Watching your Downloads folder",
                                 skipped.len()
                             )));
                             self.show_manual_downloads_dialog = true;
@@ -1297,9 +1297,9 @@ use crate::core::modrinth_modpack;
             .iter()
             .map(|j| {
                 let label = if j.managed {
-                    format!("Java {} — {} (Lurch)", j.major, j.version)
+                    format!("Java {} · {} (Lurch)", j.major, j.version)
                 } else {
-                    format!("Java {} — {} (system)", j.major, j.version)
+                    format!("Java {} · {} (system)", j.major, j.version)
                 };
                 (label, j.path.clone(), j.major)
             })

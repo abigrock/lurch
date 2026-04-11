@@ -1249,7 +1249,7 @@ impl InstancesView {
         let title = self.modpack_version_picker.as_ref().unwrap().instance_name.clone();
         let theme = self.theme.clone();
 
-        egui::Window::new(format!("Change Version — \"{}\"", title))
+        egui::Window::new(format!("Change Version: \"{}\"", title))
             .collapsible(false)
             .resizable(true)
             .default_size([500.0, 420.0])
