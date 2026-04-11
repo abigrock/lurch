@@ -23,6 +23,20 @@ cd lurch
 cargo run --release
 ```
 
+## Setup
+
+### CurseForge API Key
+
+CurseForge browsing and downloads require an API key. To get one:
+
+1. Go to [console.curseforge.com](https://console.curseforge.com/) and create a free account
+2. Create a new API key
+3. In Lurch, go to **Settings** and paste your key into the CurseForge API Key field
+
+Without a key, Modrinth content will still work but CurseForge features will be unavailable.
+
+> **Note:** This is a temporary requirement until a bundled API key is set up.
+
 ## Development
 
 This project is built with significant AI assistance. The architecture, implementation decisions, and code were developed collaboratively with AI tools. Contributions and feedback are welcome regardless — the code is the code.
