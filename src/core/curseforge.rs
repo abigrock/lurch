@@ -5,8 +5,7 @@ use crate::core::instance::ModLoader;
 const CF_BASE: &str = "https://api.curseforge.com";
 const CF_GAME_ID: u32 = 432; // Minecraft
 
-// Placeholder — supply your own CurseForge API key in Settings, or replace this constant.
-const DEFAULT_API_KEY: &str = "REPLACE_WITH_YOUR_CURSEFORGE_API_KEY";
+const DEFAULT_API_KEY: &str = "$2a$10$Mhu4zbPkshnx7LAEogEL3.rx8Quzgf4tIfOehqPaV5vZQbfP02EHC";
 
 pub const CLASS_MODS: u32 = 6;
 pub const CLASS_RESOURCE_PACKS: u32 = 12;
