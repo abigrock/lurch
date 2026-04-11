@@ -94,7 +94,7 @@ impl AccountsView {
                                     ui.label(
                                         egui::RichText::new("Active")
                                             .small()
-                                            .color(egui::Color32::GREEN),
+                                            .color(egui::Color32::from_rgb(76, 175, 80)),
                                     );
                                 }
                             } else if let Some(t) = theme {

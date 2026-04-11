@@ -174,7 +174,7 @@ impl Theme {
     /// Pick a foreground color that contrasts well on accent-colored fills.
     /// Dark themes have pastel accents → use dark `bg_tertiary` text.
     /// Light themes have saturated accents → use light `bg` text.
-    fn button_fg(&self) -> Color32 {
+    pub fn button_fg(&self) -> Color32 {
         let bg = self.color("bg");
         let [r, g, b, _] = bg.to_array();
         let lum = r as f32 * 0.299 + g as f32 * 0.587 + b as f32 * 0.114;
@@ -296,6 +296,16 @@ impl Theme {
         ui.visuals_mut().widgets.inactive.bg_fill = Color32::TRANSPARENT;
         ui.visuals_mut().widgets.inactive.bg_stroke = Stroke::NONE;
         ui.visuals_mut().widgets.hovered.bg_fill = self.color("surface_hover");
+    }
+
+    /// Pill badge frame — standard margin, corner radius, and fill.
+    /// Use `button_fg()` for text on accent-colored fills,
+    /// or `color("fg_dim")` for text on neutral surface fills.
+    pub fn badge_frame(&self, fill: Color32) -> Frame {
+        Frame::new()
+            .fill(fill)
+            .corner_radius(CornerRadius::same(4))
+            .inner_margin(Margin::symmetric(6, 2))
     }
 
     /// Monospace font for console/code

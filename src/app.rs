@@ -1493,7 +1493,7 @@ use crate::core::modrinth_modpack;
                 ui.add_space(8.0);
 
                 egui::ScrollArea::vertical()
-                    .max_height(200.0)
+                    .max_height(300.0)
                     .show(ui, |ui| {
                         for entry in &missing_files {
                             let label =

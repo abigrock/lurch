@@ -346,7 +346,7 @@ impl InstanceDetailView {
                 if count > 0 {
                     let (fill, text_color) = if let Some(t) = theme {
                         if active {
-                            (t.color("accent"), egui::Color32::WHITE)
+                            (t.color("accent"), t.button_fg())
                         } else {
                             (t.color("surface"), t.color("fg_dim"))
                         }
@@ -356,7 +356,7 @@ impl InstanceDetailView {
                     egui::Frame::new()
                         .fill(fill)
                         .corner_radius(10.0)
-                        .inner_margin(egui::Margin::symmetric(5, 1))
+                        .inner_margin(egui::Margin::symmetric(6, 2))
                         .show(ui, |ui| {
                             ui.label(
                                 egui::RichText::new(count.to_string())

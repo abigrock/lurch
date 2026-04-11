@@ -504,7 +504,7 @@ impl InstancesView {
                 ui.add_space(4.0);
             }
 
-            egui::ScrollArea::vertical().show(ui, |ui| {
+            egui::ScrollArea::vertical().id_salt("instance_list").auto_shrink([false, false]).show(ui, |ui| {
                 if self.view_mode == ViewMode::Grid {
                     let gap = ui.spacing().item_spacing.x;
                     ui.spacing_mut().item_spacing.y = gap;
@@ -670,7 +670,7 @@ impl InstancesView {
                             .theme
                             .as_ref()
                             .map(|t| t.color("success"))
-                            .unwrap_or(egui::Color32::GREEN);
+                            .unwrap_or(egui::Color32::from_rgb(76, 175, 80));
                         let dot_rect = egui::Rect::from_min_size(
                             icon_resp.rect.right_bottom() - egui::vec2(14.0, 14.0),
                             egui::vec2(10.0, 10.0),
@@ -733,20 +733,33 @@ impl InstancesView {
                             } else {
                                 egui::Color32::from_rgb(76, 175, 80)
                             };
-                            let badge_resp = egui::Frame::new()
-                                .fill(update_fill)
-                                .corner_radius(4.0)
-                                .inner_margin(egui::Margin::symmetric(4, 2))
-                                .show(ui, |ui| {
+                            let badge_resp = if let Some(t) = self.theme.as_ref() {
+                                t.badge_frame(update_fill).show(ui, |ui| {
                                     ui.label(
                                         egui::RichText::new(format!(
                                             "{} Update available",
                                             egui_phosphor::regular::ARROW_CIRCLE_UP,
                                         ))
                                         .size(11.0)
-                                        .color(egui::Color32::WHITE),
+                                        .color(t.button_fg()),
                                     )
-                                });
+                                })
+                            } else {
+                                egui::Frame::new()
+                                    .fill(update_fill)
+                                    .corner_radius(4.0)
+                                    .inner_margin(egui::Margin::symmetric(6, 2))
+                                    .show(ui, |ui| {
+                                        ui.label(
+                                            egui::RichText::new(format!(
+                                                "{} Update available",
+                                                egui_phosphor::regular::ARROW_CIRCLE_UP,
+                                            ))
+                                            .size(11.0)
+                                            .color(egui::Color32::WHITE),
+                                        )
+                                    })
+                            };
                             if badge_resp.response.interact(egui::Sense::click()).clicked() {
                                 self.update_modpack_requested = Some(inst_id.clone());
                             }
@@ -956,7 +969,7 @@ impl InstancesView {
                                     .theme
                                     .as_ref()
                                     .map(|t| t.color("success"))
-                                    .unwrap_or(egui::Color32::GREEN);
+                                    .unwrap_or(egui::Color32::from_rgb(76, 175, 80));
                                 let dot_rect = egui::Rect::from_min_size(
                                     icon_resp.rect.right_bottom() - egui::vec2(12.0, 12.0),
                                     egui::vec2(10.0, 10.0),
@@ -1006,20 +1019,33 @@ impl InstancesView {
                             } else {
                                 egui::Color32::from_rgb(76, 175, 80)
                             };
-                            let badge_resp = egui::Frame::new()
-                                .fill(update_fill)
-                                .corner_radius(4.0)
-                                .inner_margin(egui::Margin::symmetric(4, 2))
-                                .show(ui, |ui| {
+                            let badge_resp = if let Some(t) = self.theme.as_ref() {
+                                t.badge_frame(update_fill).show(ui, |ui| {
                                     ui.label(
                                         egui::RichText::new(format!(
                                             "{} Update available",
                                             egui_phosphor::regular::ARROW_CIRCLE_UP,
                                         ))
                                         .size(11.0)
-                                        .color(egui::Color32::WHITE),
+                                        .color(t.button_fg()),
                                     )
-                                });
+                                })
+                            } else {
+                                egui::Frame::new()
+                                    .fill(update_fill)
+                                    .corner_radius(4.0)
+                                    .inner_margin(egui::Margin::symmetric(6, 2))
+                                    .show(ui, |ui| {
+                                        ui.label(
+                                            egui::RichText::new(format!(
+                                                "{} Update available",
+                                                egui_phosphor::regular::ARROW_CIRCLE_UP,
+                                            ))
+                                            .size(11.0)
+                                            .color(egui::Color32::WHITE),
+                                        )
+                                    })
+                            };
                             if badge_resp.response.interact(egui::Sense::click()).clicked() {
                                 self.update_modpack_requested = Some(inst_id.clone());
                             }

@@ -123,11 +123,8 @@ impl InstanceDetailView {
                 } else {
                     egui::Color32::from_rgb(76, 175, 80)
                 };
-                egui::Frame::new()
-                    .fill(update_fill)
-                    .corner_radius(4.0)
-                    .inner_margin(egui::Margin::symmetric(6, 2))
-                    .show(ui, |ui| {
+                if let Some(t) = theme {
+                    t.badge_frame(update_fill).show(ui, |ui| {
                         ui.label(
                             egui::RichText::new(format!(
                                 "{} {} update{} available",
@@ -136,9 +133,27 @@ impl InstanceDetailView {
                                 if update_count == 1 { "" } else { "s" }
                             ))
                             .size(12.0)
-                            .color(egui::Color32::WHITE),
+                            .color(t.button_fg()),
                         );
                     });
+                } else {
+                    egui::Frame::new()
+                        .fill(update_fill)
+                        .corner_radius(4.0)
+                        .inner_margin(egui::Margin::symmetric(6, 2))
+                        .show(ui, |ui| {
+                            ui.label(
+                                egui::RichText::new(format!(
+                                    "{} {} update{} available",
+                                    egui_phosphor::regular::ARROW_CIRCLE_UP,
+                                    update_count,
+                                    if update_count == 1 { "" } else { "s" }
+                                ))
+                                .size(12.0)
+                                .color(egui::Color32::WHITE),
+                            );
+                        });
+                }
             });
         }
 
@@ -233,19 +248,32 @@ impl InstanceDetailView {
                                 } else {
                                     egui::Color32::from_rgb(76, 175, 80)
                                 };
-                                egui::Frame::new()
-                                    .fill(update_fill)
-                                    .corner_radius(3.0)
-                                    .inner_margin(egui::Margin::symmetric(3, 1))
-                                    .show(ui, |ui| {
+                                let badge_inner = if let Some(t) = theme {
+                                    t.badge_frame(update_fill).show(ui, |ui| {
                                         ui.label(
                                             egui::RichText::new(
                                                 egui_phosphor::regular::ARROW_CIRCLE_UP,
                                             )
                                             .size(11.0)
-                                            .color(egui::Color32::WHITE),
+                                            .color(t.button_fg()),
                                         );
                                     })
+                                } else {
+                                    egui::Frame::new()
+                                        .fill(update_fill)
+                                        .corner_radius(4.0)
+                                        .inner_margin(egui::Margin::symmetric(6, 2))
+                                        .show(ui, |ui| {
+                                            ui.label(
+                                                egui::RichText::new(
+                                                    egui_phosphor::regular::ARROW_CIRCLE_UP,
+                                                )
+                                                .size(11.0)
+                                                .color(egui::Color32::WHITE),
+                                            );
+                                        })
+                                };
+                                badge_inner
                                     .response
                                     .on_hover_text(format!(
                                         "Update → {}",

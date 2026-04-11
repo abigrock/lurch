@@ -428,42 +428,72 @@ impl SettingsView {
 
                                     ui.spacing_mut().item_spacing.x = 4.0;
 
-                                    egui::Frame::new()
-                                        .fill(badge_fill)
-                                        .corner_radius(4.0)
-                                        .inner_margin(egui::Margin::symmetric(6, 2))
-                                        .show(ui, |ui| {
+                                    if let Some(t) = theme {
+                                        t.badge_frame(badge_fill).show(ui, |ui| {
                                             ui.label(
                                                 egui::RichText::new(&install.version)
                                                     .size(11.0)
                                                     .color(badge_fg),
                                             );
                                         });
+                                    } else {
+                                        egui::Frame::new()
+                                            .fill(badge_fill)
+                                            .corner_radius(4.0)
+                                            .inner_margin(egui::Margin::symmetric(6, 2))
+                                            .show(ui, |ui| {
+                                                ui.label(
+                                                    egui::RichText::new(&install.version)
+                                                        .size(11.0)
+                                                        .color(badge_fg),
+                                                );
+                                            });
+                                    }
 
-                                    egui::Frame::new()
-                                        .fill(badge_fill)
-                                        .corner_radius(4.0)
-                                        .inner_margin(egui::Margin::symmetric(6, 2))
-                                        .show(ui, |ui| {
+                                    if let Some(t) = theme {
+                                        t.badge_frame(badge_fill).show(ui, |ui| {
                                             ui.label(
                                                 egui::RichText::new(&install.vendor)
                                                     .size(11.0)
                                                     .color(badge_fg),
                                             );
                                         });
-
-                                    if install.managed {
+                                    } else {
                                         egui::Frame::new()
-                                            .fill(managed_fill)
+                                            .fill(badge_fill)
                                             .corner_radius(4.0)
                                             .inner_margin(egui::Margin::symmetric(6, 2))
                                             .show(ui, |ui| {
                                                 ui.label(
-                                                    egui::RichText::new("Managed")
+                                                    egui::RichText::new(&install.vendor)
                                                         .size(11.0)
-                                                        .color(egui::Color32::WHITE),
+                                                        .color(badge_fg),
                                                 );
                                             });
+                                    }
+
+                                    if install.managed {
+                                        if let Some(t) = theme {
+                                            t.badge_frame(managed_fill).show(ui, |ui| {
+                                                ui.label(
+                                                    egui::RichText::new("Managed")
+                                                        .size(11.0)
+                                                        .color(t.button_fg()),
+                                                );
+                                            });
+                                        } else {
+                                            egui::Frame::new()
+                                                .fill(managed_fill)
+                                                .corner_radius(4.0)
+                                                .inner_margin(egui::Margin::symmetric(6, 2))
+                                                .show(ui, |ui| {
+                                                    ui.label(
+                                                        egui::RichText::new("Managed")
+                                                            .size(11.0)
+                                                            .color(egui::Color32::WHITE),
+                                                    );
+                                                });
+                                        }
                                     }
 
                                     if install.managed {
