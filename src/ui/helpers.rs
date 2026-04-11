@@ -1,6 +1,6 @@
 use eframe::egui;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime};
 
 use crate::theme::Theme;
 
@@ -411,18 +411,8 @@ impl<R: Send + 'static> SearchState<R> {
 }
 
 pub fn format_human_timestamp(time: SystemTime) -> String {
-    let secs = time
-        .duration_since(UNIX_EPOCH)
-        .map(|duration| duration.as_secs() as i64)
-        .unwrap_or(0);
-
-    let days = secs.div_euclid(86_400);
-    let seconds_of_day = secs.rem_euclid(86_400);
-    let (year, month, day) = civil_from_days(days);
-    let hour = seconds_of_day / 3_600;
-    let minute = (seconds_of_day % 3_600) / 60;
-
-    format!("{year:04}-{month:02}-{day:02} {hour:02}:{minute:02}")
+    let dt: chrono::DateTime<chrono::Local> = time.into();
+    dt.format("%Y-%m-%d %H:%M").to_string()
 }
 
 /// Paint a subtle hover highlight on a row's rectangle.
@@ -527,19 +517,4 @@ pub fn empty_state(ui: &mut egui::Ui, icon: &str, message: &str, theme: Option<&
             ui.weak(message);
         }
     });
-}
-
-fn civil_from_days(days: i64) -> (i32, u32, u32) {
-    let z = days + 719_468;
-    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let day = doy - (153 * mp + 2) / 5 + 1;
-    let month = mp + if mp < 10 { 3 } else { -9 };
-    let year = y + if month <= 2 { 1 } else { 0 };
-
-    (year as i32, month as u32, day as u32)
 }

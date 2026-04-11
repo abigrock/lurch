@@ -85,38 +85,10 @@ fn dir_size(path: &Path) -> u64 {
     total
 }
 
-/// Format a SystemTime as a human-readable date string
+/// Format a SystemTime as a human-readable date string in the user's local timezone.
 fn format_system_time(time: std::time::SystemTime) -> String {
-    let duration = time
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default();
-    let secs = duration.as_secs();
-
-    // Simple date formatting without chrono dependency
-    let days = secs / 86400;
-    let remaining = secs % 86400;
-    let hours = remaining / 3600;
-    let minutes = (remaining % 3600) / 60;
-
-    // Approximate date from epoch days (good enough for display)
-    let (year, month, day) = epoch_days_to_date(days);
-    format!("{year}-{month:02}-{day:02} {hours:02}:{minutes:02}")
-}
-
-/// Convert days since Unix epoch to (year, month, day)
-fn epoch_days_to_date(days: u64) -> (u64, u64, u64) {
-    // Algorithm from http://howardhinnant.github.io/date_algorithms.html
-    let z = days as i64 + 719468;
-    let era = if z >= 0 { z } else { z - 146096 } / 146097;
-    let doe = (z - era * 146097) as u64;
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    let y = (yoe as i64) + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    let y = if m <= 2 { y + 1 } else { y };
-    (y as u64, m, d)
+    let dt: chrono::DateTime<chrono::Local> = time.into();
+    dt.format("%Y-%m-%d %H:%M").to_string()
 }
 
 /// Format bytes into a human-readable size string

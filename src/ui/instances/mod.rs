@@ -75,6 +75,7 @@ pub struct InstancesView {
     pub running_instance_ids: HashSet<String>,
     pub console_requested: Option<String>,
     pub kill_requested: Option<String>,
+    confirm_kill: Option<String>,
     name_auto_generated: bool,
     pub search_query: String,
     pub sort_mode: InstanceSortMode,
@@ -148,6 +149,7 @@ impl Default for InstancesView {
             running_instance_ids: HashSet::new(),
             console_requested: None,
             kill_requested: None,
+            confirm_kill: None,
             name_auto_generated: false,
             search_query: String::new(),
             sort_mode: InstanceSortMode::default(),
@@ -199,6 +201,59 @@ impl InstancesView {
             self.show_modpack_version_picker(ui);
             if self.modpack_version_picker.as_ref().is_some_and(|vp| vp.fetch_handle.is_some()) {
                 ui.ctx().request_repaint();
+            }
+            // ── Kill confirmation dialog ────────────────────────────────
+            if let Some(ref kill_id) = self.confirm_kill.clone() {
+                let inst_name = instances
+                    .iter()
+                    .find(|i| i.id == *kill_id)
+                    .map(|i| i.name.clone())
+                    .unwrap_or_default();
+
+                let mut open = true;
+                egui::Window::new("Confirm Kill")
+                    .id(egui::Id::new(format!("instances_confirm_kill_{kill_id}")))
+                    .collapsible(false)
+                    .resizable(false)
+                    .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                    .open(&mut open)
+                    .show(&ctx, |ui| {
+                        ui.label(format!("Kill \"{}\"?", inst_name));
+                        if let Some(t) = self.theme.as_ref() {
+                            ui.label(t.subtext("This will forcefully terminate the running instance."));
+                        } else {
+                            ui.weak("This will forcefully terminate the running instance.");
+                        }
+                        ui.add_space(8.0);
+                        ui.horizontal(|ui| {
+                            let confirm_clicked = if let Some(t) = self.theme.as_ref() {
+                                ui.add(
+                                    t.danger_button(&format!("{} Kill", egui_phosphor::regular::SKULL)),
+                                )
+                                .clicked()
+                            } else {
+                                ui.button(
+                                    egui::RichText::new(format!(
+                                        "{} Kill",
+                                        egui_phosphor::regular::SKULL
+                                    ))
+                                    .color(egui::Color32::RED),
+                                )
+                                .clicked()
+                            };
+                            if confirm_clicked {
+                                self.kill_requested = Some(kill_id.clone());
+                                self.confirm_kill = None;
+                            }
+                            if ui.button("Cancel").clicked() {
+                                self.confirm_kill = None;
+                            }
+                        });
+                    });
+
+                if !open {
+                    self.confirm_kill = None;
+                }
             }
         }
 
@@ -876,7 +931,7 @@ impl InstancesView {
                                         ui.button(egui::RichText::new(&kill_lbl).color(egui::Color32::RED)).clicked()
                                     };
                                     if kill_clicked {
-                                        self.kill_requested = Some(inst_id.clone());
+                                        self.confirm_kill = Some(inst_id.clone());
                                         ui.close();
                                     }
                                 }
@@ -1222,7 +1277,7 @@ impl InstancesView {
                                     ui.button(egui::RichText::new(&kill_lbl).color(egui::Color32::RED)).clicked()
                                 };
                                 if kill_clicked {
-                                    self.kill_requested = Some(inst_id.clone());
+                                    self.confirm_kill = Some(inst_id.clone());
                                     ui.close();
                                 }
                             }
