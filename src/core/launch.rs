@@ -26,6 +26,7 @@ pub struct LaunchCommand {
     pub java_path: PathBuf,
     pub args: Vec<String>,
     pub working_dir: PathBuf,
+    pub env_vars: Vec<(String, String)>,
 }
 
 // ── Command builder ──────────────────────────────────────────────────────────
@@ -97,10 +98,26 @@ impl LaunchContext {
 
         let working_dir = self.instance.minecraft_dir()?;
 
+        // Parse instance env vars (lines of KEY=VALUE, # comments)
+        let env_vars: Vec<(String, String)> = self
+            .instance
+            .env_vars
+            .lines()
+            .filter_map(|line| {
+                let line = line.trim();
+                if line.is_empty() || line.starts_with('#') {
+                    return None;
+                }
+                let (k, v) = line.split_once('=')?;
+                Some((k.trim().to_string(), v.trim().to_string()))
+            })
+            .collect();
+
         Ok(LaunchCommand {
             java_path: self.java.path.clone(),
             args,
             working_dir,
+            env_vars,
         })
     }
 
@@ -129,7 +146,20 @@ impl LaunchContext {
             .replace("${assets_index_name}", &self.version_info.asset_index.id)
             .replace("${auth_uuid}", &self.account.uuid)
             .replace("${auth_access_token}", &self.account.access_token)
-            .replace("${user_type}", "msa")
+            .replace("${user_type}", if self.account.offline { "legacy" } else { "msa" })
+            .replace("${clientid}", crate::core::account::MS_CLIENT_ID)
+            .replace("${auth_xuid}", "0")
+            .replace(
+                "${auth_session}",
+                &if self.account.access_token.is_empty() {
+                    "-".to_string()
+                } else {
+                    format!(
+                        "token:{}:{}",
+                        self.account.access_token, self.account.uuid
+                    )
+                },
+            )
             .replace(
                 "${version_type}",
                 &self.version_info.version_type.to_string(),
@@ -212,6 +242,7 @@ pub fn spawn_minecraft(
 
     let child = Command::new(&cmd.java_path)
         .args(&cmd.args)
+        .envs(cmd.env_vars.iter().map(|(k, v)| (k, v)))
         .current_dir(&cmd.working_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
