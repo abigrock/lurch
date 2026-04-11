@@ -293,12 +293,13 @@ impl InstancesView {
 
                 ui.separator();
 
-                // Search
+                // Search — responsive width that shrinks with the window
                 let search_icon = egui_phosphor::regular::MAGNIFYING_GLASS;
+                let search_w = (ui.available_width() * 0.2).clamp(80.0, 160.0);
                 ui.add(
                     egui::TextEdit::singleline(&mut self.search_query)
                         .hint_text(format!("{} Search…", search_icon))
-                        .desired_width(160.0)
+                        .desired_width(search_w)
                         .margin(egui::Margin::symmetric(4, 9)),
                 );
 
@@ -309,7 +310,7 @@ impl InstancesView {
                 };
                 egui::ComboBox::from_id_salt("instance_loader_filter")
                     .selected_text(&loader_text)
-                    .width(120.0)
+                    .width(100.0)
                     .show_ui(ui, |ui| {
                         ui.selectable_value(&mut self.loader_filter, None, "All Loaders");
                         ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Vanilla), "Vanilla");
@@ -322,7 +323,7 @@ impl InstancesView {
                 // Sort dropdown
                 egui::ComboBox::from_id_salt("instance_sort")
                     .selected_text(self.sort_mode.label())
-                    .width(120.0)
+                    .width(100.0)
                     .show_ui(ui, |ui| {
                         ui.selectable_value(&mut self.sort_mode, InstanceSortMode::LastPlayed, "Last Played");
                         ui.selectable_value(&mut self.sort_mode, InstanceSortMode::NameAsc, "Name (A-Z)");
@@ -330,10 +331,17 @@ impl InstancesView {
                         ui.selectable_value(&mut self.sort_mode, InstanceSortMode::McVersion, "MC Version");
                     });
 
+                ui.separator();
+
                 // Right-aligned: view toggle, refresh, Add Instance
                 ui.with_layout(
                     egui::Layout::right_to_left(egui::Align::Center).with_cross_justify(true),
                     |ui| {
+                        // Clip horizontally only — prevent leftward overflow into filter controls
+                        // but keep parent's vertical clip so hover borders aren't cut off
+                        let mut clip = ui.clip_rect();
+                        clip.min.x = ui.max_rect().min.x;
+                        ui.set_clip_rect(clip);
                         let t = &self.theme;
                         // Add Instance (rightmost)
                         let add_lbl = format!("{} Add Instance", egui_phosphor::regular::PLUS);

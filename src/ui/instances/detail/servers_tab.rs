@@ -33,8 +33,11 @@ impl InstanceDetailView {
                     .hint_text("Server name")
                     .margin(egui::Margin::symmetric(4, 9)),
             );
+            // Reserve space for Save/Cancel buttons (~170px) so the address field doesn't overflow
+            let btn_reserve = 170.0;
+            let addr_w = (ui.available_width() - btn_reserve).max(80.0);
             ui.add_sized(
-                [ui.available_width() - 160.0, 32.0],
+                [addr_w, 32.0],
                 egui::TextEdit::singleline(&mut self.server_edit_ip)
                     .hint_text("Address (e.g. play.example.com)")
                     .margin(egui::Margin::symmetric(4, 9)),

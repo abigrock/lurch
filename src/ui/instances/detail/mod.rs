@@ -168,15 +168,18 @@ impl InstanceDetailView {
                 self.back_requested = true;
             }
             ui.vertical(|ui| {
-                ui.label(crate::ui::helpers::section_heading(&instance.name, theme));
+                ui.add(egui::Label::new(crate::ui::helpers::section_heading(&instance.name, theme)).truncate());
                 let version_info = if instance.loader != crate::core::instance::ModLoader::Vanilla {
                     format!("{} — {}", instance.mc_version, instance.loader)
                 } else {
                     instance.mc_version.clone()
                 };
-                ui.label(theme.subtext(&version_info));
+                ui.add(egui::Label::new(theme.subtext(&version_info)).truncate());
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let mut clip = ui.clip_rect();
+                clip.min.x = ui.max_rect().min.x;
+                ui.set_clip_rect(clip);
                 if let Some(origin) = &instance.modpack_origin {
                     let open_page = ui.add(theme.ghost_button(egui_phosphor::regular::GLOBE));
                     let source_name = match origin.source.as_str() {

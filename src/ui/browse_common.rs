@@ -116,7 +116,7 @@ impl BrowseTab {
             egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
             |ui| {
                 let resp = ui.add_sized(
-                    [ui.available_width() - 28.0, 32.0],
+                    [ui.available_width(), 32.0],
                     egui::TextEdit::singleline(&mut self.search.query)
                         .hint_text(config.search_hint)
                         .margin(egui::Margin::symmetric(4, 9)),
@@ -128,7 +128,17 @@ impl BrowseTab {
                     do_search = true;
                 }
                 if self.search.is_searching() {
-                    ui.add(egui::Spinner::new().color(theme.color("accent")));
+                    let spinner_size = 16.0;
+                    let spinner_rect = egui::Rect::from_center_size(
+                        egui::pos2(resp.rect.right() - spinner_size, resp.rect.center().y),
+                        egui::vec2(spinner_size, spinner_size),
+                    );
+                    ui.put(
+                        spinner_rect,
+                        egui::Spinner::new()
+                            .size(spinner_size)
+                            .color(theme.color("accent")),
+                    );
                 }
             },
         );
@@ -142,9 +152,14 @@ impl BrowseTab {
                 // Version filter (mod browsers only)
                 if config.has_version_filter {
                     if self.search_all_versions {
-                        ui.label(theme.subtext("Searching all versions and loaders"));
+                        ui.add(
+                            egui::Label::new(theme.subtext("Searching all versions and loaders"))
+                                .truncate(),
+                        );
                     } else {
-                        ui.label(theme.subtext(config.version_filter_label));
+                        ui.add(
+                            egui::Label::new(theme.subtext(config.version_filter_label)).truncate(),
+                        );
                     }
                     let prev = self.search_all_versions;
                     ui.checkbox(&mut self.search_all_versions, "Show all versions");
@@ -204,22 +219,24 @@ impl BrowseTab {
                 ui.with_layout(
                     egui::Layout::right_to_left(egui::Align::Center).with_cross_justify(true),
                     |ui| {
-                        let grid_lbl = egui_phosphor::regular::GRID_FOUR.to_string();
-                        let list_lbl = egui_phosphor::regular::LIST.to_string();
-                        if ui
-                            .selectable_label(self.view_mode == ViewMode::Grid, &grid_lbl)
-                            .on_hover_text("Grid view")
-                            .clicked()
-                        {
-                            self.view_mode = ViewMode::Grid;
-                        }
-                        if ui
-                            .selectable_label(self.view_mode == ViewMode::List, &list_lbl)
-                            .on_hover_text("List view")
-                            .clicked()
-                        {
-                            self.view_mode = ViewMode::List;
-                        }
+                        let mut clip = ui.clip_rect();
+                        clip.min.x = ui.max_rect().min.x;
+                        ui.set_clip_rect(clip);
+
+                        ui.selectable_label(
+                            self.view_mode == ViewMode::Grid,
+                            egui_phosphor::regular::GRID_FOUR,
+                        )
+                        .on_hover_text("Grid view")
+                        .clicked()
+                        .then(|| self.view_mode = ViewMode::Grid);
+                        ui.selectable_label(
+                            self.view_mode == ViewMode::List,
+                            egui_phosphor::regular::LIST,
+                        )
+                        .on_hover_text("List view")
+                        .clicked()
+                        .then(|| self.view_mode = ViewMode::List);
                     },
                 );
             },
