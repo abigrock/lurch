@@ -73,6 +73,7 @@ impl InstancesView {
                         if ui
                             .add(
                                 egui::TextEdit::singleline(&mut group_text)
+                                    .hint_text("Optional")
                                     .margin(egui::Margin::symmetric(4, 9)),
                             )
                             .changed()
@@ -101,6 +102,7 @@ impl InstancesView {
                                 drop(manifest_snapshot);
                                 ui.add(
                                     egui::TextEdit::singleline(&mut self.edit_mc_version)
+                                        .hint_text("Filter versions...")
                                         .margin(egui::Margin::symmetric(4, 9)),
                                 );
                             }
@@ -386,6 +388,7 @@ impl InstancesView {
                         if ui
                             .add(
                                 egui::TextEdit::singleline(&mut jvm_text)
+                                    .hint_text("-Xmx4G -Xms2G ...")
                                     .margin(egui::Margin::symmetric(4, 9)),
                             )
                             .changed()

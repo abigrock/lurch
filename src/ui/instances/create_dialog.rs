@@ -129,6 +129,7 @@ impl InstancesView {
                 let name_before = self.new_name.clone();
                 ui.add(
                     egui::TextEdit::singleline(&mut self.new_name)
+                        .hint_text("Instance name")
                         .margin(egui::Margin::symmetric(4, 9)),
                 );
                 if self.new_name != name_before {
@@ -155,6 +156,7 @@ impl InstancesView {
                             );
                             ui.add(
                                 egui::TextEdit::singleline(&mut self.new_mc_version)
+                                    .hint_text("Filter versions...")
                                     .margin(egui::Margin::symmetric(4, 9)),
                             );
                         });
@@ -350,6 +352,7 @@ impl InstancesView {
                 ui.label("Group:");
                 ui.add(
                     egui::TextEdit::singleline(&mut self.new_group)
+                        .hint_text("Optional")
                         .margin(egui::Margin::symmetric(4, 9)),
                 );
                 ui.end_row();
