@@ -1,0 +1,22 @@
+{
+  "name": "The End",
+  "colors": {
+    "bg": "#0e0c15",
+    "bg_secondary": "#0a0812",
+    "bg_tertiary": "#06050e",
+    "surface": "#1e1a2e",
+    "surface_hover": "#28233c",
+    "surface_active": "#322c4a",
+    "overlay": "#3e3658",
+    "overlay_hover": "#4a4268",
+    "overlay_active": "#564e78",
+    "fg_muted": "#7868a0",
+    "fg_dim": "#a898d0",
+    "fg": "#d8d0f0",
+    "accent": "#cc66ff",
+    "accent_secondary": "#a855f7",
+    "success": "#66cc88",
+    "error": "#e05577",
+    "warning": "#ddaa55"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "Ocean Monument",
+  "colors": {
+    "bg": "#0a1518",
+    "bg_secondary": "#071214",
+    "bg_tertiary": "#040e10",
+    "surface": "#152830",
+    "surface_hover": "#1e3540",
+    "surface_active": "#274250",
+    "overlay": "#305060",
+    "overlay_hover": "#3a5e70",
+    "overlay_active": "#446c80",
+    "fg_muted": "#5a8898",
+    "fg_dim": "#88b8c8",
+    "fg": "#c0e0e8",
+    "accent": "#44ccaa",
+    "accent_secondary": "#66ddcc",
+    "success": "#55bb77",
+    "error": "#e05555",
+    "warning": "#ddaa44"
+  }
+}

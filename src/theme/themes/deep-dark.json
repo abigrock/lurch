@@ -1,0 +1,22 @@
+{
+  "name": "Deep Dark",
+  "colors": {
+    "bg": "#080c0e",
+    "bg_secondary": "#060a0c",
+    "bg_tertiary": "#040808",
+    "surface": "#101a1e",
+    "surface_hover": "#162226",
+    "surface_active": "#1c2a30",
+    "overlay": "#243438",
+    "overlay_hover": "#2c3e44",
+    "overlay_active": "#344850",
+    "fg_muted": "#4a6670",
+    "fg_dim": "#7098a8",
+    "fg": "#a8d0e0",
+    "accent": "#00b4b4",
+    "accent_secondary": "#22dddd",
+    "success": "#55aa77",
+    "error": "#cc4455",
+    "warning": "#ccaa44"
+  }
+}

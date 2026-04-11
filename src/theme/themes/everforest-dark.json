@@ -1,0 +1,22 @@
+{
+  "name": "Everforest Dark",
+  "colors": {
+    "bg": "#2d353b",
+    "bg_secondary": "#272e33",
+    "bg_tertiary": "#232a2e",
+    "surface": "#3d484d",
+    "surface_hover": "#475258",
+    "surface_active": "#515c62",
+    "overlay": "#5c6a72",
+    "overlay_hover": "#6b7980",
+    "overlay_active": "#7a888e",
+    "fg_muted": "#859289",
+    "fg_dim": "#9da9a0",
+    "fg": "#d3c6aa",
+    "accent": "#a7c080",
+    "accent_secondary": "#83c092",
+    "success": "#a7c080",
+    "error": "#e67e80",
+    "warning": "#dbbc7f"
+  }
+}

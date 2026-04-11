@@ -1,0 +1,22 @@
+{
+  "name": "Redstone",
+  "colors": {
+    "bg": "#1a1010",
+    "bg_secondary": "#150c0c",
+    "bg_tertiary": "#100808",
+    "surface": "#2e1a1a",
+    "surface_hover": "#3a2222",
+    "surface_active": "#462a2a",
+    "overlay": "#583333",
+    "overlay_hover": "#6a3c3c",
+    "overlay_active": "#7c4545",
+    "fg_muted": "#996060",
+    "fg_dim": "#c09090",
+    "fg": "#e8d0d0",
+    "accent": "#dd3333",
+    "accent_secondary": "#ff5555",
+    "success": "#55aa55",
+    "error": "#ff4444",
+    "warning": "#ddaa33"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "Lush Cave",
+  "colors": {
+    "bg": "#101410",
+    "bg_secondary": "#0c100c",
+    "bg_tertiary": "#080c08",
+    "surface": "#1e2818",
+    "surface_hover": "#283220",
+    "surface_active": "#323c28",
+    "overlay": "#3e4a32",
+    "overlay_hover": "#48563c",
+    "overlay_active": "#526246",
+    "fg_muted": "#6a8050",
+    "fg_dim": "#98b480",
+    "fg": "#c8e0b0",
+    "accent": "#f0a830",
+    "accent_secondary": "#f8c860",
+    "success": "#66bb55",
+    "error": "#e05050",
+    "warning": "#f0a830"
+  }
+}

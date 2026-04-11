@@ -1,0 +1,22 @@
+{
+  "name": "Cherry Grove",
+  "colors": {
+    "bg": "#1a1215",
+    "bg_secondary": "#161010",
+    "bg_tertiary": "#120c0c",
+    "surface": "#2e2025",
+    "surface_hover": "#3a2a30",
+    "surface_active": "#46343c",
+    "overlay": "#584048",
+    "overlay_hover": "#6a4c56",
+    "overlay_active": "#7c5864",
+    "fg_muted": "#a07080",
+    "fg_dim": "#c8a0b0",
+    "fg": "#f0d8e0",
+    "accent": "#f0789e",
+    "accent_secondary": "#f8a0c0",
+    "success": "#77bb77",
+    "error": "#e85050",
+    "warning": "#ddaa44"
+  }
+}

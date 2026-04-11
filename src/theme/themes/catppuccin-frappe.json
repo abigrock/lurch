@@ -1,0 +1,22 @@
+{
+  "name": "Catppuccin Frappé",
+  "colors": {
+    "bg": "#303446",
+    "bg_secondary": "#292c3c",
+    "bg_tertiary": "#232634",
+    "surface": "#414559",
+    "surface_hover": "#51576d",
+    "surface_active": "#626880",
+    "overlay": "#737994",
+    "overlay_hover": "#838ba7",
+    "overlay_active": "#949cbb",
+    "fg_muted": "#a5adce",
+    "fg_dim": "#b5bfe2",
+    "fg": "#c6d0f5",
+    "accent": "#8caaee",
+    "accent_secondary": "#babbf1",
+    "success": "#a6d189",
+    "error": "#e78284",
+    "warning": "#ef9f76"
+  }
+}

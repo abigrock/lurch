@@ -1,0 +1,22 @@
+{
+  "name": "Monokai",
+  "colors": {
+    "bg": "#272822",
+    "bg_secondary": "#1e1f1c",
+    "bg_tertiary": "#171814",
+    "surface": "#3e3d32",
+    "surface_hover": "#49483e",
+    "surface_active": "#54534a",
+    "overlay": "#75715e",
+    "overlay_hover": "#857f6b",
+    "overlay_active": "#958f78",
+    "fg_muted": "#8f908a",
+    "fg_dim": "#bfbfb6",
+    "fg": "#f8f8f2",
+    "accent": "#a6e22e",
+    "accent_secondary": "#66d9ef",
+    "success": "#a6e22e",
+    "error": "#f92672",
+    "warning": "#fd971f"
+  }
+}

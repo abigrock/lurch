@@ -1,0 +1,22 @@
+{
+  "name": "Ayu Dark",
+  "colors": {
+    "bg": "#0d1017",
+    "bg_secondary": "#0b0e14",
+    "bg_tertiary": "#080a0f",
+    "surface": "#1c2433",
+    "surface_hover": "#243044",
+    "surface_active": "#2c3c55",
+    "overlay": "#304357",
+    "overlay_hover": "#3b5068",
+    "overlay_active": "#465d79",
+    "fg_muted": "#565b66",
+    "fg_dim": "#acb6bf",
+    "fg": "#bfbdb6",
+    "accent": "#e6b450",
+    "accent_secondary": "#59c2ff",
+    "success": "#7fd962",
+    "error": "#d95757",
+    "warning": "#e6b450"
+  }
+}

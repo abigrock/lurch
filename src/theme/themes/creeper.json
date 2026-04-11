@@ -1,0 +1,22 @@
+{
+  "name": "Creeper",
+  "colors": {
+    "bg": "#1a2618",
+    "bg_secondary": "#152013",
+    "bg_tertiary": "#101a0e",
+    "surface": "#2a3d26",
+    "surface_hover": "#344a30",
+    "surface_active": "#3e573a",
+    "overlay": "#4a6844",
+    "overlay_hover": "#567a50",
+    "overlay_active": "#628c5c",
+    "fg_muted": "#6b8a5e",
+    "fg_dim": "#9ab88c",
+    "fg": "#d4e8cb",
+    "accent": "#5dba3b",
+    "accent_secondary": "#8cd867",
+    "success": "#5dba3b",
+    "error": "#e05252",
+    "warning": "#d4a634"
+  }
+}

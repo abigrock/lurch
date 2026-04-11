@@ -1,0 +1,22 @@
+{
+  "name": "One Dark",
+  "colors": {
+    "bg": "#282c34",
+    "bg_secondary": "#21252b",
+    "bg_tertiary": "#1b1f25",
+    "surface": "#2c313a",
+    "surface_hover": "#363c46",
+    "surface_active": "#3e4451",
+    "overlay": "#5c6370",
+    "overlay_hover": "#636d83",
+    "overlay_active": "#717b8e",
+    "fg_muted": "#636d83",
+    "fg_dim": "#8b929e",
+    "fg": "#abb2bf",
+    "accent": "#61afef",
+    "accent_secondary": "#c678dd",
+    "success": "#98c379",
+    "error": "#e06c75",
+    "warning": "#d19a66"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "One Light",
+  "colors": {
+    "bg": "#fafafa",
+    "bg_secondary": "#f0f0f1",
+    "bg_tertiary": "#e5e5e6",
+    "surface": "#d4d4d5",
+    "surface_hover": "#c4c4c5",
+    "surface_active": "#b4b4b5",
+    "overlay": "#a0a1a7",
+    "overlay_hover": "#9d9d9f",
+    "overlay_active": "#8c8c8e",
+    "fg_muted": "#a0a1a7",
+    "fg_dim": "#696c77",
+    "fg": "#383a42",
+    "accent": "#4078f2",
+    "accent_secondary": "#a626a4",
+    "success": "#50a14f",
+    "error": "#e45649",
+    "warning": "#c18401"
+  }
+}

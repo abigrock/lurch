@@ -1,0 +1,22 @@
+{
+  "name": "Nether",
+  "colors": {
+    "bg": "#1c0a0a",
+    "bg_secondary": "#170707",
+    "bg_tertiary": "#120505",
+    "surface": "#3a1515",
+    "surface_hover": "#4a1e1e",
+    "surface_active": "#5a2727",
+    "overlay": "#6e3030",
+    "overlay_hover": "#7e3a3a",
+    "overlay_active": "#8e4444",
+    "fg_muted": "#a06050",
+    "fg_dim": "#c89080",
+    "fg": "#e8ccc0",
+    "accent": "#ff6633",
+    "accent_secondary": "#ffaa33",
+    "success": "#77b858",
+    "error": "#ff4444",
+    "warning": "#ffaa33"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "Amethyst",
+  "colors": {
+    "bg": "#16101e",
+    "bg_secondary": "#120c1a",
+    "bg_tertiary": "#0e0816",
+    "surface": "#2a2038",
+    "surface_hover": "#342a46",
+    "surface_active": "#3e3454",
+    "overlay": "#504666",
+    "overlay_hover": "#5e5478",
+    "overlay_active": "#6c628a",
+    "fg_muted": "#8878a8",
+    "fg_dim": "#b0a0d0",
+    "fg": "#dcd0f0",
+    "accent": "#c77dff",
+    "accent_secondary": "#e0a0ff",
+    "success": "#77cc88",
+    "error": "#e85577",
+    "warning": "#e0aa55"
+  }
+}

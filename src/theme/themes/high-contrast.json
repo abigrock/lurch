@@ -1,0 +1,22 @@
+{
+  "name": "High Contrast",
+  "colors": {
+    "bg": "#000000",
+    "bg_secondary": "#0a0a0a",
+    "bg_tertiary": "#141414",
+    "surface": "#2a2a2a",
+    "surface_hover": "#3a3a3a",
+    "surface_active": "#4a4a4a",
+    "overlay": "#5a5a5a",
+    "overlay_hover": "#6a6a6a",
+    "overlay_active": "#7a7a7a",
+    "fg_muted": "#999999",
+    "fg_dim": "#cccccc",
+    "fg": "#ffffff",
+    "accent": "#00bfff",
+    "accent_secondary": "#ffff00",
+    "success": "#00ff00",
+    "error": "#ff3333",
+    "warning": "#ffaa00"
+  }
+}

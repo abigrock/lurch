@@ -1,0 +1,19 @@
+# Build artifacts
+/target/
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Session / scratch files
+all_ui_files.txt
+
+# AI agent session data
+.slim/

@@ -1,0 +1,22 @@
+{
+  "name": "Dracula",
+  "colors": {
+    "bg": "#282a36",
+    "bg_secondary": "#21222c",
+    "bg_tertiary": "#191a21",
+    "surface": "#44475a",
+    "surface_hover": "#4d5066",
+    "surface_active": "#565973",
+    "overlay": "#6272a4",
+    "overlay_hover": "#7283b5",
+    "overlay_active": "#8294c6",
+    "fg_muted": "#8b91a7",
+    "fg_dim": "#c0c5de",
+    "fg": "#f8f8f2",
+    "accent": "#bd93f9",
+    "accent_secondary": "#ff79c6",
+    "success": "#50fa7b",
+    "error": "#ff5555",
+    "warning": "#ffb86c"
+  }
+}

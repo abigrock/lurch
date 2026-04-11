@@ -1,0 +1,22 @@
+{
+  "name": "Everforest Light",
+  "colors": {
+    "bg": "#fdf6e3",
+    "bg_secondary": "#f4f0d9",
+    "bg_tertiary": "#efebd4",
+    "surface": "#e5dfc5",
+    "surface_hover": "#dbd5b6",
+    "surface_active": "#d1cba7",
+    "overlay": "#a6b0a0",
+    "overlay_hover": "#939d8f",
+    "overlay_active": "#808a7e",
+    "fg_muted": "#829181",
+    "fg_dim": "#5c6a72",
+    "fg": "#5c6a72",
+    "accent": "#8da101",
+    "accent_secondary": "#35a77c",
+    "success": "#8da101",
+    "error": "#f85552",
+    "warning": "#dfa000"
+  }
+}
