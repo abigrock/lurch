@@ -9,19 +9,20 @@ Per-instance detail view — tabbed interface for managing a single instance's c
 - **Mods sub-tabs**: `ModsSubTab` enum in `mods_tab/mod.rs`; each sub-tab in its own file
 - **State ownership**: `InstanceDetailView` holds installed mods list, search states, server list etc.; tab files receive `&mut self` on the parent
 - **Private module**: `mod detail;` (not `pub mod`) — only `InstanceDetailView` is exposed via `ViewMode::Detail`
+- **`browse_mr.rs` and `browse_cf.rs`** now delegate to `BrowseTab` from `src/ui/browse_common.rs` for search/filter/browse rendering
 
 ## Modules
 
 | Module | LOC | Purpose |
 |--------|-----|---------|
-| `mod.rs` | ~383 | `InstanceDetailView`: tab coordinator, owns all tab state |
-| `mods_tab/mod.rs` | ~405 | Tab switcher + version picker (shared) |
-| `mods_tab/installed.rs` | ~476 | Installed mods list: scan, filter, toggle, update |
-| `mods_tab/browse_mr.rs` | ~470 | Modrinth mod browse + install |
-| `mods_tab/browse_cf.rs` | ~552 | CurseForge mod browse + install |
-| `servers_tab.rs` | ~285 | Servers: NBT server list, add/edit/remove/reorder |
-| `shaders_tab.rs` | ~243 | Shaders: scan/enable/disable/remove shader packs |
-| `worlds_tab.rs` | ~184 | Worlds: list saves with sizes, delete |
+| `mod.rs` | ~327 | `InstanceDetailView`: tab coordinator, owns all tab state |
+| `mods_tab/mod.rs` | ~368 | Tab switcher + version picker (shared) |
+| `mods_tab/installed.rs` | ~397 | Installed mods list: scan, filter, toggle, update |
+| `mods_tab/browse_mr.rs` | ~185 | Modrinth mod browse + install |
+| `mods_tab/browse_cf.rs` | ~189 | CurseForge mod browse + install |
+| `servers_tab.rs` | ~229 | Servers: NBT server list, add/edit/remove/reorder |
+| `shaders_tab.rs` | ~200 | Shaders: scan/enable/disable/remove shader packs |
+| `worlds_tab.rs` | ~145 | Worlds: list saves with sizes, delete |
 
 ## Flow
 1. User selects instance → `InstanceDetailView::show()` called

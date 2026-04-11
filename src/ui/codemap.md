@@ -7,7 +7,7 @@ GUI presentation layer — renders all views using egui immediate-mode framework
 - **View enum**: `sidebar.rs` defines `View {Instances, Modpacks, Settings, Accounts, Console}` for navigation routing
 - **Request pattern**: UI views set boolean flags (e.g., `launch_requested`, `install_requested`) on shared state; `App::handle_view_requests()` processes them each frame
 - **View structs**: Views are now structs (AccountsView, SettingsView, InstancesView, etc.) — each owns its own state and exposes a `show()` method taking `&mut App` or relevant state slices
-- **Theme integration**: Views use `theme::*` styling helpers (`card_frame`, `accent_button`, `section_header`, etc.) for consistent appearance
+- **Theme integration**: Views use `Theme` styling helpers (`card_frame`, `accent_button`, `section_header`, etc.) for consistent appearance. Theme is always present — no conditional checks needed.
 - **Vertical centering**: All rows with mixed-height widgets use `allocate_ui_with_layout` with `left_to_right(Center).with_cross_justify(true)` instead of `ui.horizontal`
 
 ## Modules
@@ -19,8 +19,9 @@ GUI presentation layer — renders all views using egui immediate-mode framework
 | `accounts.rs` | Account management — add/remove Microsoft and offline accounts |
 | `console.rs` | Game console/log viewer for running instances |
 | `settings.rs` | `SettingsView`: settings page (theme, Java, memory, JVM args, CF API key) |
-| `helpers.rs` | Reusable UI utility functions |
+| `helpers.rs` | Reusable UI utility functions: `tab_button()`, `SearchState<R>`, `section_heading()`, `card_frame()`, `row_hover_highlight()`, `project_tooltip()`, and more |
 | `instances/modpack_browser.rs` | Modpack browser (Modrinth + CurseForge search/install) |
+| `browse_common.rs` | Shared `BrowseTab` struct: search, filtering, sorting, list/grid rendering, pagination for mod/modpack browsers |
 
 ## Flow
 1. `App::update()` calls sidebar render → gets active `View`

@@ -15,18 +15,19 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 
 - **Language**: Rust (edition 2024)
 - **GUI**: eframe/egui (immediate mode)
-- **Entry**: `src/main.rs` → `src/app.rs` (central `App` struct, ~2300 LOC)
+- **Entry**: `src/main.rs` → `src/app.rs` (central `App` struct, ~2200 LOC)
 - **Pattern**: Background threads + `Arc<Mutex<T>>` polling, UI request flags → App dispatch
-- **Total**: ~15k LOC core/UI, ~8.4k LOC in UI layer, ~6.0k LOC in `core/` business logic
+- **Total**: ~14k LOC core/UI, ~7.4k LOC in UI layer, ~6.5k LOC in `core/` business logic
 
 ## Key Conventions
 
 ### State & Data Flow
 - All state lives in the `App` struct (`src/app.rs`)
 - Background work uses `std::thread::spawn` + `Arc<Mutex<Option<Result<T>>>>` — polled each frame in `App::poll_background_tasks()`
+- **Mutex poison safety** — all `.lock()` calls use `.lock_or_recover()` (trait `MutexExt` in `src/core/mod.rs`) which recovers from poisoned mutexes instead of panicking
 - UI views set request flags (e.g., `launch_requested`), consumed by `App::handle_view_requests()`
 - File downloads are SHA1-verified via `crate::core::sha1_hex()` (wraps `sha1_smol`)
-- Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `maven_path()`, `extract_zip_overrides()`
+- Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `maven_path()`, `extract_zip_overrides()`, `MutexExt` trait
 - JSON persistence for config, instances, accounts in platform directories (`src/util/paths.rs`)
 - Mod loaders: Vanilla, Forge, NeoForge, Fabric, Quilt — profiles merged in `src/core/loader_profiles.rs`
 - **Image loading** — uses egui's built-in loaders (`egui_extras::install_image_loaders` in `main.rs`, `all_loaders` feature). Display with `egui::Image::new(url).fit_to_exact_size(size)`. No custom image cache.
@@ -35,16 +36,18 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 
 ### Theme & Styling
 - Theme engine in `src/theme/mod.rs` — 33 bundled themes + user JSON themes
-- **Dual-path theme pattern** — all themed UI must handle both paths:
-  ```rust
-  if let Some(t) = self.theme.as_ref() {
-      // themed: use t.section_header(), t.accent_button(), etc.
-  } else {
-      // fallback: use RichText, plain Button, etc.
-  }
-  ```
-- Theme helpers (`src/theme/mod.rs`): `section_header()` (15.0pt bold + strong + color), `title()`, `subtext()`, `accent_button()`, `danger_button()`, `ghost_button()`, `card_frame()`, `sidebar_frame()`, `topbar_frame()`, `code_frame()`, `content_frame()`
-- UI helpers (`src/ui/helpers.rs`): `section_heading()` (wraps theme's `section_header` or plain heading), `card_frame()`, `card_grid()`, `SearchState<R>` generic, `row_hover_highlight()`, `project_tooltip()`, `load_more_button()`, `empty_state()`, `format_human_timestamp()`
+- **Theme is always present** — `Theme` struct (not `Option<Theme>`). All UI code can call theme helpers directly without conditional checks.
+- **Color roles** (17 semantic keys): `bg`, `bg_secondary`, `bg_tertiary`, `surface`, `surface_hover`, `surface_active`, `overlay`, `overlay_hover`, `overlay_active`, `fg`, `fg_dim`, `fg_muted`, `accent`, `accent_secondary`, `success`, `error`, `warning`
+- **Button helpers** (`src/theme/mod.rs`) — all use `BUTTON_HEIGHT` (32px), corner radius 6:
+  - `accent_button(label)` — accent fill + contrast-aware text
+  - `danger_button(label)` — error fill + contrast-aware text
+  - `ghost_button(label)` — transparent fill + surface_hover stroke + fg_dim text
+  - `icon_button(icon)` — ghost style, square `BUTTON_HEIGHT × BUTTON_HEIGHT` for icon-only buttons
+  - `menu_item(label)` — fg_dim text, no custom fill/stroke (denser, for popup menus)
+- **Size constants**: `BUTTON_HEIGHT = 32.0`, `TAB_HEIGHT = 28.0`
+- **Other helpers**: `section_header()` (15pt bold fg), `title()` (bold fg), `subtext()` (12pt fg_muted), `card_frame()` (bg_secondary fill), `sidebar_frame()`, `topbar_frame()` (bg_tertiary), `code_frame()` (bg_tertiary), `content_frame()` (bg fill), `badge_frame(fill)` (pill), `style_menu(ui)`, `mono_font()`
+- UI helpers (`src/ui/helpers.rs`): `section_heading()` (wraps theme's `section_header`), `card_frame()`, `card_grid()`, `SearchState<R>` generic, `row_hover_highlight()`, `project_tooltip()`, `load_more_button()`, `empty_state()`, `format_human_timestamp()`, `tab_button()` (uses `TAB_HEIGHT`)
+- **Browse component** (`src/ui/browse_common.rs`): shared `BrowseTab` struct used by mod and modpack browsers — handles search, filtering, sorting, list/grid rendering, pagination
 
 ### UI Layout Patterns
 - **Vertical centering** — use `allocate_ui_with_layout` with centered cross-justify instead of `ui.horizontal` for rows with mixed-height widgets:
@@ -59,10 +62,19 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 - **Row height**: `+4.0` for standard controls, `+12.0` for rows containing `section_heading` (15pt bold text)
 - **TextEdit margins**: `egui::Margin::symmetric(4, 9)` for consistent vertical padding
 - **Right-aligned sections**: nested `ui.with_layout(egui::Layout::right_to_left(egui::Align::Center).with_cross_justify(true), |ui| { ... })`
+- **Horizontal-only clip for right-to-left sections** — prevents leftward overflow while preserving vertical hover borders:
+  ```rust
+  let mut clip = ui.clip_rect();
+  clip.min.x = ui.max_rect().min.x;
+  ui.set_clip_rect(clip);
+  ```
 - **Page headers**: title via `section_heading()` → `ui.separator()` → `ui.add_space(8.0)`
-- **ComboBox widths**: 120px for sort, 140px for category (established pattern)
+- **ComboBox widths**: 100px for loader/sort combos, 140px for category
+- **Responsive search**: width `(available * 0.2).clamp(80.0, 160.0)` for toolbar search fields
+- **Text truncation**: use `ui.add(Label::new(richtext).truncate())` for long text in fixed-width rows (instance names, version labels)
 
 ### Build & Quality
 - `cargo check` must pass with **zero warnings**
 - Use `egui::Frame::new()` (not deprecated `none()`)
 - No `ui.horizontal` for rows with mixed-height widgets — always use `allocate_ui_with_layout` pattern above
+- All buttons must use themed helpers — no unstyled `ui.button()` calls
