@@ -254,28 +254,23 @@ impl ConsoleView {
 
         // ── Log Output ──────────────────────────────────────────────
         if let Some(proc) = &running_processes[idx].process {
-            let lines = {
-                let s = proc.lock().unwrap();
-                s.log_lines.clone()
-            };
-
             let auto_scroll = running_processes[idx].auto_scroll;
             let scroll_id = active_id.clone();
-            let show_scroll = |ui: &mut egui::Ui| {
+            let proc = proc.clone();
+            theme.code_frame().show(ui, |ui| {
                 egui::ScrollArea::vertical()
                     .id_salt(("console_scroll", &scroll_id))
                     .auto_shrink([false, false])
                     .stick_to_bottom(auto_scroll)
                     .show(ui, |ui| {
-                        for line in &lines {
+                        let s = proc.lock().unwrap();
+                        for line in &s.log_lines {
                             ui.label(
                                 egui::RichText::new(line).font(crate::theme::Theme::mono_font()),
                             );
                         }
                     });
-            };
-
-            theme.code_frame().show(ui, show_scroll);
+            });
         }
     }
 
