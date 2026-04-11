@@ -436,7 +436,7 @@ impl SettingsView {
             if let Some(rm_idx) = self.confirm_java_remove {
                 let rm_label = java_installs
                     .get(rm_idx)
-                    .map(|j| format!("Java {} · {}", j.major, j.version))
+                    .map(|j| format!("Java {} - {}", j.major, j.version))
                     .unwrap_or_else(|| format!("Java install #{rm_idx}"));
 
                 let mut open = true;

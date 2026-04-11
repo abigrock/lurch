@@ -66,7 +66,7 @@ impl ConsoleView {
                                         .fill(egui::Color32::TRANSPARENT)
                                         .stroke(egui::Stroke::new(1.0, err))
                                         .corner_radius(egui::CornerRadius::same(6))
-                                        .min_size(egui::vec2(0.0, crate::theme::BUTTON_HEIGHT)),
+                                        .min_size(egui::vec2(0.0, crate::theme::TAB_HEIGHT)),
                                     )
                                     .clicked();
                                 ui.spacing_mut().item_spacing.x = default_spacing;

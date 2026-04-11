@@ -169,7 +169,7 @@ impl InstanceDetailView {
             }
             ui.separator();
             let version_info = if instance.loader != crate::core::instance::ModLoader::Vanilla {
-                format!("{} · {}", instance.mc_version, instance.loader)
+                format!("{} - {}", instance.mc_version, instance.loader)
             } else {
                 instance.mc_version.clone()
             };
