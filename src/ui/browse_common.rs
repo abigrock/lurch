@@ -342,63 +342,87 @@ impl BrowseTab {
                         let tip_downloads = item.downloads;
                         let tip_tags: Vec<String> = item.categories.clone();
 
-                        let row_resp = ui.horizontal(|ui| {
-                            // Icon
-                            let icon_resp = if let Some(url) = &item.icon_url {
-                                ui.add(
-                                    egui::Image::new(url).fit_to_exact_size(egui::vec2(40.0, 40.0)),
-                                )
-                            } else {
-                                icon_placeholder(ui, &item.title, 40.0, theme)
-                            };
-                            icon_resp.on_hover_ui(|ui| {
-                                project_tooltip(
-                                    ui,
-                                    tip_icon_url.as_deref(),
-                                    &tip_title,
-                                    &tip_desc,
-                                    tip_downloads,
-                                    &tip_tags,
-                                    theme,
-                                );
-                            });
-                            // Info column
-                            ui.vertical(|ui| {
-                                ui.set_max_width(ui.available_width() - 220.0);
-                                ui.label(theme.title(&item.title));
-                                ui.label(theme.subtext(&truncate_desc(&item.description, 120)));
-                                ui.label(theme.subtext(&format!(
-                                    "{} downloads",
-                                    format_downloads(item.downloads)
-                                )));
-                                let tags: Vec<&str> =
-                                    item.categories.iter().map(|s| s.as_str()).collect();
-                                show_category_tags(ui, &tags, 3, theme);
-                            });
-                            // Action buttons (right-aligned)
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if item.allows_install {
-                                        if ui.add(theme.accent_button("Install")).clicked() {
-                                            actions.push(BrowseAction::Install(idx));
-                                        }
-                                    } else {
-                                        if ui.add(theme.accent_button("Open in browser")).clicked()
-                                        {
-                                            actions.push(BrowseAction::OpenPage(idx));
-                                        }
-                                    }
-                                    if item.allows_install {
-                                        let open_page = ui
-                                            .add(theme.ghost_button(egui_phosphor::regular::GLOBE));
-                                        if open_page.on_hover_text("Open Page").clicked() {
-                                            actions.push(BrowseAction::OpenPage(idx));
-                                        }
-                                    }
-                                },
-                            );
-                        });
+                        let row_resp =
+                            egui::Frame::new()
+                                .inner_margin(egui::Margin::same(4))
+                                .show(ui, |ui| {
+                                    ui.horizontal(|ui| {
+                                        // Icon
+                                        let icon_resp = if let Some(url) = &item.icon_url {
+                                            ui.add(
+                                                egui::Image::new(url)
+                                                    .fit_to_exact_size(egui::vec2(40.0, 40.0))
+                                                    .corner_radius(4),
+                                            )
+                                        } else {
+                                            icon_placeholder(ui, &item.title, 40.0, theme)
+                                        };
+                                        icon_resp.on_hover_ui(|ui| {
+                                            project_tooltip(
+                                                ui,
+                                                tip_icon_url.as_deref(),
+                                                &tip_title,
+                                                &tip_desc,
+                                                tip_downloads,
+                                                &tip_tags,
+                                                theme,
+                                            );
+                                        });
+                                        // Info column
+                                        ui.vertical(|ui| {
+                                            ui.set_max_width(ui.available_width() - 220.0);
+                                            ui.label(theme.title(&item.title));
+                                            ui.label(
+                                                theme.subtext(&truncate_desc(
+                                                    &item.description,
+                                                    120,
+                                                )),
+                                            );
+                                            ui.label(theme.subtext(&format!(
+                                                "{} downloads",
+                                                format_downloads(item.downloads)
+                                            )));
+                                            let tags: Vec<&str> = item
+                                                .categories
+                                                .iter()
+                                                .map(|s| s.as_str())
+                                                .collect();
+                                            show_category_tags(ui, &tags, 3, theme);
+                                        });
+                                        // Action buttons (right-aligned)
+                                        ui.with_layout(
+                                            egui::Layout::right_to_left(egui::Align::Center),
+                                            |ui| {
+                                                if item.allows_install {
+                                                    if ui
+                                                        .add(theme.accent_button("Install"))
+                                                        .clicked()
+                                                    {
+                                                        actions.push(BrowseAction::Install(idx));
+                                                    }
+                                                } else {
+                                                    if ui
+                                                        .add(theme.accent_button("Open in browser"))
+                                                        .clicked()
+                                                    {
+                                                        actions.push(BrowseAction::OpenPage(idx));
+                                                    }
+                                                }
+                                                if item.allows_install {
+                                                    let open_page = ui.add(theme.ghost_button(
+                                                        egui_phosphor::regular::GLOBE,
+                                                    ));
+                                                    if open_page
+                                                        .on_hover_text("Open Page")
+                                                        .clicked()
+                                                    {
+                                                        actions.push(BrowseAction::OpenPage(idx));
+                                                    }
+                                                }
+                                            },
+                                        );
+                                    });
+                                });
                         row_hover_highlight(ui, row_resp.response.rect, theme);
                     }
 
@@ -446,7 +470,11 @@ impl BrowseTab {
 
                 ui.horizontal(|ui| {
                     let icon_resp = if let Some(url) = &item.icon_url {
-                        ui.add(egui::Image::new(url).fit_to_exact_size(egui::vec2(32.0, 32.0)))
+                        ui.add(
+                            egui::Image::new(url)
+                                .fit_to_exact_size(egui::vec2(32.0, 32.0))
+                                .corner_radius(4),
+                        )
                     } else {
                         icon_placeholder(ui, &item.title, 32.0, theme)
                     };
