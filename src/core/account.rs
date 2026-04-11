@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 // ── Azure AD client config ───────────────────────────────────────────────────
-const MS_CLIENT_ID: &str = "afe3f0d1-362f-4414-8352-1758cebf9ffe";
+pub const MS_CLIENT_ID: &str = "afe3f0d1-362f-4414-8352-1758cebf9ffe";
 const MS_DEVICE_CODE_URL: &str =
     "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
 const MS_TOKEN_URL: &str = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
@@ -30,8 +30,14 @@ pub struct Account {
 impl Account {
     /// Create an offline/demo account (no Microsoft auth needed)
     pub fn offline(username: String) -> Self {
-        // Generate a deterministic offline UUID from username (v3-style)
-        let uuid = format!("offline-{}", username.to_lowercase());
+        // Generate a deterministic offline UUID matching Java's
+        // UUID.nameUUIDFromBytes("OfflinePlayer:<name>".getBytes("UTF-8"))
+        let input = format!("OfflinePlayer:{username}");
+        let digest = md5::compute(input.as_bytes());
+        let uuid = uuid::Builder::from_md5_bytes(digest.0)
+            .into_uuid()
+            .simple()
+            .to_string();
         Self {
             uuid,
             username,
