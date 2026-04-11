@@ -1130,6 +1130,21 @@ use crate::core::modrinth_modpack;
             self.launch_instance(&id, ctx);
         }
 
+        // Handle console navigation from instances view
+        if let Some(id) = self.instances_view.console_requested.take() {
+            self.console_view.active_instance_id = Some(id);
+            self.current_view = crate::ui::sidebar::View::Console;
+        }
+
+        // Handle kill requests from instances view
+        if let Some(id) = self.instances_view.kill_requested.take() {
+            if let Some(rp) = self.running_processes.iter().find(|rp| rp.instance_id == id) {
+                if let Some(proc) = &rp.process {
+                    proc.lock().unwrap().kill();
+                }
+            }
+        }
+
         // Handle "Launch Anyway" from missing-mods dialog (bypasses mod check)
         if let Some(id) = self.force_launch_requested.take() {
             self.do_launch_inner(&id, ctx);

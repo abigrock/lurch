@@ -133,7 +133,7 @@ impl ConsoleView {
                         if is_running {
                             let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
                             let clicked = if let Some(t) = theme {
-                                ui.add(t.ghost_button(&kill_lbl)).clicked()
+                                ui.add(t.danger_button(&kill_lbl)).clicked()
                             } else {
                                 ui.button(&kill_lbl).clicked()
                             };

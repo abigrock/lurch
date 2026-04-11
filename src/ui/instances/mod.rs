@@ -73,6 +73,8 @@ pub struct InstancesView {
     pub update_modpack_requested: Option<String>,
     pub recheck_modpack_updates: bool,
     pub running_instance_ids: HashSet<String>,
+    pub console_requested: Option<String>,
+    pub kill_requested: Option<String>,
     name_auto_generated: bool,
     pub search_query: String,
     pub sort_mode: InstanceSortMode,
@@ -144,6 +146,8 @@ impl Default for InstancesView {
             update_modpack_requested: None,
             recheck_modpack_updates: false,
             running_instance_ids: HashSet::new(),
+            console_requested: None,
+            kill_requested: None,
             name_auto_generated: false,
             search_query: String::new(),
             sort_mode: InstanceSortMode::default(),
@@ -863,6 +867,19 @@ impl InstancesView {
                                         );
                                     }
                                 }
+                                if is_running {
+                                    ui.separator();
+                                    let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
+                                    let kill_clicked = if let Some(t) = self.theme.as_ref() {
+                                        ui.add(t.danger_button(&kill_lbl)).clicked()
+                                    } else {
+                                        ui.button(egui::RichText::new(&kill_lbl).color(egui::Color32::RED)).clicked()
+                                    };
+                                    if kill_clicked {
+                                        self.kill_requested = Some(inst_id.clone());
+                                        ui.close();
+                                    }
+                                }
                                 ui.separator();
                                 let del_lbl =
                                     format!("{} Delete", egui_phosphor::regular::TRASH);
@@ -891,6 +908,19 @@ impl InstancesView {
                                 };
                                 if launch_clicked {
                                     self.launch_requested = Some(inst_id.clone());
+                                }
+                            } else {
+                                let console_clicked = if let Some(t) = self.theme.as_ref() {
+                                    ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)))
+                                        .on_hover_text("Open console")
+                                        .clicked()
+                                } else {
+                                    ui.button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW))
+                                        .on_hover_text("Open console")
+                                        .clicked()
+                                };
+                                if console_clicked {
+                                    self.console_requested = Some(inst_id.clone());
                                 }
                             }
                         },
@@ -1078,6 +1108,18 @@ impl InstancesView {
                             if launch_clicked {
                                 self.launch_requested = Some(inst_id.clone());
                             }
+                        } else {
+                            let btn_width = ui.available_width() - 36.0 - ui.spacing().item_spacing.x;
+                            let console_clicked = if let Some(t) = self.theme.as_ref() {
+                                ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)).min_size(egui::vec2(btn_width, 0.0)))
+                                    .clicked()
+                            } else {
+                                ui.add(egui::Button::new(format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)).min_size(egui::vec2(btn_width, 0.0)))
+                                    .clicked()
+                            };
+                            if console_clicked {
+                                self.console_requested = Some(inst_id.clone());
+                            }
                         }
                         let more_btn = if let Some(t) = self.theme.as_ref() {
                             ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)))
@@ -1170,6 +1212,19 @@ impl InstancesView {
                                         origin.project_id.clone(),
                                         origin.version_id.clone(),
                                     ));
+                                }
+                            }
+                            if is_running {
+                                ui.separator();
+                                let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
+                                let kill_clicked = if let Some(t) = self.theme.as_ref() {
+                                    ui.add(t.danger_button(&kill_lbl)).clicked()
+                                } else {
+                                    ui.button(egui::RichText::new(&kill_lbl).color(egui::Color32::RED)).clicked()
+                                };
+                                if kill_clicked {
+                                    self.kill_requested = Some(inst_id.clone());
+                                    ui.close();
                                 }
                             }
                             ui.separator();
