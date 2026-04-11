@@ -21,9 +21,11 @@ impl InstancesView {
                 match result {
                     Ok(versions) => {
                         self.loader_versions = versions;
+                        self.loader_versions_error = None;
                     }
-                    Err(_) => {
+                    Err(e) => {
                         self.loader_versions = Vec::new();
+                        self.loader_versions_error = Some(e);
                     }
                 }
                 self.loader_versions_loading = false;
@@ -252,6 +254,7 @@ impl InstancesView {
                 if self.new_loader != prev_loader {
                     self.loader_versions.clear();
                     self.loader_versions_loading = false;
+                    self.loader_versions_error = None;
                     self.loader_versions_fetch = None;
                     self.new_loader_version.clear();
                 }
@@ -274,6 +277,7 @@ impl InstancesView {
                     && !self.new_mc_version.is_empty()
                     && self.loader_versions.is_empty()
                     && !self.loader_versions_loading
+                    && self.loader_versions_error.is_none()
                 {
                     self.loader_versions_loading = true;
                     let loader = self.new_loader.clone();
@@ -311,6 +315,14 @@ impl InstancesView {
                             }
                             ui.weak("Loading versions...");
                         });
+                    } else if self.loader_versions_error.is_some() {
+                        ui.colored_label(
+                            egui::Color32::from_rgb(255, 140, 0),
+                            format!(
+                                "{} is not available for Minecraft {}",
+                                self.new_loader, self.new_mc_version
+                            ),
+                        );
                     } else if self.loader_versions.is_empty() {
                         ui.weak("No versions available");
                     } else {

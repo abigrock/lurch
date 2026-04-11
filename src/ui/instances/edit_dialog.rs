@@ -30,6 +30,7 @@ impl InstancesView {
             self.edit_show_snapshots = false;
             self.edit_loader_versions.clear();
             self.edit_loader_versions_loading = false;
+            self.edit_loader_versions_error = None;
             self.edit_loader_versions_fetch = None;
             self.edit_initialized_for = Some(edit_id.to_string());
         }
@@ -39,8 +40,14 @@ impl InstancesView {
             let finished = fetch.lock().ok().and_then(|mut g| g.take());
             if let Some(result) = finished {
                 match result {
-                    Ok(versions) => self.edit_loader_versions = versions,
-                    Err(_) => self.edit_loader_versions = Vec::new(),
+                    Ok(versions) => {
+                        self.edit_loader_versions = versions;
+                        self.edit_loader_versions_error = None;
+                    }
+                    Err(e) => {
+                        self.edit_loader_versions = Vec::new();
+                        self.edit_loader_versions_error = Some(e);
+                    }
                 }
                 self.edit_loader_versions_loading = false;
                 self.edit_loader_versions_fetch = None;
@@ -196,6 +203,7 @@ impl InstancesView {
                         {
                             self.edit_loader_versions.clear();
                             self.edit_loader_versions_loading = false;
+                            self.edit_loader_versions_error = None;
                             self.edit_loader_versions_fetch = None;
                             if self.edit_loader != prev_edit_loader {
                                 self.edit_loader_version.clear();
@@ -207,6 +215,7 @@ impl InstancesView {
                             && !self.edit_mc_version.is_empty()
                             && self.edit_loader_versions.is_empty()
                             && !self.edit_loader_versions_loading
+                            && self.edit_loader_versions_error.is_none()
                         {
                             self.edit_loader_versions_loading = true;
                             let loader = self.edit_loader.clone();
@@ -245,6 +254,14 @@ impl InstancesView {
                                     }
                                     ui.weak("Loading versions...");
                                 });
+                            } else if self.edit_loader_versions_error.is_some() {
+                                ui.colored_label(
+                                    egui::Color32::from_rgb(255, 140, 0),
+                                    format!(
+                                        "{} is not available for Minecraft {}",
+                                        self.edit_loader, self.edit_mc_version
+                                    ),
+                                );
                             } else if self.edit_loader_versions.is_empty() {
                                 ui.weak("No versions available");
                             } else {

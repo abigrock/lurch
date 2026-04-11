@@ -63,6 +63,7 @@ pub struct InstancesView {
     pub local_cf_modpack_import: Option<std::path::PathBuf>,
     pub loader_versions: Vec<(String, bool)>,
     pub loader_versions_loading: bool,
+    pub loader_versions_error: Option<String>,
     #[allow(clippy::type_complexity)]
     pub loader_versions_fetch: Option<Arc<Mutex<Option<Result<Vec<(String, bool)>, String>>>>>,
     pub new_loader_version: String,
@@ -83,6 +84,7 @@ pub struct InstancesView {
     pub edit_show_snapshots: bool,
     pub edit_loader_versions: Vec<(String, bool)>,
     pub edit_loader_versions_loading: bool,
+    pub edit_loader_versions_error: Option<String>,
     #[allow(clippy::type_complexity)]
     pub edit_loader_versions_fetch: Option<Arc<Mutex<Option<Result<Vec<(String, bool)>, String>>>>>,
     edit_initialized_for: Option<String>,
@@ -113,6 +115,7 @@ impl Default for InstancesView {
             local_cf_modpack_import: None,
             loader_versions: Vec::new(),
             loader_versions_loading: false,
+            loader_versions_error: None,
             loader_versions_fetch: None,
             new_loader_version: String::new(),
             mod_counts: HashMap::new(),
@@ -131,6 +134,7 @@ impl Default for InstancesView {
             edit_show_snapshots: false,
             edit_loader_versions: Vec::new(),
             edit_loader_versions_loading: false,
+            edit_loader_versions_error: None,
             edit_loader_versions_fetch: None,
             edit_initialized_for: None,
         }
@@ -274,6 +278,7 @@ impl InstancesView {
                             self.new_group.clear();
                             self.loader_versions.clear();
                             self.loader_versions_loading = false;
+                            self.loader_versions_error = None;
                             self.loader_versions_fetch = None;
                             self.new_loader_version.clear();
                             self.name_auto_generated = false;
@@ -339,6 +344,7 @@ impl InstancesView {
                         self.new_group.clear();
                         self.loader_versions.clear();
                         self.loader_versions_loading = false;
+                        self.loader_versions_error = None;
                         self.loader_versions_fetch = None;
                         self.new_loader_version.clear();
                         self.name_auto_generated = false;
@@ -364,6 +370,7 @@ impl InstancesView {
                         self.new_group.clear();
                         self.loader_versions.clear();
                         self.loader_versions_loading = false;
+                        self.loader_versions_error = None;
                         self.loader_versions_fetch = None;
                         self.new_loader_version.clear();
                         self.name_auto_generated = false;
