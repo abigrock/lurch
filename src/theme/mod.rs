@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 /// Standard height for all themed buttons (accent, danger, ghost, icon, tab).
 pub const BUTTON_HEIGHT: f32 = 32.0;
+pub const TAB_HEIGHT: f32 = 26.0;
 
 /// JSON theme file schema: only name + colors
 #[derive(Debug, Clone, Deserialize)]

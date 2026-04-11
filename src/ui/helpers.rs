@@ -63,6 +63,7 @@ pub fn truncate_desc(s: &str, max: usize) -> String {
 pub fn tab_button(ui: &mut egui::Ui, label: &str, active: bool, theme: &Theme) -> bool {
     let btn = egui::Button::new(
         egui::RichText::new(label)
+            .size(12.5)
             .color(if active {
                 theme.color("accent")
             } else {
@@ -80,7 +81,7 @@ pub fn tab_button(ui: &mut egui::Ui, label: &str, active: bool, theme: &Theme) -
         },
     ))
     .corner_radius(egui::CornerRadius::same(6))
-    .min_size(egui::vec2(0.0, crate::theme::BUTTON_HEIGHT));
+    .min_size(egui::vec2(0.0, crate::theme::TAB_HEIGHT));
     ui.add(btn).clicked()
 }
 

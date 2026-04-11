@@ -181,13 +181,17 @@ impl InstanceDetailView {
                 clip.min.x = ui.max_rect().min.x;
                 ui.set_clip_rect(clip);
                 if let Some(origin) = &instance.modpack_origin {
-                    let open_page = ui.add(theme.ghost_button(egui_phosphor::regular::GLOBE));
                     let source_name = match origin.source.as_str() {
                         "modrinth" => "Modrinth",
                         "curseforge" => "CurseForge",
                         _ => "source",
                     };
-                    if open_page.on_hover_text(format!("Open on {source_name}")).clicked() {
+                    let open_page = ui.add(theme.ghost_button(&format!(
+                        "{}  Open on {}",
+                        egui_phosphor::regular::GLOBE,
+                        source_name
+                    )));
+                    if open_page.clicked() {
                         if let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
                             let _ = open::that(&url);
                         }
