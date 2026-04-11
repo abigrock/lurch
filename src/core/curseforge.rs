@@ -309,29 +309,23 @@ pub fn download_cf_file(file: &CfFile, mods_dir: &std::path::Path) -> anyhow::Re
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("This mod does not allow 3rd-party distribution"))?;
 
-    let client = crate::core::http_client();
-    let resp = client.get(url).send()?;
-
-    let status = resp.status();
-    if !status.is_success() {
-        anyhow::bail!("Download failed (HTTP {status})");
-    }
-
-    let bytes = resp.bytes()?;
-
-    // Verify SHA1 if available
-    if let Some(hash) = file.hashes.iter().find(|h| h.algo == 1) {
-        let mut hasher = sha1_smol::Sha1::new();
-        hasher.update(&bytes);
-        let actual = hasher.hexdigest();
-        if actual != hash.value {
-            anyhow::bail!("SHA1 mismatch: expected {}, got {actual}", hash.value);
-        }
-    }
-
-    std::fs::create_dir_all(mods_dir)?;
     let dest = mods_dir.join(&file.file_name);
-    std::fs::write(&dest, &bytes)?;
+    let sha1 = file
+        .hashes
+        .iter()
+        .find(|h| h.algo == 1)
+        .map(|h| h.value.as_str());
+    let client = crate::core::http_client();
+
+    crate::core::mod_cache::resolve_or_download(&file.file_name, sha1, &dest, || {
+        let resp = client.get(url).send()?;
+        let status = resp.status();
+        if !status.is_success() {
+            anyhow::bail!("Download failed (HTTP {status})");
+        }
+        Ok(resp.bytes()?.to_vec())
+    })?;
+
     Ok(file.file_name.clone())
 }
 

@@ -220,31 +220,19 @@ pub fn get_project_versions(
 
 /// Download a mod file to the instance mods directory. Returns the filename.
 pub fn download_mod_file(file: &VersionFile, mods_dir: &Path) -> anyhow::Result<String> {
-    let client = crate::core::http_client();
-    let resp = client
-        .get(&file.url)
-        .send()?;
-
-    let status = resp.status();
-    if !status.is_success() {
-        anyhow::bail!("Download failed (HTTP {status})");
-    }
-
-    let bytes = resp.bytes()?;
-
-    // Verify SHA1 if available
-    if let Some(expected_sha1) = &file.hashes.sha1 {
-        let mut hasher = sha1_smol::Sha1::new();
-        hasher.update(&bytes);
-        let actual = hasher.hexdigest();
-        if &actual != expected_sha1 {
-            anyhow::bail!("SHA1 mismatch: expected {expected_sha1}, got {actual}");
-        }
-    }
-
-    std::fs::create_dir_all(mods_dir)?;
     let dest = mods_dir.join(&file.filename);
-    std::fs::write(&dest, &bytes)?;
+    let sha1 = file.hashes.sha1.as_deref();
+    let client = crate::core::http_client();
+
+    crate::core::mod_cache::resolve_or_download(&file.filename, sha1, &dest, || {
+        let resp = client.get(&file.url).send()?;
+        let status = resp.status();
+        if !status.is_success() {
+            anyhow::bail!("Download failed (HTTP {status})");
+        }
+        Ok(resp.bytes()?.to_vec())
+    })?;
+
     Ok(file.filename.clone())
 }
 
