@@ -389,6 +389,27 @@ impl App {
         let progress_clone = Arc::clone(&progress);
 
         std::thread::spawn(move || {
+            // Refresh auth token before launch (MC tokens expire in ~24h)
+            let account = if !account.offline && !account.refresh_token.is_empty() {
+                {
+                    let mut p = progress_clone.lock().unwrap();
+                    p.message = "Refreshing authentication...".to_string();
+                }
+                ctx_clone.request_repaint();
+                match crate::core::account::refresh_account(&account) {
+                    Ok(refreshed) => {
+                        // Persist refreshed token to disk
+                        let mut store = crate::core::account::AccountStore::load();
+                        store.add_or_update(refreshed.clone());
+                        let _ = store.save();
+                        refreshed
+                    }
+                    Err(_) => account, // fall back to existing token
+                }
+            } else {
+                account
+            };
+
             match prepare_and_launch(
                 &instance,
                 &account,
