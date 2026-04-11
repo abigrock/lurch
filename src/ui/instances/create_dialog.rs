@@ -380,7 +380,7 @@ impl InstancesView {
                 instances.push(inst);
                 self.show_add_instance = false;
             }
-            if ui.button("Cancel").clicked() {
+            if ui.add(self.theme.ghost_button("Cancel")).clicked() {
                 self.show_add_instance = false;
             }
         });

@@ -80,7 +80,7 @@ pub fn tab_button(ui: &mut egui::Ui, label: &str, active: bool, theme: &Theme) -
         },
     ))
     .corner_radius(egui::CornerRadius::same(6))
-    .min_size(egui::vec2(0.0, 32.0));
+    .min_size(egui::vec2(0.0, crate::theme::BUTTON_HEIGHT));
     ui.add(btn).clicked()
 }
 

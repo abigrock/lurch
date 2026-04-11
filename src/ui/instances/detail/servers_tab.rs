@@ -55,7 +55,7 @@ impl InstanceDetailView {
                     self.editing_server_idx = None;
                     self.servers_needs_rescan = true;
                 }
-                if ui.button("Cancel").clicked() {
+                if ui.add(theme.ghost_button("Cancel")).clicked() {
                     self.server_edit_name.clear();
                     self.server_edit_ip.clear();
                     self.editing_server_idx = None;
@@ -121,7 +121,7 @@ impl InstanceDetailView {
                                 ui.spacing_mut().item_spacing.y = 0.0;
                                 let up_enabled = idx > 0;
                                 if ui
-                                    .add_enabled(up_enabled, egui::Button::new("^").small())
+                                    .add_enabled(up_enabled, theme.ghost_button(egui_phosphor::regular::CARET_UP))
                                     .on_hover_text("Move up")
                                     .clicked()
                                 {
@@ -129,7 +129,7 @@ impl InstanceDetailView {
                                 }
                                 let down_enabled = idx + 1 < server_count;
                                 if ui
-                                    .add_enabled(down_enabled, egui::Button::new("v").small())
+                                    .add_enabled(down_enabled, theme.ghost_button(egui_phosphor::regular::CARET_DOWN))
                                     .on_hover_text("Move down")
                                     .clicked()
                                 {
@@ -192,7 +192,7 @@ impl InstanceDetailView {
                                 }
                                 self.confirm_server_delete = None;
                             }
-                            if ui.button("Cancel").clicked() {
+                            if ui.add(theme.ghost_button("Cancel")).clicked() {
                                 self.confirm_server_delete = None;
                             }
                         });

@@ -1,6 +1,6 @@
 use crate::core::curseforge::{self, CfCategory, CfFile, CfSortField, CLASS_MODPACKS};
-use crate::core::MutexExt;
 use crate::core::modrinth::{self, MrCategory, MrSortIndex, ProjectVersion};
+use crate::core::MutexExt;
 use crate::theme::Theme;
 use crate::ui::browse_common::{
     BrowseAction, BrowseConfig, BrowseItem, BrowseSearchResult, BrowseTab,
@@ -552,7 +552,7 @@ impl ModpackBrowser {
                     {
                         action = Some(VersionPickerAction::Install);
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui.add(theme.ghost_button("Cancel")).clicked() {
                         action = Some(VersionPickerAction::Cancel);
                     }
                 });

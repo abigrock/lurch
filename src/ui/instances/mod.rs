@@ -234,7 +234,7 @@ impl InstancesView {
                                 self.kill_requested = Some(kill_id.clone());
                                 self.confirm_kill = None;
                             }
-                            if ui.button("Cancel").clicked() {
+                            if ui.add(t.ghost_button("Cancel")).clicked() {
                                 self.confirm_kill = None;
                             }
                         });
@@ -741,7 +741,7 @@ impl InstancesView {
                         egui::Layout::right_to_left(egui::Align::Center),
                         |ui| {
                             let t = &self.theme;
-                            let more_btn = ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)));
+                            let more_btn = ui.add(t.icon_button(egui_phosphor::regular::DOTS_THREE));
                             let more_btn = more_btn.on_hover_text("More actions");
                             let inst = &instances[idx];
                             let theme_ref = &self.theme;
@@ -934,14 +934,14 @@ impl InstancesView {
                         let t = &self.theme;
                         if !is_running {
                             let btn_width = ui.available_width() - 36.0 - ui.spacing().item_spacing.x;
-                            let launch_clicked = ui.add(t.accent_button("▶ Launch").min_size(egui::vec2(btn_width, 0.0)))
+                            let launch_clicked = ui.add(t.accent_button("▶ Launch").min_size(egui::vec2(btn_width, crate::theme::BUTTON_HEIGHT)))
                                 .clicked();
                             if launch_clicked {
                                 self.launch_requested = Some(inst_id.clone());
                             }
                         } else {
                             let btn_width = ui.available_width() - 36.0 - ui.spacing().item_spacing.x;
-                            let console_clicked = ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)).min_size(egui::vec2(btn_width, 0.0)))
+                            let console_clicked = ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)).min_size(egui::vec2(btn_width, crate::theme::BUTTON_HEIGHT)))
                                 .clicked();
                             if console_clicked {
                                 self.console_requested = Some(inst_id.clone());
@@ -1221,7 +1221,7 @@ fn instance_context_menu_body(
     ui.separator();
     let del_lbl = format!("{} Delete", egui_phosphor::regular::TRASH);
     if is_running {
-        ui.add_enabled(false, egui::Button::new(&del_lbl));
+        ui.add_enabled(false, theme.danger_button(&del_lbl));
     } else if ui.add(theme.danger_button(&del_lbl)).clicked() {
         out.delete = Some(inst_id.clone());
     }
@@ -1335,7 +1335,7 @@ impl InstancesView {
                     if apply_clicked {
                         action = Some(ModpackVersionPickerAction::Apply);
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui.add(t.ghost_button("Cancel")).clicked() {
                         action = Some(ModpackVersionPickerAction::Cancel);
                     }
                 });

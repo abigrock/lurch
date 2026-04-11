@@ -1,9 +1,9 @@
 use super::InstancesView;
 use crate::app::ManifestState;
 use crate::core::instance::{Instance, ModLoader};
-use crate::core::MutexExt;
 use crate::core::java::JavaInstall;
 use crate::core::version::{VersionEntry, VersionType};
+use crate::core::MutexExt;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 
@@ -424,7 +424,7 @@ impl InstancesView {
                         self.edit_initialized_for = None;
                         self.editing = None;
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui.add(self.theme.ghost_button("Cancel")).clicked() {
                         self.edit_initialized_for = None;
                         self.editing = None;
                     }
@@ -475,7 +475,7 @@ impl InstancesView {
                         }
                         self.confirm_delete = None;
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui.add(self.theme.ghost_button("Cancel")).clicked() {
                         self.confirm_delete = None;
                     }
                 });

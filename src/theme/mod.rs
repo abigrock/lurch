@@ -5,6 +5,9 @@ use egui::{
 use serde::Deserialize;
 use std::collections::HashMap;
 
+/// Standard height for all themed buttons (accent, danger, ghost, icon, tab).
+pub const BUTTON_HEIGHT: f32 = 32.0;
+
 /// JSON theme file schema: only name + colors
 #[derive(Debug, Clone, Deserialize)]
 pub struct ThemeFile {
@@ -253,7 +256,7 @@ impl Theme {
                 .strong(),
         )
         .fill(self.color("accent"))
-        .min_size(vec2(0.0, 32.0))
+        .min_size(vec2(0.0, BUTTON_HEIGHT))
         .corner_radius(CornerRadius::same(6))
     }
 
@@ -265,7 +268,7 @@ impl Theme {
                 .strong(),
         )
         .fill(self.color("error"))
-        .min_size(vec2(0.0, 32.0))
+        .min_size(vec2(0.0, BUTTON_HEIGHT))
         .corner_radius(CornerRadius::same(6))
     }
 
@@ -278,7 +281,20 @@ impl Theme {
         )
         .fill(Color32::TRANSPARENT)
         .stroke(Stroke::new(1.0, self.color("surface_hover")))
-        .min_size(vec2(0.0, 32.0))
+        .min_size(vec2(0.0, BUTTON_HEIGHT))
+        .corner_radius(CornerRadius::same(6))
+    }
+
+    /// Square icon-only button — ghost style, BUTTON_HEIGHT × BUTTON_HEIGHT
+    pub fn icon_button(&self, icon: &str) -> Button<'static> {
+        Button::new(
+            RichText::new(icon.to_string())
+                .color(self.color("fg_dim"))
+                .strong(),
+        )
+        .fill(Color32::TRANSPARENT)
+        .stroke(Stroke::new(1.0, self.color("surface_hover")))
+        .min_size(vec2(BUTTON_HEIGHT, BUTTON_HEIGHT))
         .corner_radius(CornerRadius::same(6))
     }
 

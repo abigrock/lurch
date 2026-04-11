@@ -464,7 +464,7 @@ impl SettingsView {
                                 }
                                 self.confirm_java_remove = None;
                             }
-                            if ui.button("Cancel").clicked() {
+                            if ui.add(theme.ghost_button("Cancel")).clicked() {
                                 self.confirm_java_remove = None;
                             }
                         });

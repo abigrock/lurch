@@ -264,7 +264,7 @@ impl InstanceDetailView {
                     if install_clicked {
                         action = Some(ModVersionPickerAction::Install);
                     }
-                    if ui.button("Cancel").clicked() {
+                    if ui.add(theme.ghost_button("Cancel")).clicked() {
                         action = Some(ModVersionPickerAction::Cancel);
                     }
                 });

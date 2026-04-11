@@ -380,7 +380,7 @@ impl InstanceDetailView {
                                 }
                                 self.confirm_mod_delete = None;
                             }
-                            if ui.button("Cancel").clicked() {
+                            if ui.add(theme.ghost_button("Cancel")).clicked() {
                                 self.confirm_mod_delete = None;
                             }
                         });

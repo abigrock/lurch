@@ -1375,7 +1375,7 @@ use crate::core::modrinth_modpack;
                 }
 
                 ui.add_space(8.0);
-                if ui.button("Cancel").clicked() {
+                if ui.add(theme.ghost_button("Cancel")).clicked() {
                     action = Some(JavaPromptAction::Cancel);
                 }
             });
@@ -1500,7 +1500,7 @@ use crate::core::modrinth_modpack;
                         launch_anyway = true;
                     }
 
-                    if ui.button("Cancel").clicked() {
+                    if ui.add(theme.ghost_button("Cancel")).clicked() {
                         cancel = true;
                     }
                 });

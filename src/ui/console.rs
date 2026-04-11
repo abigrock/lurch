@@ -66,7 +66,7 @@ impl ConsoleView {
                                         .fill(egui::Color32::TRANSPARENT)
                                         .stroke(egui::Stroke::new(1.0, err))
                                         .corner_radius(egui::CornerRadius::same(6))
-                                        .min_size(egui::vec2(0.0, 32.0)),
+                                        .min_size(egui::vec2(0.0, crate::theme::BUTTON_HEIGHT)),
                                     )
                                     .clicked();
                                 ui.spacing_mut().item_spacing.x = default_spacing;
@@ -171,7 +171,7 @@ impl ConsoleView {
                             kill_process = true;
                             self.confirm_kill = None;
                         }
-                        if ui.button("Cancel").clicked() {
+                        if ui.add(theme.ghost_button("Cancel")).clicked() {
                             self.confirm_kill = None;
                         }
                     });

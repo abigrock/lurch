@@ -241,7 +241,7 @@ impl AccountsView {
                 });
             });
             ui.add_space(4.0);
-            if ui.button("Dismiss").clicked() {
+            if ui.add(theme.ghost_button("Dismiss")).clicked() {
                 self.auth_state = AuthFlowState::Idle;
             }
             ui.add_space(8.0);
@@ -350,13 +350,13 @@ impl AccountsView {
                             .color(theme.color("fg"));
                         ui.label(code_text);
                         ui.add_space(4.0);
-                        if ui.button(format!("{} Copy Code", egui_phosphor::regular::COPY)).clicked() {
+                        if ui.add(theme.accent_button(&format!("{} Copy Code", egui_phosphor::regular::COPY))).clicked() {
                             ui.output_mut(|o| o.commands.push(egui::OutputCommand::CopyText(user_code.clone())));
                         }
                         ui.add_space(8.0);
                         ui.add(egui::Spinner::new().color(theme.color("accent")));
                         ui.add_space(8.0);
-                        if ui.button("Cancel").clicked() {
+                        if ui.add(theme.ghost_button("Cancel")).clicked() {
                             cancel_clicked = true;
                         }
                     });
@@ -397,7 +397,7 @@ impl AccountsView {
                             let _ = store.save();
                             self.confirm_remove = None;
                         }
-                        if ui.button("Cancel").clicked() {
+                        if ui.add(theme.ghost_button("Cancel")).clicked() {
                             self.confirm_remove = None;
                         }
                     });
