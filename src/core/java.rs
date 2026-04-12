@@ -464,8 +464,6 @@ fn extract_java_archive(data: &[u8], dest: &std::path::Path) -> anyhow::Result<(
 
     #[cfg(target_os = "windows")]
     {
-        use std::io::Read;
-
         let cursor = std::io::Cursor::new(data);
         let mut archive = zip::ZipArchive::new(cursor)?;
 
@@ -701,7 +699,7 @@ pub fn download_mojang_java(
                             .connect_timeout(std::time::Duration::from_secs(10))
                             .timeout(std::time::Duration::from_secs(300))
                             .build()?;
-                        for (path, info, executable) in chunk {
+                        for (path, info, _executable) in chunk {
                             let dest = target_dir.join(path);
                             if let Some(parent) = dest.parent() {
                                 std::fs::create_dir_all(parent)?;
@@ -722,7 +720,7 @@ pub fn download_mojang_java(
                             std::fs::write(&dest, &bytes)?;
 
                             #[cfg(unix)]
-                            if *executable {
+                            if *_executable {
                                 use std::os::unix::fs::PermissionsExt;
                                 let perms = std::fs::Permissions::from_mode(0o755);
                                 std::fs::set_permissions(&dest, perms)?;
