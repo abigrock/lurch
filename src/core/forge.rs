@@ -6,6 +6,7 @@
 //! 3. Running post-install processors (modern format only)
 
 use crate::core::instance::ModLoader;
+use crate::core::CommandHideConsole;
 use crate::core::version::{self, Arguments, Library};
 use anyhow::Context;
 use serde::Deserialize;
@@ -628,6 +629,7 @@ fn run_single_processor(
         .arg(&classpath)
         .arg(&main_class)
         .args(&args)
+        .no_console_window()
         .output()?;
 
     if !output.status.success() {

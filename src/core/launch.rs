@@ -1,5 +1,5 @@
 use crate::core::account::Account;
-use super::MutexExt;
+use super::{CommandHideConsole, MutexExt};
 use crate::core::instance::{Instance, ModLoader};
 use crate::core::java::{self, JavaInstall};
 use crate::core::version::{self, ArgumentValue, VersionInfo};
@@ -213,6 +213,7 @@ impl ProcessState {
                 .args(["/F", "/PID", &pid.to_string()])
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
+                .no_console_window()
                 .status()
                 .map(|s| s.success())
                 .unwrap_or(false)
@@ -247,6 +248,7 @@ pub fn spawn_minecraft(
         .current_dir(&cmd.working_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .no_console_window()
         .spawn()?;
 
     {

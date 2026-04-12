@@ -153,6 +153,29 @@ pub fn maven_path(name: &str) -> Option<String> {
     Some(format!("{group_path}/{artifact}/{version}/{filename}"))
 }
 
+// ── Windows console suppression ────────────────────────────────────────────
+
+/// Extension trait to suppress console window creation on Windows.
+///
+/// When a GUI application spawns a console program (e.g. `java.exe`),
+/// Windows creates a visible console window by default.  Calling
+/// `.no_console_window()` on a [`Command`] sets the `CREATE_NO_WINDOW`
+/// creation flag to prevent this.  No-op on non-Windows platforms.
+pub trait CommandHideConsole {
+    fn no_console_window(&mut self) -> &mut Self;
+}
+
+impl CommandHideConsole for std::process::Command {
+    fn no_console_window(&mut self) -> &mut Self {
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt as _;
+            self.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+        self
+    }
+}
+
 // ── Mutex poison recovery ──────────────────────────────────────────────────
 
 use std::sync::Mutex;

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use super::MutexExt;
+use super::{CommandHideConsole, MutexExt};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -22,7 +22,7 @@ impl std::fmt::Display for JavaInstall {
 
 /// Probe a java binary and extract version info
 pub fn probe_java(java_bin: &std::path::Path) -> Option<JavaInstall> {
-    let output = Command::new(java_bin).arg("-version").output().ok()?;
+    let output = Command::new(java_bin).arg("-version").no_console_window().output().ok()?;
 
     // java -version outputs to stderr
     let stderr = String::from_utf8_lossy(&output.stderr);
