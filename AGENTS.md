@@ -26,8 +26,8 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 - Background work uses `std::thread::spawn` + `Arc<Mutex<Option<Result<T>>>>` — polled each frame in `App::poll_background_tasks()`
 - **Mutex poison safety** — all `.lock()` calls use `.lock_or_recover()` (trait `MutexExt` in `src/core/mod.rs`) which recovers from poisoned mutexes instead of panicking
 - UI views set request flags (e.g., `launch_requested`), consumed by `App::handle_view_requests()`
-- File downloads are SHA1-verified via `crate::core::sha1_hex()` (wraps `sha1_smol`)
-- Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `maven_path()`, `extract_zip_overrides()`, `MutexExt` trait
+- File downloads are SHA1-verified via `crate::core::sha1_hex()` (wraps `sha1_smol`). Downloads without SHA1 (Maven-style loader libs, Forge installer, some mods) use **post-download JAR validation** via `validate_jar()` / `is_jar_valid()` to detect truncated or corrupt `.jar` files.
+- Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `validate_jar()`, `is_jar_valid()`, `maven_path()`, `extract_zip_overrides()`, `MutexExt` trait
 - JSON persistence for config, instances, accounts in platform directories (`src/util/paths.rs`)
 - Mod loaders: Vanilla, Forge, NeoForge, Fabric, Quilt — profiles merged in `src/core/loader_profiles.rs`
 - **Image loading** — uses egui's built-in loaders (`egui_extras::install_image_loaders` in `main.rs`, `all_loaders` feature). Display with `egui::Image::new(url).fit_to_exact_size(size)`. No custom image cache.
