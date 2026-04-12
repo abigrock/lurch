@@ -32,3 +32,4 @@ main.rs → App::new() → eframe event loop
 | `src/ui/instances/detail/` | Per-instance detail: tabbed mods/worlds/shaders/servers management | [View Map](src/ui/instances/detail/codemap.md) |
 | `src/theme/` | Theme engine: 33 bundled themes, user themes, styling helpers | [View Map](src/theme/codemap.md) |
 | `src/util/` | Utilities: platform directory resolution | [View Map](src/util/codemap.md) |
+| `.github/workflows/` | CI (`ci.yml`: check/clippy/test on 3 OS) and Release (`release.yml`: build 4 targets on tag push, create GitHub Release) | — |
