@@ -330,6 +330,7 @@ impl InstancesView {
                             format!("Imported \"{}\"", inst.name),
                         ));
                         instances.push(inst);
+                        self.mod_counts_dirty = true;
                     }
                     Err(e) => {
                         self.pending_toasts
