@@ -69,7 +69,7 @@ impl SettingsView {
             // ── Appearance ──
             let header_text = theme.section_header(&format!("{} Appearance", egui_phosphor::regular::PAINT_BRUSH));
             egui::CollapsingHeader::new(header_text)
-                .default_open(true)
+                .default_open(false)
                 .id_salt("settings_appearance")
                 .show(ui, |ui| {
                     ui.add_space(8.0);
@@ -183,7 +183,7 @@ impl SettingsView {
             // ── Java Runtime (merged Download + Installations) ──
             let header_text = theme.section_header(&format!("{} Java Runtime", egui_phosphor::regular::COFFEE));
             egui::CollapsingHeader::new(header_text)
-                .default_open(true)
+                .default_open(false)
                 .id_salt("settings_java")
                 .show(ui, |ui| {
                     ui.add_space(8.0);
@@ -480,7 +480,7 @@ impl SettingsView {
             // ── Default Memory & JVM ──
             let header_text = theme.section_header(&format!("{} Default Memory & JVM", egui_phosphor::regular::FLOPPY_DISK));
             egui::CollapsingHeader::new(header_text)
-                .default_open(true)
+                .default_open(false)
                 .id_salt("settings_memory")
                 .show(ui, |ui| {
                     ui.add_space(8.0);
@@ -535,7 +535,7 @@ impl SettingsView {
             // ── CurseForge API Key ──
             let header_text = theme.section_header(&format!("{} CurseForge API Key", egui_phosphor::regular::KEY));
             egui::CollapsingHeader::new(header_text)
-                .default_open(true)
+                .default_open(false)
                 .id_salt("settings_curseforge")
                 .show(ui, |ui| {
                     ui.add_space(8.0);
@@ -565,10 +565,45 @@ impl SettingsView {
                 });
             ui.add_space(16.0);
 
+            // ── Keyboard Shortcuts ──
+            let header_text = theme.section_header(&format!("{} Keyboard Shortcuts", egui_phosphor::regular::KEYBOARD));
+            egui::CollapsingHeader::new(header_text)
+                .default_open(false)
+                .id_salt("settings_shortcuts")
+                .show(ui, |ui| {
+                    ui.add_space(8.0);
+
+                    let cmd = if cfg!(target_os = "macos") { "Cmd" } else { "Ctrl" };
+
+                    egui::Grid::new("shortcuts_grid")
+                        .num_columns(2)
+                        .spacing([24.0, 6.0])
+                        .show(ui, |ui| {
+                            let shortcuts: &[(&str, &str)] = &[
+                                (&format!("{cmd}+1"), "Instances"),
+                                (&format!("{cmd}+2"), "Settings"),
+                                (&format!("{cmd}+3"), "Accounts"),
+                                (&format!("{cmd}+4"), "Console"),
+                                (&format!("{cmd}+N"), "New Instance"),
+                                ("Escape", "Close dialog / back"),
+                                ("Enter", "Confirm search / rename"),
+                            ];
+
+                            for (key, desc) in shortcuts {
+                                theme.code_frame().show(ui, |ui| {
+                                    ui.label(egui::RichText::new(*key).size(12.0).color(theme.color("fg")));
+                                });
+                                ui.label(theme.subtext(desc));
+                                ui.end_row();
+                            }
+                        });
+                });
+            ui.add_space(16.0);
+
             // ── About ──
             let header_text = theme.section_header("ℹ About");
             egui::CollapsingHeader::new(header_text)
-                .default_open(true)
+                .default_open(false)
                 .id_salt("settings_about")
                 .show(ui, |ui| {
                     ui.add_space(8.0);
