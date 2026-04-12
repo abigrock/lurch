@@ -4,7 +4,7 @@ use anyhow::Context;
 use directories::ProjectDirs;
 
 pub fn app_dirs() -> anyhow::Result<ProjectDirs> {
-    ProjectDirs::from("com", "lurch", "lurch")
+    ProjectDirs::from("org", "abigrock", "Lurch")
         .context("Failed to determine platform application directories")
 }
 
