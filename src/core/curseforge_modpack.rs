@@ -298,13 +298,17 @@ pub fn install_cf_modpack_files(
                                 .iter()
                                 .find(|h| h.algo == 1)
                                 .map(|h| h.value.as_str());
-                            let url = cf_file.download_url.as_ref().unwrap();
-
                             crate::core::mod_cache::resolve_or_download(
                                 &cf_file.file_name,
                                 sha1,
                                 &dest,
                                 || {
+                                    let url = cf_file.download_url.as_ref().ok_or_else(|| {
+                                        anyhow::anyhow!(
+                                            "No download URL for {} (distribution-blocked)",
+                                            cf_file.file_name
+                                        )
+                                    })?;
                                     let resp = client.get(url).send().with_context(|| {
                                         format!("Failed to download {}", cf_file.file_name)
                                     })?;

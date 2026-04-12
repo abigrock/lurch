@@ -1517,7 +1517,11 @@ use crate::core::modrinth_modpack;
                         .into_iter()
                         .partition(|m| !m.manual && m.download_url.is_some());
 
-                    // Handle manual/blocked mods — create PendingManualDownload entries
+                    // Handle manual/blocked mods — create PendingManualDownload entries.
+                    // Clear any stale entries for this instance's mods dir to avoid duplicates
+                    // (e.g. from the initial install's blocked-mods dialog).
+                    self.pending_manual_downloads
+                        .retain(|p| p.target_dir != mods_dir);
                     for m in manual_mods {
                         let url = if let (Some(slug), Some(fid)) =
                             (m.slug.as_deref(), m.file_id)
