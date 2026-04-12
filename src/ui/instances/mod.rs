@@ -310,7 +310,22 @@ impl InstancesView {
             let finished = fetch.lock_or_recover().take();
             if let Some(result) = finished {
                 match result {
-                    Ok(inst) => {
+                    Ok(mut inst) => {
+                        // Auto-deduplicate name if it collides with an existing instance
+                        let base = inst.name.clone();
+                        if instances.iter().any(|i| i.name == base) {
+                            let mut n = 2u32;
+                            loop {
+                                let candidate = format!("{base} ({n})");
+                                if !instances.iter().any(|i| i.name == candidate) {
+                                    inst.name = candidate;
+                                    // Persist renamed metadata so it survives restart
+                                    let _ = inst.save_to_dir();
+                                    break;
+                                }
+                                n += 1;
+                            }
+                        }
                         self.pending_toasts.push(crate::app::Toast::success(
                             format!("Imported \"{}\"", inst.name),
                         ));
