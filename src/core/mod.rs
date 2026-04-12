@@ -73,6 +73,34 @@ pub fn sha1_hex(data: &[u8]) -> String {
     sha1_smol::Sha1::from(data).hexdigest()
 }
 
+/// Strip ANSI escape sequences from a string (e.g. `\x1b[33m`).
+///
+/// Handles CSI sequences (`ESC [ ... final_byte`) which cover colors,
+/// cursor movement, and other terminal control codes Minecraft emits.
+pub fn strip_ansi(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            // Consume CSI sequence: ESC [ <params> <final byte>
+            if let Some(next) = chars.next() {
+                if next == '[' {
+                    // Skip until final byte (ASCII 0x40..0x7E)
+                    for ch in chars.by_ref() {
+                        if ch.is_ascii() && ('@'..='~').contains(&ch) {
+                            break;
+                        }
+                    }
+                }
+                // else: non-CSI escape — drop ESC + next char
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// Convert a Maven coordinate to a relative filesystem path.
 ///
 /// Handles all forms:

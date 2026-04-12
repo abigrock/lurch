@@ -279,7 +279,7 @@ fn read_process_output(
             let reader = std::io::BufReader::new(stderr);
             for line in reader.lines().map_while(|l| l.ok()) {
                 let mut s = stderr_state.lock_or_recover();
-                s.log_lines.push(format!("[ERR] {line}"));
+                s.log_lines.push(format!("[ERR] {}", crate::core::strip_ansi(&line)));
                 drop(s);
                 stderr_ctx.request_repaint();
             }
@@ -290,7 +290,7 @@ fn read_process_output(
         let reader = std::io::BufReader::new(stdout);
         for line in reader.lines().map_while(|l| l.ok()) {
             let mut s = state.lock_or_recover();
-            s.log_lines.push(line);
+            s.log_lines.push(crate::core::strip_ansi(&line));
             drop(s);
             ctx.request_repaint();
         }
