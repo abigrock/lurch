@@ -518,13 +518,11 @@ impl BrowseTab {
                                                     {
                                                         actions.push(BrowseAction::Install(idx));
                                                     }
-                                                } else {
-                                                    if ui
-                                                        .add(theme.accent_button("Open in browser"))
-                                                        .clicked()
-                                                    {
-                                                        actions.push(BrowseAction::OpenPage(idx));
-                                                    }
+                                                } else if ui
+                                                    .add(theme.accent_button("Open in browser"))
+                                                    .clicked()
+                                                {
+                                                    actions.push(BrowseAction::OpenPage(idx));
                                                 }
                                                 if item.allows_install {
                                                     let open_page = ui.add(theme.ghost_button(
@@ -626,10 +624,8 @@ impl BrowseTab {
                     if ui.add(theme.accent_button("Install")).clicked() {
                         actions.push(BrowseAction::Install(idx));
                     }
-                } else {
-                    if ui.add(theme.accent_button("Open in browser")).clicked() {
-                        actions.push(BrowseAction::OpenPage(idx));
-                    }
+                } else if ui.add(theme.accent_button("Open in browser")).clicked() {
+                    actions.push(BrowseAction::OpenPage(idx));
                 }
                 if item.allows_install {
                     let open_page = ui.add(theme.ghost_button(egui_phosphor::regular::GLOBE));

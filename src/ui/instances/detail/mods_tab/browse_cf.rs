@@ -19,7 +19,7 @@ impl InstanceDetailView {
 
         // ── Fetch CF categories if needed ────────────────────────
         if self.cf_categories.is_none() && self.cf_categories_fetch.is_none() {
-            let slot: Arc<Mutex<Option<Result<Vec<curseforge::CfCategory>, String>>>> =
+            let slot: crate::core::BgTaskSlot<Vec<curseforge::CfCategory>> =
                 Arc::new(Mutex::new(None));
             let slot_c = Arc::clone(&slot);
             let ctx = ui.ctx().clone();

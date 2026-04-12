@@ -17,7 +17,7 @@ impl InstanceDetailView {
     ) {
         // ── Fetch MR categories if needed ────────────────────────
         if self.mr_categories.is_none() && self.mr_categories_fetch.is_none() {
-            let slot: Arc<Mutex<Option<Result<Vec<modrinth::MrCategory>, String>>>> =
+            let slot: crate::core::BgTaskSlot<Vec<modrinth::MrCategory>> =
                 Arc::new(Mutex::new(None));
             let slot_c = Arc::clone(&slot);
             let ctx = ui.ctx().clone();

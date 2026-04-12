@@ -349,10 +349,10 @@ pub fn install_cf_modpack_files(
         .iter()
         .filter(|f| {
             // Only include files routed to the mods directory (not resourcepacks/shaderpacks)
-            match class_map.get(&f.mod_id).copied() {
-                Some(curseforge::CLASS_RESOURCE_PACKS) | Some(curseforge::CLASS_SHADERS) => false,
-                _ => true,
-            }
+            !matches!(
+                class_map.get(&f.mod_id).copied(),
+                Some(curseforge::CLASS_RESOURCE_PACKS) | Some(curseforge::CLASS_SHADERS)
+            )
         })
         .map(|f| crate::core::ModpackModEntry {
             name: f.file_name.clone(),

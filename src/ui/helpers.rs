@@ -214,11 +214,10 @@ pub fn card_grid<T>(
                 }
             }
 
-            if has_more {
-                if load_more_button(ui, items.len(), total, theme) {
+            if has_more
+                && load_more_button(ui, items.len(), total, theme) {
                     load_more_clicked = true;
                 }
-            }
         });
     load_more_clicked
 }

@@ -31,6 +31,7 @@ pub struct CfModpackInstallRequest {
     pub file_name: Option<String>,
 }
 
+#[derive(Default)]
 pub struct ModpackBrowser {
     pub mr_browse: BrowseTab,
     pub cf_browse: BrowseTab,
@@ -39,10 +40,10 @@ pub struct ModpackBrowser {
     pub version_picker: Option<VersionPickerState>,
     // Category filtering
     mr_categories: Option<Vec<MrCategory>>,
-    mr_categories_fetch: Option<Arc<Mutex<Option<Result<Vec<MrCategory>, String>>>>>,
+    mr_categories_fetch: Option<crate::core::BgTaskSlot<Vec<MrCategory>>>,
     mr_selected_category: Option<String>,
     cf_categories: Option<Vec<CfCategory>>,
-    cf_categories_fetch: Option<Arc<Mutex<Option<Result<Vec<CfCategory>, String>>>>>,
+    cf_categories_fetch: Option<crate::core::BgTaskSlot<Vec<CfCategory>>>,
     cf_selected_category: Option<u64>,
 }
 
@@ -61,24 +62,6 @@ pub struct VersionPickerState {
 pub enum VersionFetchResult {
     MrVersions(Result<Vec<ProjectVersion>, String>),
     CfFiles(Result<Vec<CfFile>, String>),
-}
-
-impl Default for ModpackBrowser {
-    fn default() -> Self {
-        Self {
-            mr_browse: BrowseTab::default(),
-            cf_browse: BrowseTab::default(),
-            install_requested: None,
-            cf_install_requested: None,
-            version_picker: None,
-            mr_categories: None,
-            mr_categories_fetch: None,
-            mr_selected_category: None,
-            cf_categories: None,
-            cf_categories_fetch: None,
-            cf_selected_category: None,
-        }
-    }
 }
 
 impl ModpackBrowser {
@@ -122,8 +105,7 @@ impl ModpackBrowser {
     ) {
         // 1. Category fetch + poll
         if self.mr_categories.is_none() && self.mr_categories_fetch.is_none() {
-            let slot: Arc<Mutex<Option<Result<Vec<MrCategory>, String>>>> =
-                Arc::new(Mutex::new(None));
+            let slot: crate::core::BgTaskSlot<Vec<MrCategory>> = Arc::new(Mutex::new(None));
             let slot_c = Arc::clone(&slot);
             let ctx = ui.ctx().clone();
             std::thread::spawn(move || {
@@ -248,8 +230,7 @@ impl ModpackBrowser {
     ) {
         // 1. Category fetch + poll
         if self.cf_categories.is_none() && self.cf_categories_fetch.is_none() {
-            let slot: Arc<Mutex<Option<Result<Vec<CfCategory>, String>>>> =
-                Arc::new(Mutex::new(None));
+            let slot: crate::core::BgTaskSlot<Vec<CfCategory>> = Arc::new(Mutex::new(None));
             let slot_c = Arc::clone(&slot);
             let ctx = ui.ctx().clone();
             std::thread::spawn(move || {

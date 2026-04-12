@@ -219,8 +219,8 @@ impl InstanceDetailView {
                                     {
                                         remove_idx = Some(orig_idx);
                                     }
-                                    if has_update {
-                                        if ui
+                                    if has_update
+                                        && ui
                                             .add(theme.accent_button(
                                                 egui_phosphor::regular::ARROW_CIRCLE_UP,
                                             ))
@@ -229,7 +229,6 @@ impl InstanceDetailView {
                                         {
                                             update_filename = Some(base_name.to_string());
                                         }
-                                    }
                                     ui.add(egui::Label::new(theme.subtext(&m.filename)).truncate());
                                 },
                             );

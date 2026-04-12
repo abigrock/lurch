@@ -54,6 +54,13 @@ fn is_false(v: &bool) -> bool {
     !v
 }
 
+// ── Background task type alias ──────────────────────────────────────────────
+
+/// Shared slot for a background task result, polled each frame.
+///
+/// Wrap in `Option<…>` for struct fields (None = no active task).
+pub type BgTaskSlot<T> = std::sync::Arc<std::sync::Mutex<Option<Result<T, String>>>>;
+
 // ── Shared constants & helpers ──────────────────────────────────────────────
 
 /// User-Agent string sent with all outgoing HTTP requests.
@@ -105,8 +112,8 @@ pub fn strip_ansi(s: &str) -> String {
     while let Some(c) = chars.next() {
         if c == '\x1b' {
             // Consume CSI sequence: ESC [ <params> <final byte>
-            if let Some(next) = chars.next() {
-                if next == '[' {
+            if let Some(next) = chars.next()
+                && next == '[' {
                     // Skip until final byte (ASCII 0x40..0x7E)
                     for ch in chars.by_ref() {
                         if ch.is_ascii() && ('@'..='~').contains(&ch) {
@@ -115,7 +122,6 @@ pub fn strip_ansi(s: &str) -> String {
                     }
                 }
                 // else: non-CSI escape — drop ESC + next char
-            }
         } else {
             out.push(c);
         }

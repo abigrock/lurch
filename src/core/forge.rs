@@ -400,8 +400,8 @@ fn extract_maven_libraries(
         let relative = entry_name.strip_prefix("maven/").unwrap();
         let dest = libs_dir.join(relative);
         if dest.exists()
-            && !(dest.extension().is_some_and(|e| e == "jar")
-                && !crate::core::is_jar_valid(&dest))
+            && (dest.extension().is_none_or(|e| e != "jar")
+                || crate::core::is_jar_valid(&dest))
         {
             continue;
         }

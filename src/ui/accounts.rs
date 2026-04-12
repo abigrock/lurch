@@ -98,19 +98,17 @@ impl AccountsView {
                             {
                                 remove_uuid = Some(uuid_str.clone());
                             }
-                            if !is_offline {
-                                if ui.add(theme.ghost_button(egui_phosphor::regular::ARROWS_CLOCKWISE))
+                            if !is_offline
+                                && ui.add(theme.ghost_button(egui_phosphor::regular::ARROWS_CLOCKWISE))
                                     .on_hover_text("Refresh session")
                                     .clicked()
                                 {
                                     refresh_uuid = Some(uuid_str.clone());
                                 }
-                            }
-                            if !is_active {
-                                if ui.add(theme.accent_button("Set Active")).clicked() {
+                            if !is_active
+                                && ui.add(theme.accent_button("Set Active")).clicked() {
                                     set_active_uuid = Some(uuid_str.clone());
                                 }
-                            }
                         });
                     });
                 };

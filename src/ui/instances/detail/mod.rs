@@ -53,9 +53,9 @@ pub struct InstanceDetailView {
     needs_rescan: bool,
     // Category fetch (kept in caller, not in BrowseTab)
     mr_categories: Option<Vec<MrCategory>>,
-    mr_categories_fetch: Option<Arc<Mutex<Option<Result<Vec<MrCategory>, String>>>>>,
+    mr_categories_fetch: Option<crate::core::BgTaskSlot<Vec<MrCategory>>>,
     cf_categories: Option<Vec<CfCategory>>,
-    cf_categories_fetch: Option<Arc<Mutex<Option<Result<Vec<CfCategory>, String>>>>>,
+    cf_categories_fetch: Option<crate::core::BgTaskSlot<Vec<CfCategory>>>,
     installed_filter: String,
     pending_origins: Arc<Mutex<Vec<ModOrigin>>>,
     pub mod_origin_updates: Vec<ModOrigin>,
@@ -199,11 +199,10 @@ impl InstanceDetailView {
                         egui_phosphor::regular::GLOBE,
                         source_name
                     )));
-                    if open_page.clicked() {
-                        if let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
+                    if open_page.clicked()
+                        && let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
                             let _ = open::that(&url);
                         }
-                    }
                 }
             });
         });

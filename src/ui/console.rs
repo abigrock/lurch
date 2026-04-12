@@ -91,15 +91,14 @@ impl ConsoleView {
                     let lbl = format!("{} Clear Finished", egui_phosphor::regular::BROOM);
                     if ui.add(theme.ghost_button(&lbl)).clicked() {
                         running_processes.retain(|rp| rp.is_alive());
-                        if let Some(ref active_id) = self.active_instance_id {
-                            if !running_processes
+                        if let Some(ref active_id) = self.active_instance_id
+                            && !running_processes
                                 .iter()
                                 .any(|rp| rp.instance_id == *active_id)
                             {
                                 self.active_instance_id =
                                     running_processes.first().map(|rp| rp.instance_id.clone());
                             }
-                        }
                     }
                 }
 
@@ -108,8 +107,8 @@ impl ConsoleView {
                     .clone()
                     .or_else(|| running_processes.first().map(|rp| rp.instance_id.clone()));
 
-                if let Some(ref active_id) = active_id {
-                    if let Some(rp) = running_processes
+                if let Some(ref active_id) = active_id
+                    && let Some(rp) = running_processes
                         .iter()
                         .find(|rp| rp.instance_id == *active_id)
                     {
@@ -126,17 +125,15 @@ impl ConsoleView {
                             }
                         }
                     }
-                }
 
-                if let Some(ref active_id) = active_id {
-                    if let Some(rp) = running_processes
+                if let Some(ref active_id) = active_id
+                    && let Some(rp) = running_processes
                         .iter_mut()
                         .find(|rp| rp.instance_id == *active_id)
                     {
                         ui.checkbox(&mut rp.auto_scroll, "Auto-scroll");
                         ui.checkbox(&mut rp.line_wrap, "Line wrap");
                     }
-                }
             });
         });
 
@@ -193,18 +190,14 @@ impl ConsoleView {
         }
 
         // Execute kill
-        if kill_process {
-            if let Some(ref active_id) = self.active_instance_id {
-                if let Some(rp) = running_processes
+        if kill_process
+            && let Some(ref active_id) = self.active_instance_id
+                && let Some(rp) = running_processes
                     .iter()
                     .find(|rp| rp.instance_id == *active_id)
-                {
-                    if let Some(proc) = &rp.process {
+                    && let Some(proc) = &rp.process {
                         proc.lock_or_recover().kill();
                     }
-                }
-            }
-        }
 
         // ── Resolve active process ───────────────────────────────────
         let active_id = self

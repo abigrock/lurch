@@ -307,12 +307,12 @@ impl App {
 
     fn do_launch(&mut self, instance_id: &str, ctx: &egui::Context) {
         // Pre-launch check: verify modpack mods are present
-        if let Some(instance) = self.instances.iter().find(|i| i.id == instance_id) {
-            if instance.modpack_origin.is_some() {
-                if let Ok(mc_dir) = instance.minecraft_dir() {
+        if let Some(instance) = self.instances.iter().find(|i| i.id == instance_id)
+            && instance.modpack_origin.is_some()
+                && let Ok(mc_dir) = instance.minecraft_dir() {
                     let manifest_path = mc_dir.join(".modpack_mods.json");
-                    if manifest_path.exists() {
-                        if let Ok(data) = std::fs::read_to_string(&manifest_path) {
+                    if manifest_path.exists()
+                        && let Ok(data) = std::fs::read_to_string(&manifest_path) {
                             // Support both enriched (Vec<ModpackModEntry>) and legacy (Vec<String>) formats
                             let expected: Option<Vec<ModpackModEntry>> =
                                 serde_json::from_str::<Vec<ModpackModEntry>>(&data)
@@ -351,10 +351,7 @@ impl App {
                                 }
                             }
                         }
-                    }
                 }
-            }
-        }
         self.do_launch_inner(instance_id, ctx);
     }
 
@@ -899,8 +896,8 @@ use crate::core::modrinth_modpack;
             }
 
             // Check for completed modpack install (instance slot)
-            if let Some(slot) = &task.instance_slot {
-                if let Some(inst) = slot.lock_or_recover().take() {
+            if let Some(slot) = &task.instance_slot
+                && let Some(inst) = slot.lock_or_recover().take() {
                     // Handle skipped (distribution-blocked) mods
                     if let Some(skipped_slot) = &task.skipped_slot {
                         let skipped = skipped_slot.lock_or_recover();
@@ -942,11 +939,10 @@ use crate::core::modrinth_modpack;
                     // modpack gets an update badge immediately if applicable
                     self.instances_view.recheck_modpack_updates = true;
                 }
-            }
 
             // Check for completed modpack update (in-place)
-            if let Some(slot) = &task.update_slot {
-                if let Some((instance_id, new_origin, meta)) = slot.lock_or_recover().take() {
+            if let Some(slot) = &task.update_slot
+                && let Some((instance_id, new_origin, meta)) = slot.lock_or_recover().take() {
                     let mods_dir = self
                         .instances
                         .iter()
@@ -1004,7 +1000,6 @@ use crate::core::modrinth_modpack;
                     // to install an older version, the badge should reappear.
                     self.instances_view.recheck_modpack_updates = true;
                 }
-            }
 
             completed_indices.push(idx);
         }
@@ -1058,7 +1053,7 @@ use crate::core::modrinth_modpack;
             let now = Instant::now();
             let should_check = self
                 .last_download_check
-                .map_or(true, |t| now.duration_since(t) >= Duration::from_secs(2));
+                .is_none_or(|t| now.duration_since(t) >= Duration::from_secs(2));
 
             if should_check {
                 self.last_download_check = Some(now);
@@ -1148,13 +1143,11 @@ use crate::core::modrinth_modpack;
         }
 
         // Handle kill requests from instances view
-        if let Some(id) = self.instances_view.kill_requested.take() {
-            if let Some(rp) = self.running_processes.iter().find(|rp| rp.instance_id == id) {
-                if let Some(proc) = &rp.process {
+        if let Some(id) = self.instances_view.kill_requested.take()
+            && let Some(rp) = self.running_processes.iter().find(|rp| rp.instance_id == id)
+                && let Some(proc) = &rp.process {
                     proc.lock_or_recover().kill();
                 }
-            }
-        }
 
         // Handle "Launch Anyway" from missing-mods dialog (bypasses mod check)
         if let Some(id) = self.force_launch_requested.take() {
@@ -1198,9 +1191,9 @@ use crate::core::modrinth_modpack;
             self.import_local_cf_modpack(path, ctx);
         }
 
-        if let Some(instance_id) = self.instances_view.update_modpack_requested.take() {
-            if let Some(instance) = self.instances.iter().find(|i| i.id == instance_id) {
-                if let Some(origin) = &instance.modpack_origin {
+        if let Some(instance_id) = self.instances_view.update_modpack_requested.take()
+            && let Some(instance) = self.instances.iter().find(|i| i.id == instance_id)
+                && let Some(origin) = &instance.modpack_origin {
                     let name = instance.name.clone();
                     let source = origin.source.clone();
                     let project_id = origin.project_id.clone();
@@ -1215,11 +1208,9 @@ use crate::core::modrinth_modpack;
                         ctx,
                     );
                 }
-            }
-        }
 
-        if let Some((instance_id, update_info)) = self.instances_view.change_modpack_version.take() {
-            if let Some(instance) = self.instances.iter().find(|i| i.id == instance_id) {
+        if let Some((instance_id, update_info)) = self.instances_view.change_modpack_version.take()
+            && let Some(instance) = self.instances.iter().find(|i| i.id == instance_id) {
                 let title = instance.name.clone();
                 match instance.minecraft_dir() {
                     Ok(minecraft_dir) => {
@@ -1231,7 +1222,6 @@ use crate::core::modrinth_modpack;
                     }
                 }
             }
-        }
 
         if self.instances_view.recheck_modpack_updates {
             self.instances_view.recheck_modpack_updates = false;
@@ -1518,8 +1508,8 @@ use crate::core::modrinth_modpack;
 
         if download {
             self.missing_mods = None;
-            if let Some(inst) = self.instances.iter().find(|i| i.id == instance_id) {
-                if let Ok(mc_dir) = inst.minecraft_dir() {
+            if let Some(inst) = self.instances.iter().find(|i| i.id == instance_id)
+                && let Ok(mc_dir) = inst.minecraft_dir() {
                     let mods_dir = mc_dir.join("mods");
 
                     // Separate auto-downloadable from manual (distribution-blocked)
@@ -1548,7 +1538,7 @@ use crate::core::modrinth_modpack;
                         };
                         self.pending_manual_downloads.push(PendingManualDownload {
                             file_name: m.name.clone(),
-                            display_name: m.display_name.unwrap_or_else(|| m.name),
+                            display_name: m.display_name.unwrap_or(m.name),
                             target_dir: mods_dir.clone(),
                             download_url: url,
                         });
@@ -1612,7 +1602,6 @@ use crate::core::modrinth_modpack;
                         });
                     }
                 }
-            }
         } else if launch_anyway {
             self.missing_mods = None;
             self.force_launch_requested = Some(instance_id);

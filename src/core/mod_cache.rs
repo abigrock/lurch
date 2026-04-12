@@ -70,41 +70,33 @@ pub fn resolve_from_cache(filename: &str, sha1: Option<&str>, dest: &Path) -> bo
     };
 
     // 1. Already at destination with correct hash
-    if dest.exists() {
-        if let Ok(data) = std::fs::read(dest) {
-            if crate::core::sha1_hex(&data) == sha1 {
+    if dest.exists()
+        && let Ok(data) = std::fs::read(dest)
+            && crate::core::sha1_hex(&data) == sha1 {
                 return true;
             }
-        }
-    }
 
     // 2. Check Downloads folder
     if let Some(downloads) = downloads_dir() {
         let candidate = downloads.join(filename);
-        if candidate.exists() && candidate != dest {
-            if let Ok(data) = std::fs::read(&candidate) {
-                if crate::core::sha1_hex(&data) == sha1 {
+        if candidate.exists() && candidate != dest
+            && let Ok(data) = std::fs::read(&candidate)
+                && crate::core::sha1_hex(&data) == sha1 {
                     store(filename, &data);
                     if std::fs::write(dest, &data).is_ok() {
                         return true;
                     }
                 }
-            }
-        }
     }
 
     // 3. Check mod cache
-    if let Ok(cached) = cache_path(filename) {
-        if cached.exists() {
-            if let Ok(data) = std::fs::read(&cached) {
-                if crate::core::sha1_hex(&data) == sha1 {
-                    if std::fs::write(dest, &data).is_ok() {
+    if let Ok(cached) = cache_path(filename)
+        && cached.exists()
+            && let Ok(data) = std::fs::read(&cached)
+                && crate::core::sha1_hex(&data) == sha1
+                    && std::fs::write(dest, &data).is_ok() {
                         return true;
                     }
-                }
-            }
-        }
-    }
 
     false
 }
@@ -130,44 +122,37 @@ pub fn resolve_or_download(
 
     if let Some(sha1) = sha1 {
         // 1. Already at destination with correct hash
-        if dest.exists() {
-            if let Ok(data) = std::fs::read(dest) {
-                if crate::core::sha1_hex(&data) == sha1 {
+        if dest.exists()
+            && let Ok(data) = std::fs::read(dest)
+                && crate::core::sha1_hex(&data) == sha1 {
                     return Ok(());
                 }
-            }
-        }
 
         // 2. Check Downloads folder
         if let Some(downloads) = downloads_dir() {
             let candidate = downloads.join(filename);
-            if candidate.exists() && candidate != dest {
-                if let Ok(data) = std::fs::read(&candidate) {
-                    if crate::core::sha1_hex(&data) == sha1 {
+            if candidate.exists() && candidate != dest
+                && let Ok(data) = std::fs::read(&candidate)
+                    && crate::core::sha1_hex(&data) == sha1 {
                         store(filename, &data);
                         std::fs::write(dest, &data).with_context(|| {
                             format!("Failed to copy from Downloads to {}", dest.display())
                         })?;
                         return Ok(());
                     }
-                }
-            }
         }
 
         // 3. Check mod cache
-        if let Ok(cached) = cache_path(filename) {
-            if cached.exists() {
-                if let Ok(data) = std::fs::read(&cached) {
-                    if crate::core::sha1_hex(&data) == sha1 {
+        if let Ok(cached) = cache_path(filename)
+            && cached.exists()
+                && let Ok(data) = std::fs::read(&cached)
+                    && crate::core::sha1_hex(&data) == sha1 {
                         std::fs::write(dest, &data).with_context(|| {
                             format!("Failed to copy from cache to {}", dest.display())
                         })?;
                         return Ok(());
                     }
                     // Wrong version in cache — will be overwritten if we download
-                }
-            }
-        }
 
         // 4. Download
         let bytes = download_fn()?;

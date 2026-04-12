@@ -96,9 +96,9 @@ pub struct InstancesView {
     modpack_version_picker: Option<ModpackVersionPickerState>,
     pub change_modpack_version: Option<(String, crate::core::update::ModpackUpdateInfo)>,
     /// Background export task: Ok(instance_name) on success, Err(message) on failure
-    pub export_task: Option<Arc<Mutex<Option<Result<String, String>>>>>,
+    pub export_task: Option<crate::core::BgTaskSlot<String>>,
     /// Background import task: Ok(Instance) on success, Err(message) on failure
-    pub import_task: Option<Arc<Mutex<Option<Result<Instance, String>>>>>,
+    pub import_task: Option<crate::core::BgTaskSlot<Instance>>,
     /// Toast messages to remove from App.toasts (drained by handle_view_requests)
     pub toast_removals: Vec<String>,
 }
@@ -610,11 +610,10 @@ impl InstancesView {
                         return false;
                     }
                     // Loader filter
-                    if let Some(ref lf) = self.loader_filter {
-                        if &inst.loader != lf {
+                    if let Some(ref lf) = self.loader_filter
+                        && &inst.loader != lf {
                             return false;
                         }
-                    }
                     true
                 })
                 .map(|(idx, _)| idx)
@@ -1182,6 +1181,7 @@ impl InstancesView {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn open_modpack_version_picker(
         &mut self,
         instance_id: &str,
@@ -1369,14 +1369,12 @@ fn instance_context_menu_body(
                 egui_phosphor::regular::GLOBE
             )))
             .clicked()
-        {
-            if let Some(url) = crate::core::local_mods::modpack_project_url(
+            && let Some(url) = crate::core::local_mods::modpack_project_url(
                 &origin.source,
                 &origin.project_id,
             ) {
                 let _ = open::that(&url);
             }
-        }
         if ui
             .add_enabled(
                 !is_running,

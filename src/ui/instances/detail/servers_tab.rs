@@ -63,19 +63,17 @@ impl InstanceDetailView {
                     self.server_edit_ip.clear();
                     self.editing_server_idx = None;
                 }
-            } else {
-                if ui.add_enabled(can_save, theme.accent_button("Add")).clicked() && can_save {
-                    self.server_list.push(Server {
-                        name: self.server_edit_name.trim().to_string(),
-                        ip: self.server_edit_ip.trim().to_string(),
-                        accept_textures: None,
-                        hidden: false,
-                    });
-                    let _ = servers::write_servers(servers_dat, &self.server_list);
-                    self.server_edit_name.clear();
-                    self.server_edit_ip.clear();
-                    self.servers_needs_rescan = true;
-                }
+            } else if ui.add_enabled(can_save, theme.accent_button("Add")).clicked() && can_save {
+                self.server_list.push(Server {
+                    name: self.server_edit_name.trim().to_string(),
+                    ip: self.server_edit_ip.trim().to_string(),
+                    accept_textures: None,
+                    hidden: false,
+                });
+                let _ = servers::write_servers(servers_dat, &self.server_list);
+                self.server_edit_name.clear();
+                self.server_edit_ip.clear();
+                self.servers_needs_rescan = true;
             }
         });
         ui.add_space(4.0);

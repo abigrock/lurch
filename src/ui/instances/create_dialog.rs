@@ -177,8 +177,8 @@ impl InstancesView {
                             .collect();
                         drop(manifest_snapshot);
 
-                        if self.new_mc_version.is_empty() {
-                            if let Some(latest) = filtered.iter().find(|v| {
+                        if self.new_mc_version.is_empty()
+                            && let Some(latest) = filtered.iter().find(|v| {
                                 v.version_type == crate::core::version::VersionType::Release
                             }) {
                                 self.new_mc_version = latest.id.clone();
@@ -190,7 +190,6 @@ impl InstancesView {
                                 }
                                 self.name_auto_generated = true;
                             }
-                        }
 
                         ui.horizontal(|ui| {
                             let selected_label = if self.new_mc_version.is_empty() {
@@ -412,8 +411,8 @@ impl InstancesView {
             let browse_lbl = format!("{} Browse Files...", egui_phosphor::regular::FOLDER_OPEN);
             let browse_clicked = ui.add(self.theme.accent_button(&browse_lbl)).clicked();
 
-            if browse_clicked {
-                if let Some(path) = rfd::FileDialog::new()
+            if browse_clicked
+                && let Some(path) = rfd::FileDialog::new()
                     .set_title("Import Instance or Modpack")
                     .add_filter("Supported archives", &["zip", "mrpack"])
                     .add_filter("Zip Archive", &["zip"])
@@ -452,7 +451,6 @@ impl InstancesView {
                         }
                     }
                 }
-            }
         });
     }
 }
