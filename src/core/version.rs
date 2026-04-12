@@ -1,3 +1,4 @@
+use anyhow::Context;
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -418,13 +419,21 @@ pub fn download_libraries(
             if let Some(path) = crate::core::maven_path(&lib.name) {
                 let url = format!("{base_url}{path}");
                 let dest = libs_dir.join(&path);
-                // No SHA1 available, download unconditionally if missing
-                if !dest.exists() {
+                // No SHA1 available — re-download if missing or corrupt
+                let needs_download = !dest.exists()
+                    || (dest.extension().is_some_and(|e| e == "jar")
+                        && !crate::core::is_jar_valid(&dest));
+                if needs_download {
                     if let Some(parent) = dest.parent() {
                         std::fs::create_dir_all(parent)?;
                     }
                     let resp = client.get(&url).send()?;
-                    std::fs::write(&dest, resp.bytes()?)?;
+                    let bytes = resp.bytes()?;
+                    if dest.extension().is_some_and(|e| e == "jar") {
+                        crate::core::validate_jar(&bytes)
+                            .with_context(|| format!("Bad download from {url}"))?;
+                    }
+                    std::fs::write(&dest, &bytes)?;
                 }
                 paths.push(dest);
             }

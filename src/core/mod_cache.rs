@@ -180,6 +180,10 @@ pub fn resolve_or_download(
     } else {
         // No SHA-1 available — download directly, cache by filename
         let bytes = download_fn()?;
+        if dest.extension().is_some_and(|e| e == "jar") {
+            crate::core::validate_jar(&bytes)
+                .with_context(|| format!("Corrupt JAR download: {}", dest.display()))?;
+        }
         store(filename, &bytes);
         std::fs::write(dest, &bytes)?;
     }

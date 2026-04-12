@@ -7,6 +7,7 @@
 
 use crate::core::instance::ModLoader;
 use crate::core::version::{self, Arguments, Library};
+use anyhow::Context;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -186,9 +187,9 @@ pub fn download_and_extract_installer(
         return Ok(serde_json::from_str(&json)?);
     }
 
-    // Download installer JAR
+    // Download installer JAR (re-download if existing copy is corrupt)
     let installer_path = cache_dir.join("installer.jar");
-    if !installer_path.exists() {
+    if !installer_path.exists() || !crate::core::is_jar_valid(&installer_path) {
         let url = installer_url(loader, mc_version, loader_version);
         log::info!("Downloading {loader} installer from {url}");
         let resp = client.get(&url).send()?;
@@ -198,7 +199,10 @@ pub fn download_and_extract_installer(
                 resp.status()
             );
         }
-        std::fs::write(&installer_path, resp.bytes()?)?;
+        let bytes = resp.bytes()?;
+        crate::core::validate_jar(&bytes)
+            .context("Downloaded Forge/NeoForge installer is not a valid JAR")?;
+        std::fs::write(&installer_path, &bytes)?;
     }
 
     // Open installer as ZIP
@@ -229,7 +233,7 @@ pub fn download_and_extract_installer(
         if let Some(lib_path) = crate::core::maven_path(&legacy.install.path) {
             let jar_entry = format!("maven/{lib_path}");
             let dest = libs_dir.join(&lib_path);
-            if !dest.exists()
+            if (!dest.exists() || !crate::core::is_jar_valid(&dest))
                 && let Ok(mut entry) = archive.by_name(&jar_entry) {
                     if let Some(parent) = dest.parent() {
                         std::fs::create_dir_all(parent)?;
@@ -394,7 +398,10 @@ fn extract_maven_libraries(
     for entry_name in &maven_entries {
         let relative = entry_name.strip_prefix("maven/").unwrap();
         let dest = libs_dir.join(relative);
-        if dest.exists() {
+        if dest.exists()
+            && !(dest.extension().is_some_and(|e| e == "jar")
+                && !crate::core::is_jar_valid(&dest))
+        {
             continue;
         }
         if let Some(parent) = dest.parent() {
@@ -440,12 +447,20 @@ fn download_processor_libraries(
             && let Some(path) = crate::core::maven_path(&lib.name) {
                 let url = format!("{base_url}{path}");
                 let dest = libs_dir.join(&path);
-                if !dest.exists() {
+                let needs_download = !dest.exists()
+                    || (dest.extension().is_some_and(|e| e == "jar")
+                        && !crate::core::is_jar_valid(&dest));
+                if needs_download {
                     if let Some(parent) = dest.parent() {
                         std::fs::create_dir_all(parent)?;
                     }
                     let resp = client.get(&url).send()?;
-                    std::fs::write(&dest, resp.bytes()?)?;
+                    let bytes = resp.bytes()?;
+                    if dest.extension().is_some_and(|e| e == "jar") {
+                        crate::core::validate_jar(&bytes)
+                            .with_context(|| format!("Bad download from {url}"))?;
+                    }
+                    std::fs::write(&dest, &bytes)?;
                 }
             }
     }
@@ -502,7 +517,10 @@ fn resolve_data_value(
         // Path inside installer JAR → extract to cache
         // strip leading /
         let extract_path = cache_dir.join("extracted").join(entry_name);
-        if !extract_path.exists() {
+        if !extract_path.exists()
+            || (extract_path.extension().is_some_and(|e| e == "jar")
+                && !crate::core::is_jar_valid(&extract_path))
+        {
             let file = std::fs::File::open(installer_path)?;
             let mut archive = zip::ZipArchive::new(file)?;
             let mut entry = archive

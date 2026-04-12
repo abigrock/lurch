@@ -73,6 +73,28 @@ pub fn sha1_hex(data: &[u8]) -> String {
     sha1_smol::Sha1::from(data).hexdigest()
 }
 
+/// Verify that `data` is a readable ZIP/JAR archive.
+///
+/// Call after downloading a `.jar` to catch truncated or corrupt files
+/// before they are persisted to disk.
+pub fn validate_jar(data: &[u8]) -> anyhow::Result<()> {
+    use std::io::Cursor;
+    zip::ZipArchive::new(Cursor::new(data))
+        .map_err(|e| anyhow::anyhow!("corrupt JAR: {e}"))?;
+    Ok(())
+}
+
+/// Quick-check that a `.jar` file on disk is a structurally valid ZIP archive.
+///
+/// Reads only the central directory (seeks to end of file), so it is lightweight
+/// even for large JARs.  Returns `false` for missing, empty, truncated, or corrupt files.
+pub fn is_jar_valid(path: &std::path::Path) -> bool {
+    let Ok(file) = std::fs::File::open(path) else {
+        return false;
+    };
+    zip::ZipArchive::new(file).is_ok()
+}
+
 /// Strip ANSI escape sequences from a string (e.g. `\x1b[33m`).
 ///
 /// Handles CSI sequences (`ESC [ ... final_byte`) which cover colors,
