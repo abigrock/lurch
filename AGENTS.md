@@ -26,6 +26,8 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 - Background work uses `std::thread::spawn` + `Arc<Mutex<Option<Result<T>>>>` — polled each frame in `App::poll_background_tasks()`
 - **Mutex poison safety** — all `.lock()` calls use `.lock_or_recover()` (trait `MutexExt` in `src/core/mod.rs`) which recovers from poisoned mutexes instead of panicking
 - UI views set request flags (e.g., `launch_requested`), consumed by `App::handle_view_requests()`
+- **View-level background tasks** — views can own their own `Arc<Mutex<Option<Result<T>>>>` fields (e.g., `export_task`, `import_task` in `InstancesView`) for view-scoped background work, polled in the view's `show()` method rather than `App::poll_background_tasks()`
+- **Toast replacement** — for multi-step operations that show progress toasts, views use `pending_toasts: Vec<Toast>` (drained to `App.toasts` in `handle_view_requests()`) and `toast_removals: Vec<String>` (processed first to remove stale toasts before adding new ones) to cleanly swap "in-progress" toasts with result toasts in the same frame
 - File downloads are SHA1-verified via `crate::core::sha1_hex()` (wraps `sha1_smol`). Downloads without SHA1 (Maven-style loader libs, Forge installer, some mods) use **post-download JAR validation** via `validate_jar()` / `is_jar_valid()` to detect truncated or corrupt `.jar` files.
 - Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `validate_jar()`, `is_jar_valid()`, `maven_path()`, `extract_zip_overrides()`, `MutexExt` trait
 - JSON persistence for config, instances, accounts in platform directories (`src/util/paths.rs`)

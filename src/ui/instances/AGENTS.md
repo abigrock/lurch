@@ -51,3 +51,5 @@ InstancesView (mod.rs)
 - **`BrowseTab` delegation** — `browse_mr.rs`, `browse_cf.rs`, and `modpack_browser.rs` all use `BrowseTab` from `browse_common.rs` for search/filter/browse rendering
 - **Loader version fetch** — `loader_versions_fetch: Option<Arc<Mutex<Option<Result<...>>>>>` in `InstancesView` follows standard background polling pattern
 - **`#[allow(clippy::too_many_arguments)]`** — on `show_instance_list` and `show_modpacks_view` due to many App state params passed through
+- **Export/import background tasks** — `export_task` and `import_task` are `Option<Arc<Mutex<Option<Result<T>>>>>` fields on `InstancesView`, polled in `show()`. Export spawns after file dialog; import spawns from `create_dialog.rs`. On import completion, auto-deduplicates instance name (appends ` (2)`, ` (3)`, etc.) and sets `mod_counts_dirty = true`
+- **Toast replacement** — `pending_toasts` + `toast_removals` fields enable clean progress → result toast transitions. Kickoff pushes "Exporting/Importing instance..." toast; completion pushes removal of that message + new result toast, both processed in same frame via `handle_view_requests()`
