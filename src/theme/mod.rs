@@ -299,6 +299,18 @@ impl Theme {
         .corner_radius(CornerRadius::same(6))
     }
 
+    /// Square icon-only button — accent style, BUTTON_HEIGHT × BUTTON_HEIGHT
+    pub fn accent_icon_button(&self, icon: &str) -> Button<'static> {
+        Button::new(
+            RichText::new(icon.to_string())
+                .color(self.button_fg())
+                .strong(),
+        )
+        .fill(self.color("accent"))
+        .min_size(vec2(BUTTON_HEIGHT, BUTTON_HEIGHT))
+        .corner_radius(CornerRadius::same(6))
+    }
+
     /// Menu item — themed text, transparent at rest, visible hover
     pub fn menu_item(&self, label: &str) -> Button<'static> {
         Button::new(

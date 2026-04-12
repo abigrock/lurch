@@ -281,71 +281,44 @@ impl InstancesView {
             self.mod_counts_dirty = false;
         }
 
-        // Header row: title, search, filters, sort, view toggle, actions
+        // Header row: title + responsive controls with progressive collapse
         // section_header is 15pt bold — needs more vertical room than interact_size.y + 4
         let row_h = ui.spacing().interact_size.y + 12.0;
+        let header_w = ui.available_width();
+        // Progressive collapse breakpoints
+        let is_wide = header_w > 800.0;
+        let is_narrow = header_w <= 550.0;
+
         ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), row_h),
+            egui::vec2(header_w, row_h),
             egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
             |ui| {
                 let t = &self.theme;
                 ui.label(t.section_header("Instances"));
 
-                ui.separator();
-
-                // Search — responsive width that shrinks with the window
-                let search_icon = egui_phosphor::regular::MAGNIFYING_GLASS;
-                let search_w = (ui.available_width() * 0.2).clamp(80.0, 160.0);
-                ui.add(
-                    egui::TextEdit::singleline(&mut self.search_query)
-                        .hint_text(format!("{} Search…", search_icon))
-                        .desired_width(search_w)
-                        .margin(egui::Margin::symmetric(4, 9)),
-                );
-
-                // Loader filter
-                let loader_text = match &self.loader_filter {
-                    Some(l) => format!("{:?}", l),
-                    None => "All Loaders".to_string(),
-                };
-                egui::ComboBox::from_id_salt("instance_loader_filter")
-                    .selected_text(&loader_text)
-                    .width(100.0)
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.loader_filter, None, "All Loaders");
-                        ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Vanilla), "Vanilla");
-                        ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Fabric), "Fabric");
-                        ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Forge), "Forge");
-                        ui.selectable_value(&mut self.loader_filter, Some(ModLoader::NeoForge), "NeoForge");
-                        ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Quilt), "Quilt");
-                    });
-
-                // Sort dropdown
-                egui::ComboBox::from_id_salt("instance_sort")
-                    .selected_text(self.sort_mode.label())
-                    .width(100.0)
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.sort_mode, InstanceSortMode::LastPlayed, "Last Played");
-                        ui.selectable_value(&mut self.sort_mode, InstanceSortMode::NameAsc, "Name (A-Z)");
-                        ui.selectable_value(&mut self.sort_mode, InstanceSortMode::CreatedDesc, "Newest First");
-                        ui.selectable_value(&mut self.sort_mode, InstanceSortMode::McVersion, "MC Version");
-                    });
-
-                ui.separator();
-
-                // Right-aligned: view toggle, refresh, Add Instance
+                // Spring layout — push all controls to the right
                 ui.with_layout(
                     egui::Layout::right_to_left(egui::Align::Center).with_cross_justify(true),
                     |ui| {
-                        // Clip horizontally only — prevent leftward overflow into filter controls
+                        // Clip horizontally only — prevent leftward overflow
                         // but keep parent's vertical clip so hover borders aren't cut off
                         let mut clip = ui.clip_rect();
                         clip.min.x = ui.max_rect().min.x;
                         ui.set_clip_rect(clip);
-                        let t = &self.theme;
-                        // Add Instance (rightmost)
-                        let add_lbl = format!("{} Add Instance", egui_phosphor::regular::PLUS);
-                        let add_clicked = ui.add(t.accent_button(&add_lbl)).clicked();
+
+                        // ── Add Instance (far right) ──
+                        let add_clicked = {
+                            let t = &self.theme;
+                            if is_wide {
+                                let lbl =
+                                    format!("{} Add Instance", egui_phosphor::regular::PLUS);
+                                ui.add(t.accent_button(&lbl)).clicked()
+                            } else {
+                                ui.add(t.accent_icon_button(egui_phosphor::regular::PLUS))
+                                    .on_hover_text("Add Instance")
+                                    .clicked()
+                            }
+                        };
                         if add_clicked {
                             self.show_add_instance = true;
                             self.add_instance_tab = AddInstanceTab::Vanilla;
@@ -361,27 +334,158 @@ impl InstancesView {
                             self.name_auto_generated = false;
                         }
 
-                        // Refresh
-                        let refresh_lbl = egui_phosphor::regular::ARROWS_CLOCKWISE.to_string();
-                        let refresh_clicked = ui.add(t.ghost_button(&refresh_lbl))
-                            .on_hover_text("Check for modpack updates")
-                            .clicked();
-                        if refresh_clicked {
-                            self.recheck_modpack_updates = true;
+                        // ── Refresh ──
+                        {
+                            let t = &self.theme;
+                            if ui
+                                .add(t.icon_button(egui_phosphor::regular::ARROWS_CLOCKWISE))
+                                .on_hover_text("Check for modpack updates")
+                                .clicked()
+                            {
+                                self.recheck_modpack_updates = true;
+                            }
                         }
 
-                        ui.separator();
+                        ui.add_space(8.0);
 
-                        // View toggle (right-to-left: render grid first so list appears left)
-                        ui.selectable_value(
-                            &mut self.view_mode,
-                            ViewMode::Grid,
-                            egui_phosphor::regular::GRID_FOUR,
-                        );
-                        ui.selectable_value(
-                            &mut self.view_mode,
-                            ViewMode::List,
-                            egui_phosphor::regular::LIST,
+                        if is_narrow {
+                            // ── Collapsed: filter/sort/view → popover ──
+                            let has_active_filter = self.loader_filter.is_some()
+                                || self.sort_mode != InstanceSortMode::LastPlayed
+                                || self.view_mode != ViewMode::List;
+
+                            let filter_btn = {
+                                let t = &self.theme;
+                                let icon = egui_phosphor::regular::FADERS_HORIZONTAL;
+                                if has_active_filter {
+                                    ui.add(t.accent_icon_button(icon))
+                                        .on_hover_text("Display options (active)")
+                                } else {
+                                    ui.add(t.icon_button(icon))
+                                        .on_hover_text("Display options")
+                                }
+                            };
+
+                            let popup_id = filter_btn.id.with("filter_popup");
+                            #[allow(deprecated)]
+                            if filter_btn.clicked() {
+                                ui.memory_mut(|m| m.toggle_popup(popup_id));
+                            }
+                            #[allow(deprecated)]
+                            egui::popup_below_widget(
+                                ui,
+                                popup_id,
+                                &filter_btn,
+                                egui::PopupCloseBehavior::CloseOnClickOutside,
+                                |ui| {
+                                    ui.set_min_width(200.0);
+                                    let t = &self.theme;
+
+                                    ui.label(t.subtext("LOADER"));
+                                    ui.add_space(4.0);
+                                    let loader_text = match &self.loader_filter {
+                                        Some(l) => format!("{:?}", l),
+                                        None => "All Loaders".to_string(),
+                                    };
+                                    egui::ComboBox::from_id_salt("popup_loader_filter")
+                                        .selected_text(&loader_text)
+                                        .width(ui.available_width() - 8.0)
+                                        .show_ui(ui, |ui| {
+                                            ui.selectable_value(&mut self.loader_filter, None, "All Loaders");
+                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Vanilla), "Vanilla");
+                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Fabric), "Fabric");
+                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Forge), "Forge");
+                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::NeoForge), "NeoForge");
+                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Quilt), "Quilt");
+                                        });
+
+                                    ui.add_space(8.0);
+                                    ui.label(t.subtext("SORT BY"));
+                                    ui.add_space(4.0);
+                                    egui::ComboBox::from_id_salt("popup_instance_sort")
+                                        .selected_text(self.sort_mode.label())
+                                        .width(ui.available_width() - 8.0)
+                                        .show_ui(ui, |ui| {
+                                            ui.selectable_value(&mut self.sort_mode, InstanceSortMode::LastPlayed, "Last Played");
+                                            ui.selectable_value(&mut self.sort_mode, InstanceSortMode::NameAsc, "Name (A-Z)");
+                                            ui.selectable_value(&mut self.sort_mode, InstanceSortMode::CreatedDesc, "Newest First");
+                                            ui.selectable_value(&mut self.sort_mode, InstanceSortMode::McVersion, "MC Version");
+                                        });
+
+                                    ui.add_space(8.0);
+                                    ui.label(t.subtext("LAYOUT"));
+                                    ui.add_space(4.0);
+                                    ui.horizontal(|ui| {
+                                        ui.selectable_value(
+                                            &mut self.view_mode,
+                                            ViewMode::List,
+                                            format!("{} List", egui_phosphor::regular::LIST),
+                                        );
+                                        ui.selectable_value(
+                                            &mut self.view_mode,
+                                            ViewMode::Grid,
+                                            format!("{} Grid", egui_phosphor::regular::GRID_FOUR),
+                                        );
+                                    });
+                                },
+                            );
+                        } else {
+                            // ── Inline controls (wide / medium) ──
+                            // View toggle (RTL: grid first → appears right)
+                            ui.selectable_value(
+                                &mut self.view_mode,
+                                ViewMode::Grid,
+                                egui_phosphor::regular::GRID_FOUR,
+                            );
+                            ui.selectable_value(
+                                &mut self.view_mode,
+                                ViewMode::List,
+                                egui_phosphor::regular::LIST,
+                            );
+
+                            ui.add_space(8.0);
+
+                            // Sort
+                            egui::ComboBox::from_id_salt("instance_sort")
+                                .selected_text(self.sort_mode.label())
+                                .width(100.0)
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut self.sort_mode, InstanceSortMode::LastPlayed, "Last Played");
+                                    ui.selectable_value(&mut self.sort_mode, InstanceSortMode::NameAsc, "Name (A-Z)");
+                                    ui.selectable_value(&mut self.sort_mode, InstanceSortMode::CreatedDesc, "Newest First");
+                                    ui.selectable_value(&mut self.sort_mode, InstanceSortMode::McVersion, "MC Version");
+                                });
+
+                            // Loader filter
+                            let loader_text = match &self.loader_filter {
+                                Some(l) => format!("{:?}", l),
+                                None => "All Loaders".to_string(),
+                            };
+                            egui::ComboBox::from_id_salt("instance_loader_filter")
+                                .selected_text(&loader_text)
+                                .width(100.0)
+                                .show_ui(ui, |ui| {
+                                    ui.selectable_value(&mut self.loader_filter, None, "All Loaders");
+                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Vanilla), "Vanilla");
+                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Fabric), "Fabric");
+                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Forge), "Forge");
+                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::NeoForge), "NeoForge");
+                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Quilt), "Quilt");
+                                });
+                        }
+
+                        ui.add_space(8.0);
+
+                        // ── Search (always visible) ──
+                        let search_w = (ui.available_width() * 0.4).clamp(80.0, 160.0);
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.search_query)
+                                .hint_text(format!(
+                                    "{} Search…",
+                                    egui_phosphor::regular::MAGNIFYING_GLASS
+                                ))
+                                .desired_width(search_w)
+                                .margin(egui::Margin::symmetric(4, 9)),
                         );
                     },
                 );

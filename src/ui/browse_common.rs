@@ -145,11 +145,17 @@ impl BrowseTab {
 
         // ── Filter / sort / view-mode row ────────────────────────
         let row_h = ui.spacing().interact_size.y + 4.0;
+        let filter_row_w = ui.available_width();
+        let is_narrow = filter_row_w <= 600.0;
+
+        let prev_sort = self.selected_sort;
+        let prev_cat = self.selected_category;
+
         ui.allocate_ui_with_layout(
-            egui::vec2(ui.available_width(), row_h),
+            egui::vec2(filter_row_w, row_h),
             egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
             |ui| {
-                // Version filter (mod browsers only)
+                // Version filter (mod browsers only) — always inline
                 if config.has_version_filter {
                     if self.search_all_versions {
                         ui.add(
@@ -167,80 +173,189 @@ impl BrowseTab {
                         do_search = true;
                         actions.push(BrowseAction::VersionFilterChanged(self.search_all_versions));
                     }
-                    ui.separator();
+                    ui.add_space(8.0);
                 }
 
-                // Sort combo
-                let prev_sort = self.selected_sort;
-                let sort_text = config
-                    .sort_labels
-                    .get(self.selected_sort)
-                    .copied()
-                    .unwrap_or("Sort");
-                egui::ComboBox::from_id_salt(format!("{}_sort", config.id_salt))
-                    .selected_text(sort_text)
-                    .width(120.0)
-                    .show_ui(ui, |ui| {
-                        for (i, &label) in config.sort_labels.iter().enumerate() {
-                            ui.selectable_value(&mut self.selected_sort, i, label);
-                        }
-                    });
-                if prev_sort != self.selected_sort {
-                    do_search = true;
-                }
+                if is_narrow {
+                    // ── Collapsed: sort / category / view → popover ──
+                    ui.with_layout(
+                        egui::Layout::right_to_left(egui::Align::Center).with_cross_justify(true),
+                        |ui| {
+                            let mut clip = ui.clip_rect();
+                            clip.min.x = ui.max_rect().min.x;
+                            ui.set_clip_rect(clip);
 
-                ui.separator();
+                            let has_active = self.selected_sort != 0
+                                || self.selected_category != 0
+                                || self.view_mode != ViewMode::List;
 
-                // Category combo
-                let prev_cat = self.selected_category;
-                let cat_text = if self.selected_category == 0 {
-                    "All categories"
+                            let filter_btn = if has_active {
+                                ui.add(
+                                    theme.accent_icon_button(
+                                        egui_phosphor::regular::FADERS_HORIZONTAL,
+                                    ),
+                                )
+                                .on_hover_text("Display options (active)")
+                            } else {
+                                ui.add(theme.icon_button(egui_phosphor::regular::FADERS_HORIZONTAL))
+                                    .on_hover_text("Display options")
+                            };
+
+                            let popup_id = filter_btn.id.with("browse_filter_popup");
+                            #[allow(deprecated)]
+                            if filter_btn.clicked() {
+                                ui.memory_mut(|m| m.toggle_popup(popup_id));
+                            }
+                            #[allow(deprecated)]
+                            egui::popup_below_widget(
+                                ui,
+                                popup_id,
+                                &filter_btn,
+                                egui::PopupCloseBehavior::CloseOnClickOutside,
+                                |ui| {
+                                    ui.set_min_width(200.0);
+
+                                    ui.label(theme.subtext("SORT BY"));
+                                    ui.add_space(4.0);
+                                    let sort_text = config
+                                        .sort_labels
+                                        .get(self.selected_sort)
+                                        .copied()
+                                        .unwrap_or("Sort");
+                                    egui::ComboBox::from_id_salt(format!(
+                                        "{}_popup_sort",
+                                        config.id_salt
+                                    ))
+                                    .selected_text(sort_text)
+                                    .width(ui.available_width() - 8.0)
+                                    .show_ui(ui, |ui| {
+                                        for (i, &label) in config.sort_labels.iter().enumerate() {
+                                            ui.selectable_value(&mut self.selected_sort, i, label);
+                                        }
+                                    });
+
+                                    ui.add_space(8.0);
+                                    ui.label(theme.subtext("CATEGORY"));
+                                    ui.add_space(4.0);
+                                    let cat_text = if self.selected_category == 0 {
+                                        "All categories"
+                                    } else {
+                                        config
+                                            .category_labels
+                                            .get(self.selected_category)
+                                            .copied()
+                                            .unwrap_or("All categories")
+                                    };
+                                    egui::ComboBox::from_id_salt(format!(
+                                        "{}_popup_category",
+                                        config.id_salt
+                                    ))
+                                    .selected_text(cat_text)
+                                    .width(ui.available_width() - 8.0)
+                                    .show_ui(ui, |ui| {
+                                        ui.selectable_value(
+                                            &mut self.selected_category,
+                                            0,
+                                            "All categories",
+                                        );
+                                        for (i, &label) in
+                                            config.category_labels.iter().enumerate().skip(1)
+                                        {
+                                            ui.selectable_value(
+                                                &mut self.selected_category,
+                                                i,
+                                                label,
+                                            );
+                                        }
+                                    });
+
+                                    ui.add_space(8.0);
+                                    ui.label(theme.subtext("LAYOUT"));
+                                    ui.add_space(4.0);
+                                    ui.horizontal(|ui| {
+                                        ui.selectable_value(
+                                            &mut self.view_mode,
+                                            ViewMode::List,
+                                            format!("{} List", egui_phosphor::regular::LIST),
+                                        );
+                                        ui.selectable_value(
+                                            &mut self.view_mode,
+                                            ViewMode::Grid,
+                                            format!("{} Grid", egui_phosphor::regular::GRID_FOUR),
+                                        );
+                                    });
+                                },
+                            );
+                        },
+                    );
                 } else {
-                    config
-                        .category_labels
-                        .get(self.selected_category)
+                    // ── Inline controls (wide) ──
+                    let sort_text = config
+                        .sort_labels
+                        .get(self.selected_sort)
                         .copied()
-                        .unwrap_or("All categories")
-                };
-                egui::ComboBox::from_id_salt(format!("{}_category", config.id_salt))
-                    .selected_text(cat_text)
-                    .width(140.0)
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.selected_category, 0, "All categories");
-                        for (i, &label) in config.category_labels.iter().enumerate().skip(1) {
-                            ui.selectable_value(&mut self.selected_category, i, label);
-                        }
-                    });
-                if prev_cat != self.selected_category {
-                    do_search = true;
+                        .unwrap_or("Sort");
+                    egui::ComboBox::from_id_salt(format!("{}_sort", config.id_salt))
+                        .selected_text(sort_text)
+                        .width(120.0)
+                        .show_ui(ui, |ui| {
+                            for (i, &label) in config.sort_labels.iter().enumerate() {
+                                ui.selectable_value(&mut self.selected_sort, i, label);
+                            }
+                        });
+
+                    ui.add_space(8.0);
+
+                    let cat_text = if self.selected_category == 0 {
+                        "All categories"
+                    } else {
+                        config
+                            .category_labels
+                            .get(self.selected_category)
+                            .copied()
+                            .unwrap_or("All categories")
+                    };
+                    egui::ComboBox::from_id_salt(format!("{}_category", config.id_salt))
+                        .selected_text(cat_text)
+                        .width(140.0)
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.selected_category, 0, "All categories");
+                            for (i, &label) in config.category_labels.iter().enumerate().skip(1) {
+                                ui.selectable_value(&mut self.selected_category, i, label);
+                            }
+                        });
+
+                    // View mode toggle (right-aligned)
+                    ui.with_layout(
+                        egui::Layout::right_to_left(egui::Align::Center).with_cross_justify(true),
+                        |ui| {
+                            let mut clip = ui.clip_rect();
+                            clip.min.x = ui.max_rect().min.x;
+                            ui.set_clip_rect(clip);
+
+                            ui.selectable_label(
+                                self.view_mode == ViewMode::Grid,
+                                egui_phosphor::regular::GRID_FOUR,
+                            )
+                            .on_hover_text("Grid view")
+                            .clicked()
+                            .then(|| self.view_mode = ViewMode::Grid);
+                            ui.selectable_label(
+                                self.view_mode == ViewMode::List,
+                                egui_phosphor::regular::LIST,
+                            )
+                            .on_hover_text("List view")
+                            .clicked()
+                            .then(|| self.view_mode = ViewMode::List);
+                        },
+                    );
                 }
-
-                // View mode toggle (right-aligned)
-                ui.with_layout(
-                    egui::Layout::right_to_left(egui::Align::Center).with_cross_justify(true),
-                    |ui| {
-                        let mut clip = ui.clip_rect();
-                        clip.min.x = ui.max_rect().min.x;
-                        ui.set_clip_rect(clip);
-
-                        ui.selectable_label(
-                            self.view_mode == ViewMode::Grid,
-                            egui_phosphor::regular::GRID_FOUR,
-                        )
-                        .on_hover_text("Grid view")
-                        .clicked()
-                        .then(|| self.view_mode = ViewMode::Grid);
-                        ui.selectable_label(
-                            self.view_mode == ViewMode::List,
-                            egui_phosphor::regular::LIST,
-                        )
-                        .on_hover_text("List view")
-                        .clicked()
-                        .then(|| self.view_mode = ViewMode::List);
-                    },
-                );
             },
         );
+
+        if prev_sort != self.selected_sort || prev_cat != self.selected_category {
+            do_search = true;
+        }
 
         // ── Poll search results ──────────────────────────────────
         if let Some(result) = self.search.poll() {
