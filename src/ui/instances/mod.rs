@@ -95,6 +95,10 @@ pub struct InstancesView {
     edit_initialized_for: Option<String>,
     modpack_version_picker: Option<ModpackVersionPickerState>,
     pub change_modpack_version: Option<(String, crate::core::update::ModpackUpdateInfo)>,
+    /// Background export task: Ok(instance_name) on success, Err(message) on failure
+    pub export_task: Option<Arc<Mutex<Option<Result<String, String>>>>>,
+    /// Background import task: Ok(Instance) on success, Err(message) on failure
+    pub import_task: Option<Arc<Mutex<Option<Result<Instance, String>>>>>,
 }
 
 struct ModpackVersionPickerState {
@@ -168,6 +172,8 @@ impl Default for InstancesView {
             edit_initialized_for: None,
             modpack_version_picker: None,
             change_modpack_version: None,
+            export_task: None,
+            import_task: None,
         }
     }
 }
@@ -279,6 +285,44 @@ impl InstancesView {
                 }
             }
             self.mod_counts_dirty = false;
+        }
+
+        // Poll background export task
+        if let Some(fetch) = &self.export_task {
+            let finished = fetch.lock_or_recover().take();
+            if let Some(result) = finished {
+                match result {
+                    Ok(name) => {
+                        self.pending_toasts
+                            .push(crate::app::Toast::success(format!("Exported \"{name}\"")));
+                    }
+                    Err(e) => {
+                        self.pending_toasts
+                            .push(crate::app::Toast::error(format!("Export failed: {e}")));
+                    }
+                }
+                self.export_task = None;
+            }
+        }
+
+        // Poll background import task
+        if let Some(fetch) = &self.import_task {
+            let finished = fetch.lock_or_recover().take();
+            if let Some(result) = finished {
+                match result {
+                    Ok(inst) => {
+                        self.pending_toasts.push(crate::app::Toast::success(
+                            format!("Imported \"{}\"", inst.name),
+                        ));
+                        instances.push(inst);
+                    }
+                    Err(e) => {
+                        self.pending_toasts
+                            .push(crate::app::Toast::error(format!("Import failed: {e}")));
+                    }
+                }
+                self.import_task = None;
+            }
         }
 
         // Header row: title + responsive controls with progressive collapse
@@ -713,7 +757,7 @@ impl InstancesView {
                 self.confirm_delete = Some(id.clone());
             }
 
-            // Handle export
+            // Handle export (background thread to avoid blocking UI)
             if let Some(idx) = self.export_requested.take()
                 && let Some(inst) = instances.get(idx)
                     && let Some(path) = rfd::FileDialog::new()
@@ -722,14 +766,23 @@ impl InstancesView {
                         .add_filter("Zip Archive", &["zip"])
                         .save_file()
                     {
-                        match crate::core::import_export::export_instance(inst, &path) {
-                            Ok(()) => {
-                                self.pending_toasts.push(crate::app::Toast::success(format!("Exported \"{}\"", inst.name)));
-                            }
-                            Err(e) => {
-                                self.pending_toasts.push(crate::app::Toast::error(format!("Export failed: {e}")));
-                            }
-                        }
+                        let inst_clone = inst.clone();
+                        let name = inst.name.clone();
+                        let slot: Arc<Mutex<Option<Result<String, String>>>> =
+                            Arc::new(Mutex::new(None));
+                        let slot_clone = Arc::clone(&slot);
+                        let ctx_clone = ui.ctx().clone();
+                        std::thread::spawn(move || {
+                            let result = crate::core::import_export::export_instance(
+                                &inst_clone, &path,
+                            )
+                            .map(|()| name)
+                            .map_err(|e| e.to_string());
+                            *slot_clone.lock_or_recover() = Some(result);
+                            ctx_clone.request_repaint();
+                        });
+                        self.export_task = Some(slot);
+                        self.pending_toasts.push(crate::app::Toast::success("Exporting instance...".to_string()));
                     }
 
             // Handle deferred modpack version picker (avoids borrow conflict in popup closure)

@@ -390,7 +390,7 @@ impl InstancesView {
         });
     }
 
-    fn show_import_tab(&mut self, ui: &mut egui::Ui, instances: &mut Vec<Instance>) {
+    fn show_import_tab(&mut self, ui: &mut egui::Ui, _instances: &mut Vec<Instance>) {
         ui.vertical_centered(|ui| {
             ui.add_space(40.0);
 
@@ -422,16 +422,19 @@ impl InstancesView {
                 {
                     match crate::core::import_export::detect_archive_type(&path) {
                         Ok(crate::core::import_export::ArchiveType::LurchExport) => {
-                            match crate::core::import_export::import_instance(&path) {
-                                Ok(inst) => {
-                                    self.pending_toasts.push(crate::app::Toast::success(format!("Imported \"{}\"", inst.name)));
-                                    instances.push(inst);
-                                    self.show_add_instance = false;
-                                }
-                                Err(e) => {
-                                    self.pending_toasts.push(crate::app::Toast::error(format!("Import failed: {e}")));
-                                }
-                            }
+                            let slot: Arc<Mutex<Option<Result<Instance, String>>>> =
+                                Arc::new(Mutex::new(None));
+                            let slot_clone = Arc::clone(&slot);
+                            let ctx_clone = ui.ctx().clone();
+                            std::thread::spawn(move || {
+                                let result = crate::core::import_export::import_instance(&path)
+                                    .map_err(|e| e.to_string());
+                                *slot_clone.lock_or_recover() = Some(result);
+                                ctx_clone.request_repaint();
+                            });
+                            self.import_task = Some(slot);
+                            self.show_add_instance = false;
+                            self.pending_toasts.push(crate::app::Toast::success("Importing instance...".to_string()));
                         }
                         Ok(crate::core::import_export::ArchiveType::ModrinthMrpack) => {
                             self.local_mrpack_import = Some(path);
