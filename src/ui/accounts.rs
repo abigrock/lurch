@@ -390,7 +390,11 @@ impl AccountsView {
                     ui.label(format!("Remove account \"{username}\"?"));
                     ui.label(theme.subtext("You can re-add this account later."));
                     ui.add_space(8.0);
-                    ui.horizontal(|ui| {
+                    let row_h = ui.spacing().interact_size.y + 4.0;
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(ui.available_width(), row_h),
+                        egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+                        |ui| {
                         let remove_clicked = ui.add(theme.danger_button("Remove")).clicked();
                         if remove_clicked {
                             store.remove(uuid);
@@ -400,7 +404,8 @@ impl AccountsView {
                         if ui.add(theme.ghost_button("Cancel")).clicked() {
                             self.confirm_remove = None;
                         }
-                    });
+                    },
+                    );
                 });
 
             if !open {

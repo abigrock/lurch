@@ -147,7 +147,11 @@ impl InstanceDetailView {
                             .strip_suffix(".disabled")
                             .unwrap_or(&m.filename);
                         let has_update = self.mod_updates.contains_key(base_name);
-                        let row_resp = ui.horizontal(|ui| {
+                        let row_h3 = ui.spacing().interact_size.y + 4.0;
+                        let row_resp = ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), row_h3),
+                            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+                            |ui| {
                             let icon = if m.enabled {
                                 egui_phosphor::regular::CHECK_CIRCLE
                             } else {
@@ -175,13 +179,14 @@ impl InstanceDetailView {
                                 };
                                 let link_resp = ui.add(
                                     egui::Label::new(theme.title(&m.title))
+                                        .truncate()
                                         .sense(egui::Sense::click()),
                                 );
                                 if link_resp.on_hover_text(tooltip).clicked() {
                                     let _ = open::that(url);
                                 }
                             } else {
-                                ui.label(theme.title(&m.title));
+                                ui.add(egui::Label::new(theme.title(&m.title)).truncate());
                             }
                             if has_update {
                                 let update_fill = theme.color("accent");
@@ -225,10 +230,11 @@ impl InstanceDetailView {
                                             update_filename = Some(base_name.to_string());
                                         }
                                     }
-                                    ui.label(theme.subtext(&m.filename));
+                                    ui.add(egui::Label::new(theme.subtext(&m.filename)).truncate());
                                 },
                             );
-                        });
+                        },
+                        );
                         row_hover_highlight(ui, row_resp.response.rect, theme);
                     }
                 });
@@ -369,7 +375,11 @@ impl InstanceDetailView {
                         ui.label(format!("Remove mod \"{}\"?", mod_name));
                         ui.label(theme.subtext("This will permanently delete the mod file."));
                         ui.add_space(8.0);
-                        ui.horizontal(|ui| {
+                        let row_h4 = ui.spacing().interact_size.y + 4.0;
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), row_h4),
+                            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+                            |ui| {
                             if ui.add(theme.danger_button("Delete")).clicked() {
                                 let m = &self.installed[del_idx];
                                 match local_mods::remove_mod(mods_dir, &m.filename) {
@@ -383,7 +393,8 @@ impl InstanceDetailView {
                             if ui.add(theme.ghost_button("Cancel")).clicked() {
                                 self.confirm_mod_delete = None;
                             }
-                        });
+                        },
+                        );
                     });
 
                 if !open {

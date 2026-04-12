@@ -13,12 +13,17 @@ impl InstanceDetailView {
     ) {
         ui.add_space(4.0);
 
-        ui.horizontal(|ui| {
-            if ui.add(theme.accent_button("Open Saves Folder")).clicked() {
-                let _ = std::fs::create_dir_all(saves_dir);
-                let _ = open::that(saves_dir);
-            }
-        });
+        let row_h = ui.spacing().interact_size.y + 4.0;
+        ui.allocate_ui_with_layout(
+            egui::vec2(ui.available_width(), row_h),
+            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+            |ui| {
+                if ui.add(theme.accent_button("Open Saves Folder")).clicked() {
+                    let _ = std::fs::create_dir_all(saves_dir);
+                    let _ = open::that(saves_dir);
+                }
+            },
+        );
         ui.add_space(4.0);
 
         if self.installed_worlds.is_empty() {
@@ -68,27 +73,33 @@ impl InstanceDetailView {
                         if fi > 0 {
                             ui.separator();
                         }
-                        let row_resp = ui.horizontal(|ui| {
-                            ui.label(theme.title(&w.display_name));
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
-                                    if ui
-                                        .add(theme.danger_button(egui_phosphor::regular::TRASH))
-                                        .on_hover_text("Delete world")
-                                        .clicked()
-                                    {
-                                        self.confirm_world_delete = Some(w.dir_name.clone());
-                                    }
-                                    let detail = format!(
-                                        "{}  {}",
-                                        worlds::format_size(w.size_bytes),
-                                        w.last_modified,
-                                    );
-                                    ui.label(theme.subtext(&detail));
-                                },
-                            );
-                        });
+                        let row_h2 = ui.spacing().interact_size.y + 4.0;
+                        let row_resp = ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), row_h2),
+                            egui::Layout::left_to_right(egui::Align::Center)
+                                .with_cross_justify(true),
+                            |ui| {
+                                ui.add(egui::Label::new(theme.title(&w.display_name)).truncate());
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui
+                                            .add(theme.danger_button(egui_phosphor::regular::TRASH))
+                                            .on_hover_text("Delete world")
+                                            .clicked()
+                                        {
+                                            self.confirm_world_delete = Some(w.dir_name.clone());
+                                        }
+                                        let detail = format!(
+                                            "{}  {}",
+                                            worlds::format_size(w.size_bytes),
+                                            w.last_modified,
+                                        );
+                                        ui.add(egui::Label::new(theme.subtext(&detail)).truncate());
+                                    },
+                                );
+                            },
+                        );
                         row_hover_highlight(ui, row_resp.response.rect, theme);
                     }
                 });

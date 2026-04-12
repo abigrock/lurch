@@ -805,7 +805,7 @@ impl InstancesView {
                             response.request_focus();
                         } else {
                             let t = &self.theme;
-                            ui.label(t.title(&inst.name));
+                            ui.add(egui::Label::new(t.title(&inst.name)).truncate());
                         }
                         let mut info_parts: Vec<String> = vec![inst.mc_version.clone()];
                         if inst.loader != ModLoader::Vanilla {

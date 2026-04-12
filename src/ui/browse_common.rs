@@ -486,7 +486,10 @@ impl BrowseTab {
                                         // Info column
                                         ui.vertical(|ui| {
                                             ui.set_max_width(ui.available_width() - 220.0);
-                                            ui.label(theme.title(&item.title));
+                                            ui.add(
+                                                egui::Label::new(theme.title(&item.title))
+                                                    .truncate(),
+                                            );
                                             ui.label(
                                                 theme.subtext(&truncate_desc(
                                                     &item.description,

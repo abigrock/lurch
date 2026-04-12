@@ -452,7 +452,11 @@ impl SettingsView {
                             "This will delete the managed Java installation from disk.",
                         ));
                         ui.add_space(8.0);
-                        ui.horizontal(|ui| {
+                        let row_h = ui.spacing().interact_size.y + 4.0;
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), row_h),
+                            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+                            |ui| {
                             let confirm_clicked = ui.add(theme.danger_button("Remove")).clicked();
                             if confirm_clicked {
                                 if rm_idx < java_installs.len() {
@@ -467,7 +471,8 @@ impl SettingsView {
                             if ui.add(theme.ghost_button("Cancel")).clicked() {
                                 self.confirm_java_remove = None;
                             }
-                        });
+                        },
+                        );
                     });
 
                 if !open {

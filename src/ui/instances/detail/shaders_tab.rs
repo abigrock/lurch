@@ -98,44 +98,49 @@ impl InstanceDetailView {
                         if fi > 0 {
                             ui.separator();
                         }
-                        let row_resp = ui.horizontal(|ui| {
-                            if s.is_folder {
-                                ui.small_button(egui_phosphor::regular::FOLDER)
-                                    .on_hover_text("Folder (always enabled)");
-                            } else {
-                                let icon = if s.enabled {
-                                    egui_phosphor::regular::CHECK_CIRCLE
+                        let row_h = ui.spacing().interact_size.y + 4.0;
+                        let row_resp = ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), row_h),
+                            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+                            |ui| {
+                                if s.is_folder {
+                                    ui.add(theme.icon_button(egui_phosphor::regular::FOLDER))
+                                        .on_hover_text("Folder (always enabled)");
                                 } else {
-                                    egui_phosphor::regular::CIRCLE
-                                };
-                                if ui
-                                    .small_button(icon)
-                                    .on_hover_text(if s.enabled { "Disable" } else { "Enable" })
-                                    .clicked()
-                                {
-                                    toggle_idx = Some(orig_idx);
-                                }
-                            }
-                            ui.label(theme.title(&s.title));
-                            ui.with_layout(
-                                egui::Layout::right_to_left(egui::Align::Center),
-                                |ui| {
+                                    let icon = if s.enabled {
+                                        egui_phosphor::regular::CHECK_CIRCLE
+                                    } else {
+                                        egui_phosphor::regular::CIRCLE
+                                    };
                                     if ui
-                                        .add(theme.danger_button(egui_phosphor::regular::TRASH))
-                                        .on_hover_text("Remove")
+                                        .add(theme.icon_button(icon))
+                                        .on_hover_text(if s.enabled { "Disable" } else { "Enable" })
                                         .clicked()
                                     {
-                                        remove_idx = Some(orig_idx);
+                                        toggle_idx = Some(orig_idx);
                                     }
-                                    let detail = if s.is_folder {
-                                        format!("{} (folder)", s.filename)
-                                    } else {
-                                        s.filename.clone()
-                                    };
-                                    ui.label(theme.subtext(&detail));
-                                },
-                            );
-                        });
+                                }
+                                ui.add(egui::Label::new(theme.title(&s.title)).truncate());
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        if ui
+                                            .add(theme.danger_button(egui_phosphor::regular::TRASH))
+                                            .on_hover_text("Remove")
+                                            .clicked()
+                                        {
+                                            remove_idx = Some(orig_idx);
+                                        }
+                                        let detail = if s.is_folder {
+                                            format!("{} (folder)", s.filename)
+                                        } else {
+                                            s.filename.clone()
+                                        };
+                                        ui.add(egui::Label::new(theme.subtext(&detail)).truncate());
+                                    },
+                                );
+                            },
+                        );
                         row_hover_highlight(ui, row_resp.response.rect, theme);
                     }
                 });

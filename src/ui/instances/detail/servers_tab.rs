@@ -140,8 +140,8 @@ impl InstanceDetailView {
                                 }
                             });
                             ui.vertical(|ui| {
-                                ui.label(theme.title(&server.name));
-                                ui.label(theme.subtext(&server.ip));
+                                ui.add(egui::Label::new(theme.title(&server.name)).truncate());
+                                ui.add(egui::Label::new(theme.subtext(&server.ip)).truncate());
                             });
                             ui.with_layout(
                                 egui::Layout::right_to_left(egui::Align::Center),
@@ -183,7 +183,11 @@ impl InstanceDetailView {
                         ui.label(format!("Remove server \"{}\"?", server_name));
                         ui.label(theme.subtext("This will remove the server from servers.dat."));
                         ui.add_space(8.0);
-                        ui.horizontal(|ui| {
+                        let row_h = ui.spacing().interact_size.y + 4.0;
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), row_h),
+                            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+                            |ui| {
                             if ui.add(theme.danger_button("Delete")).clicked() {
                                 self.server_list.remove(del_idx);
                                 let _ = servers::write_servers(servers_dat, &self.server_list);
@@ -198,7 +202,8 @@ impl InstanceDetailView {
                             if ui.add(theme.ghost_button("Cancel")).clicked() {
                                 self.confirm_server_delete = None;
                             }
-                        });
+                        },
+                        );
                     });
 
                 if !open {
