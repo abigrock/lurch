@@ -134,6 +134,7 @@ impl ConsoleView {
                         .find(|rp| rp.instance_id == *active_id)
                     {
                         ui.checkbox(&mut rp.auto_scroll, "Auto-scroll");
+                        ui.checkbox(&mut rp.line_wrap, "Line wrap");
                     }
                 }
             });
@@ -256,14 +257,23 @@ impl ConsoleView {
         // ── Log Output ──────────────────────────────────────────────
         if let Some(proc) = &running_processes[idx].process {
             let auto_scroll = running_processes[idx].auto_scroll;
+            let line_wrap = running_processes[idx].line_wrap;
             let scroll_id = active_id.clone();
             let proc = proc.clone();
             theme.code_frame().show(ui, |ui| {
-                egui::ScrollArea::vertical()
+                let scroll_area = if line_wrap {
+                    egui::ScrollArea::vertical()
+                } else {
+                    egui::ScrollArea::both()
+                };
+                scroll_area
                     .id_salt(("console_scroll", &scroll_id))
                     .auto_shrink([false, false])
                     .stick_to_bottom(auto_scroll)
                     .show(ui, |ui| {
+                        if !line_wrap {
+                            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+                        }
                         let s = proc.lock_or_recover();
                         for line in &s.log_lines {
                             ui.label(

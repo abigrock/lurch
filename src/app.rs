@@ -89,6 +89,7 @@ pub struct RunningProcess {
     pub pending_process: Arc<Mutex<Option<Arc<Mutex<ProcessState>>>>>,
     pub process: Option<Arc<Mutex<ProcessState>>>,
     pub auto_scroll: bool,
+    pub line_wrap: bool,
 }
 
 impl RunningProcess {
@@ -393,6 +394,7 @@ impl App {
                 pending_process: Arc::new(Mutex::new(None)),
                 process: None,
                 auto_scroll: true,
+                line_wrap: true,
             });
             self.console_view.active_instance_id = Some(instance_id.to_string());
             self.current_view = View::Console;
@@ -424,6 +426,7 @@ impl App {
                         pending_process: Arc::new(Mutex::new(None)),
                         process: None,
                         auto_scroll: true,
+                        line_wrap: true,
                     });
                     self.console_view.active_instance_id = Some(instance_id.to_string());
                     self.current_view = View::Console;
@@ -445,6 +448,7 @@ impl App {
             pending_process: Arc::clone(&console_process_slot),
             process: None,
             auto_scroll: true,
+            line_wrap: true,
         });
         self.console_view.active_instance_id = Some(instance_id.to_string());
         self.current_view = View::Console;
