@@ -9,6 +9,8 @@ GUI presentation layer — renders all views using egui immediate-mode framework
 - **View structs**: Views are now structs (AccountsView, SettingsView, InstancesView, etc.) — each owns its own state and exposes a `show()` method taking `&mut App` or relevant state slices
 - **Theme integration**: Views use `Theme` styling helpers (`card_frame`, `accent_button`, `section_header`, etc.) for consistent appearance. Theme is always present — no conditional checks needed.
 - **Vertical centering**: All rows with mixed-height widgets use `allocate_ui_with_layout` with `left_to_right(Center).with_cross_justify(true)` instead of `ui.horizontal`
+- **Progressive collapse**: Header/toolbar rows use width-based breakpoints — wide (full layout) → medium (icon-only buttons) → narrow (controls collapse into filter popover). Reference implementations: `instances/mod.rs` header, `browse_common.rs` filter row
+- **Filter popovers**: Collapsed controls use `popup_below_widget` + `toggle_popup`; vertical stack with `subtext()` labels, full-width ComboBoxes, active filter indicator via `accent_icon_button`
 
 ## Modules
 
@@ -21,7 +23,7 @@ GUI presentation layer — renders all views using egui immediate-mode framework
 | `settings.rs` | `SettingsView`: settings page (theme, Java, memory, JVM args, CF API key) |
 | `helpers.rs` | Reusable UI utility functions: `tab_button()`, `SearchState<R>`, `section_heading()`, `card_frame()`, `row_hover_highlight()`, `project_tooltip()`, and more |
 | `instances/modpack_browser.rs` | Modpack browser (Modrinth + CurseForge search/install) |
-| `browse_common.rs` | Shared `BrowseTab` struct: search, filtering, sorting, list/grid rendering, pagination for mod/modpack browsers |
+| `browse_common.rs` | Shared `BrowseTab` struct: search, filtering, sorting, list/grid rendering, pagination for mod/modpack browsers; responsive filter row with progressive collapse popover |
 
 ## Flow
 1. `App::update()` calls sidebar render → gets active `View`

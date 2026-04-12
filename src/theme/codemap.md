@@ -11,7 +11,7 @@ JSON-based theme engine — defines visual appearance, ships 33 bundled themes, 
 - **User themes**: Loaded from `data_dir/themes/*.json` via `load_user_themes()`
 - **Styling helpers**:
   - Size constants: `BUTTON_HEIGHT` (32px), `TAB_HEIGHT` (28px)
-  - Button helpers: `accent_button()`, `danger_button()`, `ghost_button()`, `icon_button()`, `menu_item()`
+  - Button helpers: `accent_button()`, `danger_button()`, `ghost_button()`, `icon_button()`, `accent_icon_button()`, `menu_item()`
   - Frame helpers: `card_frame()`, `sidebar_frame()`, `topbar_frame()`, `code_frame()`, `content_frame()`, `badge_frame()`
   - Text helpers: `section_header()`, `title()`, `subtext()`, `button_fg()`, `mono_font()`
   - Other: `style_menu()`

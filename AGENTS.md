@@ -43,6 +43,7 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
   - `danger_button(label)` — error fill + contrast-aware text
   - `ghost_button(label)` — transparent fill + surface_hover stroke + fg_dim text
   - `icon_button(icon)` — ghost style, square `BUTTON_HEIGHT × BUTTON_HEIGHT` for icon-only buttons
+  - `accent_icon_button(icon)` — accent fill + contrast-aware text, square `BUTTON_HEIGHT × BUTTON_HEIGHT` for highlighted icon-only buttons (e.g., active filter indicator)
   - `menu_item(label)` — fg_dim text, no custom fill/stroke (denser, for popup menus)
 - **Size constants**: `BUTTON_HEIGHT = 32.0`, `TAB_HEIGHT = 28.0`
 - **Other helpers**: `section_header()` (15pt bold fg), `title()` (bold fg), `subtext()` (12pt fg_muted), `card_frame()` (bg_secondary fill), `sidebar_frame()`, `topbar_frame()` (bg_tertiary), `code_frame()` (bg_tertiary), `content_frame()` (bg fill), `badge_frame(fill)` (pill), `style_menu(ui)`, `mono_font()`
@@ -68,10 +69,21 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
   clip.min.x = ui.max_rect().min.x;
   ui.set_clip_rect(clip);
   ```
-- **Page headers**: title via `section_heading()` → `ui.separator()` → `ui.add_space(8.0)`
-- **ComboBox widths**: 100px for loader/sort combos, 140px for category
-- **Responsive search**: width `(available * 0.2).clamp(80.0, 160.0)` for toolbar search fields
-- **Text truncation**: use `ui.add(Label::new(richtext).truncate())` for long text in fixed-width rows (instance names, version labels)
+- **Page headers**: title via `section_heading()` → `ui.add_space(8.0)` — use spacing instead of separators between control groups for a modern feel
+- **ComboBox widths**: 100px for loader/sort combos, 120px for sort in browse views, 140px for category
+- **Responsive search**: width `(available * 0.2).clamp(80.0, 160.0)` for toolbar search fields (use `0.4` multiplier when measuring inside a right-to-left sub-layout)
+- **Text truncation**: use `ui.add(Label::new(richtext).truncate())` for **all** text in fixed-width rows — instance names, version labels, mod titles, filenames, server names, etc.
+- **Progressive collapse** — header/toolbar rows with multiple controls use width-based breakpoints for responsive behavior:
+  - Measure available width via `ui.available_width()` and define `is_wide` / `is_narrow` thresholds
+  - **Wide**: full layout with text labels and inline controls
+  - **Medium**: primary action buttons drop text → icon-only (e.g., `accent_icon_button` instead of `accent_button`)
+  - **Narrow**: secondary controls (filters, sort, view toggles) collapse into a single icon button that opens a popover
+  - Reference implementations: `src/ui/instances/mod.rs` header (800/550 breakpoints), `src/ui/browse_common.rs` filter row (600 breakpoint)
+- **Filter popovers** — collapsed controls use `popup_below_widget` + `toggle_popup` (with `#[allow(deprecated)]`):
+  - Vertical stack layout with `subtext()` labels ("LOADER", "SORT BY", "LAYOUT")
+  - Full-width ComboBoxes inside popup; use distinct ID salts (e.g., `popup_loader_filter`) to avoid conflicts with inline versions
+  - Active filter indicator: switch trigger button from `icon_button` to `accent_icon_button` when any non-default filter is applied
+  - Icon: `egui_phosphor::regular::FADERS_HORIZONTAL` for filter/display-options popovers
 
 ### Build & Quality
 - `cargo check` must pass with **zero warnings**
