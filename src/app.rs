@@ -1116,6 +1116,12 @@ use crate::core::modrinth_modpack;
     }
 
     fn handle_view_requests(&mut self, ctx: &egui::Context) {
+        // Remove toasts that views have flagged for replacement
+        if !self.instances_view.toast_removals.is_empty() {
+            let removals: Vec<String> = self.instances_view.toast_removals.drain(..).collect();
+            self.toasts.retain(|t| !removals.contains(&t.message));
+        }
+
         // Drain pending toasts from instances view
         self.toasts
             .append(&mut self.instances_view.pending_toasts);

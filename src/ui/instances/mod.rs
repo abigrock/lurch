@@ -99,6 +99,8 @@ pub struct InstancesView {
     pub export_task: Option<Arc<Mutex<Option<Result<String, String>>>>>,
     /// Background import task: Ok(Instance) on success, Err(message) on failure
     pub import_task: Option<Arc<Mutex<Option<Result<Instance, String>>>>>,
+    /// Toast messages to remove from App.toasts (drained by handle_view_requests)
+    pub toast_removals: Vec<String>,
 }
 
 struct ModpackVersionPickerState {
@@ -174,6 +176,7 @@ impl Default for InstancesView {
             change_modpack_version: None,
             export_task: None,
             import_task: None,
+            toast_removals: Vec::new(),
         }
     }
 }
@@ -291,6 +294,7 @@ impl InstancesView {
         if let Some(fetch) = &self.export_task {
             let finished = fetch.lock_or_recover().take();
             if let Some(result) = finished {
+                self.toast_removals.push("Exporting instance...".to_string());
                 match result {
                     Ok(name) => {
                         self.pending_toasts
@@ -309,6 +313,7 @@ impl InstancesView {
         if let Some(fetch) = &self.import_task {
             let finished = fetch.lock_or_recover().take();
             if let Some(result) = finished {
+                self.toast_removals.push("Importing instance...".to_string());
                 match result {
                     Ok(mut inst) => {
                         // Auto-deduplicate name if it collides with an existing instance
