@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <mask id="l-cutout">
+      <!-- White = visible -->
+      <rect width="512" height="512" fill="white"/>
+      <!-- Black = transparent (the L cutout) -->
+      <path d="M 180 140 L 180 372 L 333 372"
+        fill="none" stroke="black" stroke-width="80"
+        stroke-linecap="round" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+  <!-- Rounded square with L cut out -->
+  <rect x="40" y="40" width="432" height="432" rx="40" ry="40"
+    fill="#FFFFFF" mask="url(#l-cutout)"/>
+</svg>

@@ -1928,10 +1928,10 @@ impl eframe::App for App {
             .show_inside(ui, |ui| {
                 ui.horizontal(|ui| {
                     let accent = theme.color("accent");
-                    ui.label(
-                        egui::RichText::new(egui_phosphor::regular::CUBE)
-                            .size(20.0)
-                            .color(accent),
+                    ui.add(
+                        egui::Image::new(egui::include_image!("../assets/logo.svg"))
+                            .fit_to_exact_size(egui::vec2(24.0, 24.0))
+                            .tint(accent),
                     );
                     ui.label(
                         egui::RichText::new("Lurch")
@@ -1961,7 +1961,7 @@ impl eframe::App for App {
                                 format!("https://mc-heads.net/avatar/{}/32", identifier);
                             let avatar_resp = ui.add(
                                 egui::Image::new(&avatar_url)
-                                    .fit_to_exact_size(egui::vec2(20.0, 20.0))
+.fit_to_exact_size(egui::vec2(20.0, 20.0))
                                     .sense(egui::Sense::click()),
                             );
                             if avatar_resp.hovered() {
