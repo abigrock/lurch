@@ -328,6 +328,7 @@ impl App {
                                                         download_url: None,
                                                         display_name: None,
                                                         manual: false,
+                                                        disabled: false,
                                                         slug: None,
                                                         file_id: None,
                                                         website_url: None,
@@ -339,7 +340,14 @@ impl App {
                                 let mods_dir = mc_dir.join("mods");
                                 let missing: Vec<ModpackModEntry> = expected
                                     .into_iter()
-                                    .filter(|f| !mods_dir.join(&f.name).exists())
+                                    .filter(|f| {
+                                        if f.disabled {
+                                            return false;
+                                        }
+                                        let mod_path = mods_dir.join(&f.name);
+                                        let disabled_mod_path = mods_dir.join(format!("{}.disabled", f.name));
+                                        !mod_path.exists() && !disabled_mod_path.exists()
+                                    })
                                     .collect();
                                 if !missing.is_empty() {
                                     self.missing_mods = Some(MissingModsState {

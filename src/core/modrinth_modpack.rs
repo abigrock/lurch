@@ -212,6 +212,7 @@ pub fn install_modpack_files(
                         download_url: f.downloads.first().cloned(),
                         display_name: None,
                         manual: false,
+                        disabled: false,
                         slug: None,
                         file_id: None,
                         website_url: None,

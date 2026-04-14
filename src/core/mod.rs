@@ -39,6 +39,9 @@ pub struct ModpackModEntry {
     /// `true` when the mod requires manual download (CurseForge distribution-blocked).
     #[serde(default, skip_serializing_if = "is_false")]
     pub manual: bool,
+    /// `true` when the mod is disabled.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub disabled: bool,
     /// CurseForge project slug (for constructing manual download URL).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub slug: Option<String>,
