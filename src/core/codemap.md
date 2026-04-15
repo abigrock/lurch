@@ -24,6 +24,8 @@ Business logic layer — all non-UI functionality for the Minecraft launcher: au
 | `launch.rs` | Game launch pipeline, process management | `LaunchContext`, `ProcessState` |
 | `version.rs` | Mojang manifest, library/asset downloads | `VersionManifest`, `VersionInfo`, rule evaluation |
 | `forge.rs` | Forge/NeoForge installer processing | Forge profile merging, processor execution |
+| `modpack_manager.rs` | Modpack installation orchestrator | `ModpackManager`, background thread spawning |
+| `launch_manager.rs` | Game launch orchestration | `LaunchManager`, `LaunchEvent`, `RunningProcess` |
 | `modrinth_modpack.rs` | Modrinth .mrpack installation + updates, writes `.modpack_mods.json` | `install_modrinth_modpack()`, `update_modrinth_modpack()` |
 | `curseforge_modpack.rs` | CurseForge modpack installation + updates, writes `.modpack_mods.json` | `install_curseforge_modpack()`, `update_curseforge_modpack()`, `wait_for_cf_manual_download()` |
 | `curseforge.rs` | CurseForge API client | API search, file download |

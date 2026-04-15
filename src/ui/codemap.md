@@ -16,6 +16,7 @@ GUI presentation layer — renders all views using egui immediate-mode framework
 
 | Module | Purpose |
 |--------|---------|
+| `notifications.rs` | Toast notification models | `Toast` |
 | `sidebar.rs` | Left navigation panel with View enum, custom styled nav items with accent indicator |
 | `instances/` | Instance list + detail views (tabbed: mods, worlds, shaders, servers) |
 | `accounts.rs` | Account management — add/remove Microsoft and offline accounts |
