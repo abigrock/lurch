@@ -1,6 +1,6 @@
-use crate::core::curseforge::{self, CfCategory, CfFile, CfSortField, CLASS_MODPACKS};
-use crate::core::modrinth::{self, MrCategory, MrSortIndex, ProjectVersion};
 use crate::core::MutexExt;
+use crate::core::curseforge::{self, CLASS_MODPACKS, CfCategory, CfFile, CfSortField};
+use crate::core::modrinth::{self, MrCategory, MrSortIndex, ProjectVersion};
 use crate::theme::Theme;
 use crate::ui::browse_common::{
     BrowseAction, BrowseConfig, BrowseItem, BrowseSearchResult, BrowseTab,
@@ -215,7 +215,9 @@ impl ModpackBrowser {
                     }
                 }
                 BrowseAction::SearchError(e) => {
-                    pending_toasts.push(crate::ui::notifications::Toast::error(format!("Search failed: {e}")));
+                    pending_toasts.push(crate::ui::notifications::Toast::error(format!(
+                        "Search failed: {e}"
+                    )));
                 }
                 BrowseAction::VersionFilterChanged(_) => {} // not used for modpacks
             }

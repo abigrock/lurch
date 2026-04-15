@@ -1,5 +1,5 @@
-use crate::core::instance::{Instance, ModLoader};
 use super::MutexExt;
+use crate::core::instance::{Instance, ModLoader};
 use anyhow::Context;
 use eframe::egui;
 use serde::Deserialize;

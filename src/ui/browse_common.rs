@@ -3,8 +3,8 @@ use std::time::Instant;
 
 use crate::theme::Theme;
 use crate::ui::helpers::{
-    card_frame, card_grid, empty_state, format_downloads, icon_placeholder, load_more_button,
-    project_tooltip, row_hover_highlight, show_category_tags, truncate_desc, SearchState, ViewMode,
+    SearchState, ViewMode, card_frame, card_grid, empty_state, format_downloads, icon_placeholder,
+    load_more_button, project_tooltip, row_hover_highlight, show_category_tags, truncate_desc,
 };
 
 // ── Normalised display item ─────────────────────────────────────────

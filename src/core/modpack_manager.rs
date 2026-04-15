@@ -1,12 +1,12 @@
-use crate::core::instance::{Instance, ModpackOrigin};
-use crate::core::modrinth_modpack;
-use crate::core::curseforge_modpack;
-use crate::core::curseforge;
 use crate::core::MutexExt;
-use eframe::egui;
-use std::sync::{Arc, Mutex};
-use reqwest::blocking::Client;
+use crate::core::curseforge;
+use crate::core::curseforge_modpack;
+use crate::core::instance::{Instance, ModpackOrigin};
 use crate::core::launch::LaunchProgress;
+use crate::core::modrinth_modpack;
+use eframe::egui;
+use reqwest::blocking::Client;
+use std::sync::{Arc, Mutex};
 
 pub struct ModpackManager {
     pub http_client: Client,
@@ -23,12 +23,17 @@ impl ModpackManager {
         }
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn run_modpack_install<F>(
         &self,
         initial_message: String,
         ctx: &egui::Context,
         install_fn: F,
-    ) -> (Arc<Mutex<LaunchProgress>>, Arc<Mutex<Option<Instance>>>, Option<Arc<Mutex<Vec<curseforge_modpack::SkippedMod>>>>) 
+    ) -> (
+        Arc<Mutex<LaunchProgress>>,
+        Arc<Mutex<Option<Instance>>>,
+        Option<Arc<Mutex<Vec<curseforge_modpack::SkippedMod>>>>,
+    )
     where
         F: FnOnce(
                 Arc<Mutex<LaunchProgress>>,
@@ -96,14 +101,19 @@ impl ModpackManager {
         let (progress, slot, _) = self.run_modpack_install(
             format!("Installing modpack \"{}\"...", title),
             ctx,
-            move |progress: Arc<Mutex<LaunchProgress>>, ctx: egui::Context, client: Client, min_mem: u32, max_mem: u32| {
+            move |progress: Arc<Mutex<LaunchProgress>>,
+                  ctx: egui::Context,
+                  client: Client,
+                  min_mem: u32,
+                  max_mem: u32| {
                 {
                     let mut p = progress.lock_or_recover();
                     p.message = format!("Fetching modpack info for \"{}\"...", display_title);
                 }
                 ctx.request_repaint();
 
-                let versions = crate::core::modrinth::get_project_versions(&project_id, None, None)?;
+                let versions =
+                    crate::core::modrinth::get_project_versions(&project_id, None, None)?;
                 let version = if let Some(ref vid) = version_id {
                     versions
                         .iter()
@@ -195,6 +205,7 @@ impl ModpackManager {
         (progress, slot)
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn install_cf_modpack(
         &self,
         mod_id: u64,
@@ -203,7 +214,11 @@ impl ModpackManager {
         file_id: Option<u64>,
         file_name: Option<String>,
         ctx: &egui::Context,
-    ) -> (Arc<Mutex<LaunchProgress>>, Arc<Mutex<Option<Instance>>>, Arc<Mutex<Vec<curseforge_modpack::SkippedMod>>>) {
+    ) -> (
+        Arc<Mutex<LaunchProgress>>,
+        Arc<Mutex<Option<Instance>>>,
+        Arc<Mutex<Vec<curseforge_modpack::SkippedMod>>>,
+    ) {
         let display_title = title.clone();
         let skipped = Arc::new(Mutex::new(Vec::new()));
         let skipped_clone = Arc::clone(&skipped);
@@ -211,7 +226,11 @@ impl ModpackManager {
         let (progress, slot, _) = self.run_modpack_install(
             format!("Installing modpack \"{}\"...", title),
             ctx,
-            move |progress: Arc<Mutex<LaunchProgress>>, ctx: egui::Context, client: Client, min_mem: u32, max_mem: u32| {
+            move |progress: Arc<Mutex<LaunchProgress>>,
+                  ctx: egui::Context,
+                  client: Client,
+                  min_mem: u32,
+                  max_mem: u32| {
                 {
                     let mut p = progress.lock_or_recover();
                     p.message = format!("Fetching modpack info for \"{}\"...", display_title);
@@ -312,11 +331,19 @@ impl ModpackManager {
         (progress, slot, skipped)
     }
 
-    pub fn import_local_mrpack(&self, path: std::path::PathBuf, ctx: &egui::Context) -> (Arc<Mutex<LaunchProgress>>, Arc<Mutex<Option<Instance>>>) {
+    pub fn import_local_mrpack(
+        &self,
+        path: std::path::PathBuf,
+        ctx: &egui::Context,
+    ) -> (Arc<Mutex<LaunchProgress>>, Arc<Mutex<Option<Instance>>>) {
         let (progress, slot, _) = self.run_modpack_install(
             "Importing Modrinth modpack...".to_string(),
             ctx,
-            move |progress: Arc<Mutex<LaunchProgress>>, ctx: egui::Context, client: Client, min_mem: u32, max_mem: u32| {
+            move |progress: Arc<Mutex<LaunchProgress>>,
+                  ctx: egui::Context,
+                  client: Client,
+                  min_mem: u32,
+                  max_mem: u32| {
                 {
                     let mut p = progress.lock_or_recover();
                     p.message = "Parsing modpack...".to_string();
@@ -365,11 +392,19 @@ impl ModpackManager {
         (progress, slot)
     }
 
-    pub fn import_local_cf_modpack(&self, path: std::path::PathBuf, ctx: &egui::Context) -> (Arc<Mutex<LaunchProgress>>, Arc<Mutex<Option<Instance>>>) {
+    pub fn import_local_cf_modpack(
+        &self,
+        path: std::path::PathBuf,
+        ctx: &egui::Context,
+    ) -> (Arc<Mutex<LaunchProgress>>, Arc<Mutex<Option<Instance>>>) {
         let (progress, slot, _) = self.run_modpack_install(
             "Importing CurseForge modpack...".to_string(),
             ctx,
-            move |progress: Arc<Mutex<LaunchProgress>>, ctx: egui::Context, _client: Client, min_mem: u32, max_mem: u32| {
+            move |progress: Arc<Mutex<LaunchProgress>>,
+                  ctx: egui::Context,
+                  _client: Client,
+                  min_mem: u32,
+                  max_mem: u32| {
                 {
                     let mut p = progress.lock_or_recover();
                     p.message = "Parsing modpack...".to_string();

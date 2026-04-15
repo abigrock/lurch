@@ -1,19 +1,19 @@
-use crate::core::version::ManifestState;
-use crate::core::java::JavaDownloadState;
-use crate::ui::notifications::Toast;
-use crate::core::instance::MissingModsState;
-use crate::core::account::AccountStore;
+use crate::core::ModpackModEntry;
 use crate::core::MutexExt;
+use crate::core::account::AccountStore;
 use crate::core::config::AppConfig;
 use crate::core::curseforge_modpack;
+use crate::core::instance::MissingModsState;
 use crate::core::instance::{self, Instance};
+use crate::core::java::JavaDownloadState;
 use crate::core::java::{self, JavaInstall};
-use crate::core::launch::{prepare_and_launch, LaunchProgress, ProcessState};
-use crate::core::ModpackModEntry;
-use crate::theme::{bundled_themes, load_user_themes, seed_user_themes_dir, Theme};
+use crate::core::launch::{LaunchProgress, ProcessState, prepare_and_launch};
+use crate::core::version::ManifestState;
+use crate::theme::{Theme, bundled_themes, load_user_themes, seed_user_themes_dir};
 use crate::ui::accounts::AccountsView;
 use crate::ui::console::ConsoleView;
 use crate::ui::instances::InstancesView;
+use crate::ui::notifications::Toast;
 use crate::ui::settings::SettingsView;
 use crate::ui::sidebar::View;
 use eframe::egui;
@@ -21,7 +21,15 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
 type ModpackUpdateMap = std::collections::HashMap<String, crate::core::update::ModpackUpdateInfo>;
-type PendingModpackUpdate = Arc<Mutex<Option<(String, crate::core::instance::ModpackOrigin, crate::core::update::UpdatedModpackMeta)>>>;
+type PendingModpackUpdate = Arc<
+    Mutex<
+        Option<(
+            String,
+            crate::core::instance::ModpackOrigin,
+            crate::core::update::UpdatedModpackMeta,
+        )>,
+    >,
+>;
 
 /// A background task (modpack install, update, etc.) — NOT a running game process.
 /// Displayed in the sidebar task tray, not the Console.
@@ -47,7 +55,6 @@ impl BackgroundTask {
         self.progress.lock_or_recover().error.clone()
     }
 }
-
 
 /// A mod the user must download manually because CurseForge blocks third-party distribution.
 /// Lurch watches the user's Downloads folder for this file and auto-moves it.
@@ -122,15 +129,12 @@ pub struct App {
     last_frame_time: Option<Instant>,
 }
 
-
-
 pub struct JavaPromptState {
     pub instance_id: String,
     pub instance_name: String,
     pub required_java: u32,
     pub component: Option<String>,
 }
-
 
 impl App {
     pub fn new(ctx: egui::Context) -> Self {
@@ -269,72 +273,73 @@ impl App {
         // Pre-launch check: verify modpack mods are present
         if let Some(instance) = self.instances.iter().find(|i| i.id == instance_id)
             && instance.modpack_origin.is_some()
-                && let Ok(mc_dir) = instance.minecraft_dir() {
-                    let manifest_path = mc_dir.join(".modpack_mods.json");
-                    if manifest_path.exists()
-                        && let Ok(data) = std::fs::read_to_string(&manifest_path) {
-                            // Support both enriched (Vec<ModpackModEntry>) and legacy (Vec<String>) formats
-                            let expected: Option<Vec<ModpackModEntry>> =
-                                serde_json::from_str::<Vec<ModpackModEntry>>(&data)
-                                    .ok()
-                                    .or_else(|| {
-                                        serde_json::from_str::<Vec<String>>(&data)
-                                            .ok()
-                                            .map(|names| {
-                                                names
-                                                    .into_iter()
-                                                    .map(|name| ModpackModEntry {
-                                                        name,
-                                                        download_url: None,
-                                                        display_name: None,
-                                                        manual: false,
-                                                        disabled: false,
-                                                        slug: None,
-                                                        file_id: None,
-                                                        website_url: None,
-                                                    })
-                                                    .collect()
-                                            })
-                                    });
-                            if let Some(expected) = expected {
-                                let mods_dir = mc_dir.join("mods");
-                                let missing: Vec<ModpackModEntry> = expected
-                                    .into_iter()
-                                    .filter(|f| {
-                                        if f.disabled {
-                                            return false;
-                                        }
-                                        let mod_path = mods_dir.join(&f.name);
-                                        let disabled_mod_path = mods_dir.join(format!("{}.disabled", f.name));
-                                        !mod_path.exists() && !disabled_mod_path.exists()
-                                    })
-                                    .collect();
-                                if !missing.is_empty() {
-                                    self.missing_mods = Some(MissingModsState {
-                                        instance_id: instance_id.to_string(),
-                                        instance_name: instance.name.clone(),
-                                        missing_files: missing,
-                                    });
-                                    return;
-                                }
+            && let Ok(mc_dir) = instance.minecraft_dir()
+        {
+            let manifest_path = mc_dir.join(".modpack_mods.json");
+            if manifest_path.exists()
+                && let Ok(data) = std::fs::read_to_string(&manifest_path)
+            {
+                // Support both enriched (Vec<ModpackModEntry>) and legacy (Vec<String>) formats
+                let expected: Option<Vec<ModpackModEntry>> =
+                    serde_json::from_str::<Vec<ModpackModEntry>>(&data)
+                        .ok()
+                        .or_else(|| {
+                            serde_json::from_str::<Vec<String>>(&data)
+                                .ok()
+                                .map(|names| {
+                                    names
+                                        .into_iter()
+                                        .map(|name| ModpackModEntry {
+                                            name,
+                                            download_url: None,
+                                            display_name: None,
+                                            manual: false,
+                                            disabled: false,
+                                            slug: None,
+                                            file_id: None,
+                                            website_url: None,
+                                        })
+                                        .collect()
+                                })
+                        });
+                if let Some(expected) = expected {
+                    let mods_dir = mc_dir.join("mods");
+                    let missing: Vec<ModpackModEntry> = expected
+                        .into_iter()
+                        .filter(|f| {
+                            if f.disabled {
+                                return false;
                             }
-                        }
+                            let mod_path = mods_dir.join(&f.name);
+                            let disabled_mod_path = mods_dir.join(format!("{}.disabled", f.name));
+                            !mod_path.exists() && !disabled_mod_path.exists()
+                        })
+                        .collect();
+                    if !missing.is_empty() {
+                        self.missing_mods = Some(MissingModsState {
+                            instance_id: instance_id.to_string(),
+                            instance_name: instance.name.clone(),
+                            missing_files: missing,
+                        });
+                        return;
+                    }
                 }
+            }
+        }
         self.do_launch_inner(instance_id, ctx);
     }
 
     fn do_launch_inner(&mut self, instance_id: &str, ctx: &egui::Context) {
-        let Some(instance) = self
-            .instances
-            .iter()
-            .find(|i| i.id == instance_id)
-            .cloned()
-        else {
+        let Some(instance) = self.instances.iter().find(|i| i.id == instance_id).cloned() else {
             return;
         };
 
         // If this instance already has a live process, just switch to its console tab
-        if let Some(rp) = self.running_processes.iter().find(|rp| rp.instance_id == instance_id) {
+        if let Some(rp) = self
+            .running_processes
+            .iter()
+            .find(|rp| rp.instance_id == instance_id)
+        {
             if rp.is_alive() {
                 self.console_view.active_instance_id = Some(instance_id.to_string());
                 self.current_view = View::Console;
@@ -504,109 +509,108 @@ impl App {
 
             // Check for completed modpack install (instance slot)
             if let Some(slot) = &task.instance_slot
-                && let Some(inst) = slot.lock_or_recover().take() {
-                    // Handle skipped (distribution-blocked) mods
-                    if let Some(skipped_slot) = &task.skipped_slot {
-                        let skipped = skipped_slot.lock_or_recover();
-                        if !skipped.is_empty() {
-                            let mods_dir = inst.minecraft_dir().ok().map(|d| d.join("mods"));
+                && let Some(inst) = slot.lock_or_recover().take()
+            {
+                // Handle skipped (distribution-blocked) mods
+                if let Some(skipped_slot) = &task.skipped_slot {
+                    let skipped = skipped_slot.lock_or_recover();
+                    if !skipped.is_empty() {
+                        let mods_dir = inst.minecraft_dir().ok().map(|d| d.join("mods"));
+                        for sm in skipped.iter() {
+                            let url = crate::core::curseforge::curseforge_file_download_url(
+                                &sm.slug,
+                                sm.file_id,
+                                sm.website_url.as_deref(),
+                            );
+                            if let Some(ref target) = mods_dir {
+                                self.pending_manual_downloads.push(PendingManualDownload {
+                                    file_name: sm.file_name.clone(),
+                                    display_name: sm.display_name.clone(),
+                                    target_dir: target.clone(),
+                                    download_url: url,
+                                });
+                            }
+                        }
+                        self.toasts.push(Toast::error(format!(
+                            "{} mod(s) need manual download. Watching your Downloads folder",
+                            skipped.len()
+                        )));
+                        self.show_manual_downloads_dialog = true;
+                    }
+                }
+
+                self.instances.push(inst);
+                // Open edit dialog so user can review/change Java selection
+                if let Some(last) = self.instances.last() {
+                    self.instances_view.editing = Some(last.id.clone());
+                }
+                // Navigate back to instances list (closes modpack browser / add-instance view)
+                self.instances_view.show_add_instance = false;
+                self.current_view = View::Instances;
+
+                // Trigger modpack update recheck so a newly-installed
+                // modpack gets an update badge immediately if applicable
+                self.instances_view.recheck_modpack_updates = true;
+            }
+
+            // Check for completed modpack update (in-place)
+            if let Some(slot) = &task.update_slot
+                && let Some((instance_id, new_origin, meta)) = slot.lock_or_recover().take()
+            {
+                let mods_dir = self
+                    .instances
+                    .iter()
+                    .find(|i| i.id == instance_id)
+                    .and_then(|i| i.minecraft_dir().ok())
+                    .map(|d| d.join("mods"));
+
+                if let Some(instance) = self.instances.iter_mut().find(|i| i.id == instance_id) {
+                    instance.modpack_origin = Some(new_origin);
+                    instance.mc_version = meta.mc_version;
+                    instance.loader = meta.loader;
+                    instance.loader_version = meta.loader_version;
+                    if let Err(e) = instance.save_to_dir() {
+                        log::warn!("Failed to save updated instance {instance_id}: {e}");
+                    }
+                }
+                self.modpack_updates.remove(&instance_id);
+                self.instances_view.modpack_updates.remove(&instance_id);
+
+                // Handle skipped (distribution-blocked) mods from CF update
+                if let Some(skipped_slot) = &task.skipped_slot {
+                    let skipped = skipped_slot.lock_or_recover();
+                    if !skipped.is_empty() {
+                        if let Some(ref target) = mods_dir {
                             for sm in skipped.iter() {
                                 let url = crate::core::curseforge::curseforge_file_download_url(
                                     &sm.slug,
                                     sm.file_id,
                                     sm.website_url.as_deref(),
                                 );
-                                if let Some(ref target) = mods_dir {
-                                    self.pending_manual_downloads.push(PendingManualDownload {
-                                        file_name: sm.file_name.clone(),
-                                        display_name: sm.display_name.clone(),
-                                        target_dir: target.clone(),
-                                        download_url: url,
-                                    });
-                                }
+                                self.pending_manual_downloads.push(PendingManualDownload {
+                                    file_name: sm.file_name.clone(),
+                                    display_name: sm.display_name.clone(),
+                                    target_dir: target.clone(),
+                                    download_url: url,
+                                });
                             }
-                            self.toasts.push(Toast::error(format!(
-                                "{} mod(s) need manual download. Watching your Downloads folder",
-                                skipped.len()
-                            )));
-                            self.show_manual_downloads_dialog = true;
                         }
+                        self.toasts.push(Toast::error(format!(
+                            "{} mod(s) need manual download. Watching your Downloads folder",
+                            skipped.len()
+                        )));
+                        self.show_manual_downloads_dialog = true;
                     }
-
-                    self.instances.push(inst);
-                    // Open edit dialog so user can review/change Java selection
-                    if let Some(last) = self.instances.last() {
-                        self.instances_view.editing = Some(last.id.clone());
-                    }
-                    // Navigate back to instances list (closes modpack browser / add-instance view)
-                    self.instances_view.show_add_instance = false;
-                    self.current_view = View::Instances;
-
-                    // Trigger modpack update recheck so a newly-installed
-                    // modpack gets an update badge immediately if applicable
-                    self.instances_view.recheck_modpack_updates = true;
                 }
 
-            // Check for completed modpack update (in-place)
-            if let Some(slot) = &task.update_slot
-                && let Some((instance_id, new_origin, meta)) = slot.lock_or_recover().take() {
-                    let mods_dir = self
-                        .instances
-                        .iter()
-                        .find(|i| i.id == instance_id)
-                        .and_then(|i| i.minecraft_dir().ok())
-                        .map(|d| d.join("mods"));
+                self.toasts
+                    .push(Toast::success(format!("{} complete", task.label)));
+                self.current_view = View::Instances;
 
-                    if let Some(instance) =
-                        self.instances.iter_mut().find(|i| i.id == instance_id)
-                    {
-                        instance.modpack_origin = Some(new_origin);
-                        instance.mc_version = meta.mc_version;
-                        instance.loader = meta.loader;
-                        instance.loader_version = meta.loader_version;
-                        if let Err(e) = instance.save_to_dir() {
-                            log::warn!("Failed to save updated instance {instance_id}: {e}");
-                        }
-                    }
-                    self.modpack_updates.remove(&instance_id);
-                    self.instances_view.modpack_updates.remove(&instance_id);
-
-                    // Handle skipped (distribution-blocked) mods from CF update
-                    if let Some(skipped_slot) = &task.skipped_slot {
-                        let skipped = skipped_slot.lock_or_recover();
-                        if !skipped.is_empty() {
-                            if let Some(ref target) = mods_dir {
-                                for sm in skipped.iter() {
-                                    let url =
-                                        crate::core::curseforge::curseforge_file_download_url(
-                                            &sm.slug,
-                                            sm.file_id,
-                                            sm.website_url.as_deref(),
-                                        );
-                                    self.pending_manual_downloads.push(PendingManualDownload {
-                                        file_name: sm.file_name.clone(),
-                                        display_name: sm.display_name.clone(),
-                                        target_dir: target.clone(),
-                                        download_url: url,
-                                    });
-                                }
-                            }
-                            self.toasts.push(Toast::error(format!(
-                                "{} mod(s) need manual download. Watching your Downloads folder",
-                                skipped.len()
-                            )));
-                            self.show_manual_downloads_dialog = true;
-                        }
-                    }
-
-                    self.toasts
-                        .push(Toast::success(format!("{} complete", task.label)));
-                    self.current_view = View::Instances;
-
-                    // Re-check modpack updates — if the user used "Change Version"
-                    // to install an older version, the badge should reappear.
-                    self.instances_view.recheck_modpack_updates = true;
-                }
+                // Re-check modpack updates — if the user used "Change Version"
+                // to install an older version, the badge should reappear.
+                self.instances_view.recheck_modpack_updates = true;
+            }
 
             completed_indices.push(idx);
         }
@@ -679,16 +683,12 @@ impl App {
                             let dst = pending.target_dir.join(&pending.file_name);
                             // Try rename first, fall back to copy+delete for cross-device moves
                             let moved = std::fs::rename(&src, &dst).or_else(|_| {
-                                std::fs::copy(&src, &dst)
-                                    .and_then(|_| std::fs::remove_file(&src))
+                                std::fs::copy(&src, &dst).and_then(|_| std::fs::remove_file(&src))
                             });
                             match moved {
                                 Ok(_) => {
                                     // Cache the manually-downloaded file for future installs.
-                                    crate::core::mod_cache::cache_file(
-                                        &pending.file_name,
-                                        &dst,
-                                    );
+                                    crate::core::mod_cache::cache_file(&pending.file_name, &dst);
                                     self.toasts.push(Toast::success(format!(
                                         "Auto-installed \"{}\"",
                                         pending.display_name
@@ -729,13 +729,13 @@ impl App {
         }
 
         // Drain pending toasts from instances view
-        self.toasts
-            .append(&mut self.instances_view.pending_toasts);
+        self.toasts.append(&mut self.instances_view.pending_toasts);
 
         // Handle launch requests from instances view
         if let Some(id) = self.instances_view.launch_requested.take() {
             if let Some(instance) = self.instances.iter_mut().find(|i| i.id == id) {
-                instance.last_played = Some(crate::ui::helpers::format_human_timestamp(SystemTime::now()));
+                instance.last_played =
+                    Some(crate::ui::helpers::format_human_timestamp(SystemTime::now()));
                 if let Err(e) = instance.save_to_dir() {
                     log::warn!("Failed to save instance after updating last_played: {e}");
                 }
@@ -751,10 +751,14 @@ impl App {
 
         // Handle kill requests from instances view
         if let Some(id) = self.instances_view.kill_requested.take()
-            && let Some(rp) = self.running_processes.iter().find(|rp| rp.instance_id == id)
-                && let Some(proc) = &rp.process {
-                    proc.lock_or_recover().kill();
-                }
+            && let Some(rp) = self
+                .running_processes
+                .iter()
+                .find(|rp| rp.instance_id == id)
+            && let Some(proc) = &rp.process
+        {
+            proc.lock_or_recover().kill();
+        }
 
         // Handle "Launch Anyway" from missing-mods dialog (bypasses mod check)
         if let Some(id) = self.force_launch_requested.take() {
@@ -854,35 +858,37 @@ impl App {
 
         if let Some(instance_id) = self.instances_view.update_modpack_requested.take()
             && let Some(instance) = self.instances.iter().find(|i| i.id == instance_id)
-                && let Some(origin) = &instance.modpack_origin {
-                    let name = instance.name.clone();
-                    let source = origin.source.clone();
-                    let project_id = origin.project_id.clone();
-                    let version_id = origin.version_id.clone();
-                    self.instances_view.open_modpack_version_picker(
-                        &instance_id,
-                        &name,
-                        &source,
-                        &project_id,
-                        &version_id,
-                        true,
-                        ctx,
-                    );
-                }
+            && let Some(origin) = &instance.modpack_origin
+        {
+            let name = instance.name.clone();
+            let source = origin.source.clone();
+            let project_id = origin.project_id.clone();
+            let version_id = origin.version_id.clone();
+            self.instances_view.open_modpack_version_picker(
+                &instance_id,
+                &name,
+                &source,
+                &project_id,
+                &version_id,
+                true,
+                ctx,
+            );
+        }
 
         if let Some((instance_id, update_info)) = self.instances_view.change_modpack_version.take()
-            && let Some(instance) = self.instances.iter().find(|i| i.id == instance_id) {
-                let title = instance.name.clone();
-                match instance.minecraft_dir() {
-                    Ok(minecraft_dir) => {
-                        let inst_id = instance_id.clone();
-                        self.run_modpack_update(title, inst_id, minecraft_dir, update_info, ctx);
-                    }
-                    Err(e) => {
-                        log::warn!("Failed to get minecraft dir for {instance_id}: {e}");
-                    }
+            && let Some(instance) = self.instances.iter().find(|i| i.id == instance_id)
+        {
+            let title = instance.name.clone();
+            match instance.minecraft_dir() {
+                Ok(minecraft_dir) => {
+                    let inst_id = instance_id.clone();
+                    self.run_modpack_update(title, inst_id, minecraft_dir, update_info, ctx);
+                }
+                Err(e) => {
+                    log::warn!("Failed to get minecraft dir for {instance_id}: {e}");
                 }
             }
+        }
 
         if self.instances_view.recheck_modpack_updates {
             self.instances_view.recheck_modpack_updates = false;
@@ -987,9 +993,11 @@ impl App {
                     prompt_instance_name, prompt_required_java
                 )));
                 ui.add_space(4.0);
-                ui.label(theme.subtext(
-                    "No suitable Java installation was found. Choose an option below:",
-                ));
+                ui.label(
+                    theme.subtext(
+                        "No suitable Java installation was found. Choose an option below:",
+                    ),
+                );
 
                 ui.add_space(8.0);
 
@@ -1138,8 +1146,7 @@ impl App {
                     .max_height(300.0)
                     .show(ui, |ui| {
                         for entry in &missing_files {
-                            let label =
-                                entry.display_name.as_deref().unwrap_or(&entry.name);
+                            let label = entry.display_name.as_deref().unwrap_or(&entry.name);
                             ui.label(theme.subtext(&format!("  • {label}")));
                         }
                     });
@@ -1170,99 +1177,92 @@ impl App {
         if download {
             self.missing_mods = None;
             if let Some(inst) = self.instances.iter().find(|i| i.id == instance_id)
-                && let Ok(mc_dir) = inst.minecraft_dir() {
-                    let mods_dir = mc_dir.join("mods");
+                && let Ok(mc_dir) = inst.minecraft_dir()
+            {
+                let mods_dir = mc_dir.join("mods");
 
-                    // Separate auto-downloadable from manual (distribution-blocked)
-                    let (auto_mods, manual_mods): (Vec<_>, Vec<_>) = missing_files
-                        .into_iter()
-                        .partition(|m| !m.manual && m.download_url.is_some());
+                // Separate auto-downloadable from manual (distribution-blocked)
+                let (auto_mods, manual_mods): (Vec<_>, Vec<_>) = missing_files
+                    .into_iter()
+                    .partition(|m| !m.manual && m.download_url.is_some());
 
-                    // Handle manual/blocked mods — create PendingManualDownload entries.
-                    // Clear any stale entries for this instance's mods dir to avoid duplicates
-                    // (e.g. from the initial install's blocked-mods dialog).
-                    self.pending_manual_downloads
-                        .retain(|p| p.target_dir != mods_dir);
-                    for m in manual_mods {
-                        let url = if let (Some(slug), Some(fid)) =
-                            (m.slug.as_deref(), m.file_id)
-                        {
-                            crate::core::curseforge::curseforge_file_download_url(
-                                slug,
-                                fid,
-                                m.website_url.as_deref(),
-                            )
-                        } else if let Some(u) = m.download_url {
-                            u
-                        } else {
-                            continue;
-                        };
-                        self.pending_manual_downloads.push(PendingManualDownload {
-                            file_name: m.name.clone(),
-                            display_name: m.display_name.unwrap_or(m.name),
-                            target_dir: mods_dir.clone(),
-                            download_url: url,
-                        });
-                    }
-                    if !self.pending_manual_downloads.is_empty() {
-                        self.show_manual_downloads_dialog = true;
-                    }
+                // Handle manual/blocked mods — create PendingManualDownload entries.
+                // Clear any stale entries for this instance's mods dir to avoid duplicates
+                // (e.g. from the initial install's blocked-mods dialog).
+                self.pending_manual_downloads
+                    .retain(|p| p.target_dir != mods_dir);
+                for m in manual_mods {
+                    let url = if let (Some(slug), Some(fid)) = (m.slug.as_deref(), m.file_id) {
+                        crate::core::curseforge::curseforge_file_download_url(
+                            slug,
+                            fid,
+                            m.website_url.as_deref(),
+                        )
+                    } else if let Some(u) = m.download_url {
+                        u
+                    } else {
+                        continue;
+                    };
+                    self.pending_manual_downloads.push(PendingManualDownload {
+                        file_name: m.name.clone(),
+                        display_name: m.display_name.unwrap_or(m.name),
+                        target_dir: mods_dir.clone(),
+                        download_url: url,
+                    });
+                }
+                if !self.pending_manual_downloads.is_empty() {
+                    self.show_manual_downloads_dialog = true;
+                }
 
-                    // Handle auto-downloadable mods in a background thread
-                    if !auto_mods.is_empty() {
-                        let slot: Arc<Mutex<Option<String>>> =
-                            Arc::new(Mutex::new(None));
-                        self.mod_redownload_toast = Some(slot.clone());
-                        let client = self.http_client.clone();
-                        let ctx2 = ctx.clone();
-                        std::thread::spawn(move || {
-                            let mut success = 0usize;
-                            let mut failed = 0usize;
-                            for m in &auto_mods {
-                                if let Some(url) = &m.download_url {
-                                    match client
-                                        .get(url)
-                                        .send()
-                                        .and_then(|r| r.error_for_status())
-                                        .and_then(|r| r.bytes())
-                                    {
-                                        Ok(bytes) => {
-                                            let dest = mods_dir.join(&m.name);
-                                            if std::fs::write(&dest, &bytes).is_ok() {
-                                                crate::core::mod_cache::cache_file(
-                                                    &m.name, &dest,
-                                                );
-                                                success += 1;
-                                            } else {
-                                                failed += 1;
-                                            }
-                                        }
-                                        Err(e) => {
-                                            log::warn!(
-                                                "Failed to download {}: {e}",
-                                                m.name
-                                            );
+                // Handle auto-downloadable mods in a background thread
+                if !auto_mods.is_empty() {
+                    let slot: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
+                    self.mod_redownload_toast = Some(slot.clone());
+                    let client = self.http_client.clone();
+                    let ctx2 = ctx.clone();
+                    std::thread::spawn(move || {
+                        let mut success = 0usize;
+                        let mut failed = 0usize;
+                        for m in &auto_mods {
+                            if let Some(url) = &m.download_url {
+                                match client
+                                    .get(url)
+                                    .send()
+                                    .and_then(|r| r.error_for_status())
+                                    .and_then(|r| r.bytes())
+                                {
+                                    Ok(bytes) => {
+                                        let dest = mods_dir.join(&m.name);
+                                        if std::fs::write(&dest, &bytes).is_ok() {
+                                            crate::core::mod_cache::cache_file(&m.name, &dest);
+                                            success += 1;
+                                        } else {
                                             failed += 1;
                                         }
                                     }
+                                    Err(e) => {
+                                        log::warn!("Failed to download {}: {e}", m.name);
+                                        failed += 1;
+                                    }
                                 }
                             }
-                            let msg = if failed == 0 {
-                                format!(
-                                    "Downloaded {success} missing mod{}",
-                                    if success == 1 { "" } else { "s" }
-                                )
-                            } else {
-                                format!(
-                                    "Downloaded {success} mod{}, {failed} failed",
-                                    if success == 1 { "" } else { "s" }
-                                )
-                            };
-                            *slot.lock_or_recover() = Some(msg);
-                            ctx2.request_repaint();
-                        });
-                    }
+                        }
+                        let msg = if failed == 0 {
+                            format!(
+                                "Downloaded {success} missing mod{}",
+                                if success == 1 { "" } else { "s" }
+                            )
+                        } else {
+                            format!(
+                                "Downloaded {success} mod{}, {failed} failed",
+                                if success == 1 { "" } else { "s" }
+                            )
+                        };
+                        *slot.lock_or_recover() = Some(msg);
+                        ctx2.request_repaint();
+                    });
                 }
+            }
         } else if launch_anyway {
             self.missing_mods = None;
             self.force_launch_requested = Some(instance_id);
@@ -1458,8 +1458,7 @@ impl eframe::App for App {
         // During window resize, winit sends rapid events that can overwhelm the
         // compositor (especially KWin on Wayland), causing jank or crashes.
         {
-            const MIN_FRAME_INTERVAL: std::time::Duration =
-                std::time::Duration::from_micros(8333); // ~120 fps
+            const MIN_FRAME_INTERVAL: std::time::Duration = std::time::Duration::from_micros(8333); // ~120 fps
             let now = Instant::now();
             if let Some(last) = self.last_frame_time {
                 let elapsed = now.duration_since(last);
@@ -1475,7 +1474,9 @@ impl eframe::App for App {
         self.poll_background_tasks(&ctx);
 
         // Apply theme (visuals + spacing) — themes vec is always non-empty (33 bundled)
-        let clamped_idx = self.current_theme_idx.min(self.themes.len().saturating_sub(1));
+        let clamped_idx = self
+            .current_theme_idx
+            .min(self.themes.len().saturating_sub(1));
         self.themes[clamped_idx].apply(&ctx);
 
         // Get theme for styling helpers (cheap clone — just a HashMap)
@@ -1558,7 +1559,7 @@ impl eframe::App for App {
                                 format!("https://mc-heads.net/avatar/{}/32", identifier);
                             let avatar_resp = ui.add(
                                 egui::Image::new(&avatar_url)
-.fit_to_exact_size(egui::vec2(20.0, 20.0))
+                                    .fit_to_exact_size(egui::vec2(20.0, 20.0))
                                     .sense(egui::Sense::click()),
                             );
                             if avatar_resp.hovered() {
@@ -1617,18 +1618,11 @@ impl eframe::App for App {
                     );
                 }
                 View::Accounts => {
-                    self.accounts_view.show(
-                        ui,
-                        &mut self.account_store,
-                        &theme,
-                    );
+                    self.accounts_view.show(ui, &mut self.account_store, &theme);
                 }
                 View::Console => {
-                    self.console_view.show(
-                        ui,
-                        &theme,
-                        &mut self.running_processes,
-                    );
+                    self.console_view
+                        .show(ui, &theme, &mut self.running_processes);
                 }
             });
 
@@ -1660,26 +1654,42 @@ impl eframe::App for App {
                     egui::Color32::from_rgba_unmultiplied(r, g, b, (alpha * (c.a() as f32)) as u8)
                 };
 
-                let accent_c = if toast.is_error { theme.color("error") } else { theme.color("accent") };
+                let accent_c = if toast.is_error {
+                    theme.color("error")
+                } else {
+                    theme.color("accent")
+                };
                 let (bg_color, accent_color, text_color, icon) = (
                     a(theme.color("bg_secondary")),
                     a(accent_c),
                     a(theme.color("fg")),
-                    if toast.is_error { egui_phosphor::regular::WARNING_CIRCLE } else { egui_phosphor::regular::CHECK_CIRCLE },
+                    if toast.is_error {
+                        egui_phosphor::regular::WARNING_CIRCLE
+                    } else {
+                        egui_phosphor::regular::CHECK_CIRCLE
+                    },
                 );
 
                 let toast_id = egui::Id::new("toast").with(i);
                 let stroke_color = a(theme.color("surface"));
 
                 let area_resp = egui::Area::new(toast_id)
-                    .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-margin, -(screen.max.y - y_offset)))
+                    .anchor(
+                        egui::Align2::RIGHT_BOTTOM,
+                        egui::vec2(-margin, -(screen.max.y - y_offset)),
+                    )
                     .order(egui::Order::Foreground)
                     .show(&ctx, |ui| {
                         let frame_resp = egui::Frame::NONE
                             .fill(bg_color)
                             .corner_radius(8.0)
                             .stroke(egui::Stroke::new(1.0, stroke_color))
-                            .inner_margin(egui::Margin { left: 16, right: 12, top: 10, bottom: 10 })
+                            .inner_margin(egui::Margin {
+                                left: 16,
+                                right: 12,
+                                top: 10,
+                                bottom: 10,
+                            })
                             .shadow(egui::epaint::Shadow {
                                 spread: 0,
                                 blur: 12,
@@ -1690,9 +1700,7 @@ impl eframe::App for App {
                                 ui.set_max_width(toast_width - 28.0);
                                 ui.horizontal(|ui| {
                                     ui.label(
-                                        egui::RichText::new(icon)
-                                            .color(accent_color)
-                                            .size(16.0),
+                                        egui::RichText::new(icon).color(accent_color).size(16.0),
                                     );
                                     ui.label(
                                         egui::RichText::new(&toast.message)
@@ -1710,7 +1718,11 @@ impl eframe::App for App {
                         );
                         ui.painter().rect_filled(
                             stripe_rect,
-                            egui::CornerRadius { nw: 8, sw: 8, ..Default::default() },
+                            egui::CornerRadius {
+                                nw: 8,
+                                sw: 8,
+                                ..Default::default()
+                            },
                             accent_color,
                         );
                     });
@@ -1729,21 +1741,33 @@ impl eframe::App for App {
                     progress.message.clone()
                 };
 
-                let (bg_color, accent_color, text_color) = (theme.color("bg_secondary"), theme.color("accent"), theme.color("fg"));
+                let (bg_color, accent_color, text_color) = (
+                    theme.color("bg_secondary"),
+                    theme.color("accent"),
+                    theme.color("fg"),
+                );
                 let stroke_color = theme.color("surface");
                 let muted_color = theme.color("fg_dim");
 
                 let task_id = egui::Id::new("bg_task_toast").with(i);
 
                 let area_resp = egui::Area::new(task_id)
-                    .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-margin, -(screen.max.y - y_offset)))
+                    .anchor(
+                        egui::Align2::RIGHT_BOTTOM,
+                        egui::vec2(-margin, -(screen.max.y - y_offset)),
+                    )
                     .order(egui::Order::Foreground)
                     .show(&ctx, |ui| {
                         let frame_resp = egui::Frame::NONE
                             .fill(bg_color)
                             .corner_radius(8.0)
                             .stroke(egui::Stroke::new(1.0, stroke_color))
-                            .inner_margin(egui::Margin { left: 16, right: 12, top: 10, bottom: 10 })
+                            .inner_margin(egui::Margin {
+                                left: 16,
+                                right: 12,
+                                top: 10,
+                                bottom: 10,
+                            })
                             .shadow(egui::epaint::Shadow {
                                 spread: 0,
                                 blur: 12,
@@ -1779,7 +1803,11 @@ impl eframe::App for App {
                         );
                         ui.painter().rect_filled(
                             stripe_rect,
-                            egui::CornerRadius { nw: 8, sw: 8, ..Default::default() },
+                            egui::CornerRadius {
+                                nw: 8,
+                                sw: 8,
+                                ..Default::default()
+                            },
                             accent_color,
                         );
                     });

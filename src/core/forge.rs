@@ -5,8 +5,8 @@
 //! 2. Downloading and extracting installer JARs (modern + legacy formats)
 //! 3. Running post-install processors (modern format only)
 
-use crate::core::instance::ModLoader;
 use crate::core::CommandHideConsole;
+use crate::core::instance::ModLoader;
 use crate::core::version::{self, Arguments, Library};
 use anyhow::Context;
 use serde::Deserialize;
@@ -235,14 +235,15 @@ pub fn download_and_extract_installer(
             let jar_entry = format!("maven/{lib_path}");
             let dest = libs_dir.join(&lib_path);
             if (!dest.exists() || !crate::core::is_jar_valid(&dest))
-                && let Ok(mut entry) = archive.by_name(&jar_entry) {
-                    if let Some(parent) = dest.parent() {
-                        std::fs::create_dir_all(parent)?;
-                    }
-                    let mut data = Vec::new();
-                    std::io::Read::read_to_end(&mut entry, &mut data)?;
-                    std::fs::write(&dest, &data)?;
+                && let Ok(mut entry) = archive.by_name(&jar_entry)
+            {
+                if let Some(parent) = dest.parent() {
+                    std::fs::create_dir_all(parent)?;
                 }
+                let mut data = Vec::new();
+                std::io::Read::read_to_end(&mut entry, &mut data)?;
+                std::fs::write(&dest, &data)?;
+            }
         }
 
         serde_json::to_string_pretty(&legacy.version_info)?
@@ -303,9 +304,10 @@ pub fn run_processors_if_needed(
     for (i, proc) in profile.processors.iter().enumerate() {
         // Skip server-side processors
         if let Some(ref sides) = proc.sides
-            && !sides.iter().any(|s| s == "client") {
-                continue;
-            }
+            && !sides.iter().any(|s| s == "client")
+        {
+            continue;
+        }
 
         progress(&format!(
             "Running processor {}/{total}: {}",
@@ -400,8 +402,7 @@ fn extract_maven_libraries(
         let relative = entry_name.strip_prefix("maven/").unwrap();
         let dest = libs_dir.join(relative);
         if dest.exists()
-            && (dest.extension().is_none_or(|e| e != "jar")
-                || crate::core::is_jar_valid(&dest))
+            && (dest.extension().is_none_or(|e| e != "jar") || crate::core::is_jar_valid(&dest))
         {
             continue;
         }
@@ -440,30 +441,32 @@ fn download_processor_libraries(
     for lib in &profile.libraries {
         if let Some(ref downloads) = lib.downloads {
             if let Some(ref artifact) = downloads.artifact
-                && !artifact.url.is_empty() {
-                    let dest = libs_dir.join(&artifact.path);
-                    version::download_file(client, &artifact.url, &dest, &artifact.sha1)?;
-                }
-        } else if let Some(ref base_url) = lib.url
-            && let Some(path) = crate::core::maven_path(&lib.name) {
-                let url = format!("{base_url}{path}");
-                let dest = libs_dir.join(&path);
-                let needs_download = !dest.exists()
-                    || (dest.extension().is_some_and(|e| e == "jar")
-                        && !crate::core::is_jar_valid(&dest));
-                if needs_download {
-                    if let Some(parent) = dest.parent() {
-                        std::fs::create_dir_all(parent)?;
-                    }
-                    let resp = client.get(&url).send()?;
-                    let bytes = resp.bytes()?;
-                    if dest.extension().is_some_and(|e| e == "jar") {
-                        crate::core::validate_jar(&bytes)
-                            .with_context(|| format!("Bad download from {url}"))?;
-                    }
-                    std::fs::write(&dest, &bytes)?;
-                }
+                && !artifact.url.is_empty()
+            {
+                let dest = libs_dir.join(&artifact.path);
+                version::download_file(client, &artifact.url, &dest, &artifact.sha1)?;
             }
+        } else if let Some(ref base_url) = lib.url
+            && let Some(path) = crate::core::maven_path(&lib.name)
+        {
+            let url = format!("{base_url}{path}");
+            let dest = libs_dir.join(&path);
+            let needs_download = !dest.exists()
+                || (dest.extension().is_some_and(|e| e == "jar")
+                    && !crate::core::is_jar_valid(&dest));
+            if needs_download {
+                if let Some(parent) = dest.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                let resp = client.get(&url).send()?;
+                let bytes = resp.bytes()?;
+                if dest.extension().is_some_and(|e| e == "jar") {
+                    crate::core::validate_jar(&bytes)
+                        .with_context(|| format!("Bad download from {url}"))?;
+                }
+                std::fs::write(&dest, &bytes)?;
+            }
+        }
     }
     Ok(())
 }

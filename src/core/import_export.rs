@@ -3,8 +3,8 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
-use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
+use zip::write::SimpleFileOptions;
 use zip::{ZipArchive, ZipWriter};
 
 /// What kind of archive a zip file is.

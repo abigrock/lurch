@@ -1,9 +1,9 @@
-use crate::core::account::Account;
 use super::{CommandHideConsole, MutexExt};
+use crate::core::account::Account;
 use crate::core::instance::{Instance, ModLoader};
 use crate::core::java::{self, JavaInstall};
-use crate::core::version::{self, ArgumentValue, VersionInfo};
 use crate::core::loader_profiles;
+use crate::core::version::{self, ArgumentValue, VersionInfo};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
@@ -147,7 +147,14 @@ impl LaunchContext {
             .replace("${assets_index_name}", &self.version_info.asset_index.id)
             .replace("${auth_uuid}", &self.account.uuid)
             .replace("${auth_access_token}", &self.account.access_token)
-            .replace("${user_type}", if self.account.offline { "legacy" } else { "msa" })
+            .replace(
+                "${user_type}",
+                if self.account.offline {
+                    "legacy"
+                } else {
+                    "msa"
+                },
+            )
             .replace("${clientid}", crate::core::account::MS_CLIENT_ID)
             .replace("${auth_xuid}", "0")
             .replace(
@@ -155,10 +162,7 @@ impl LaunchContext {
                 &if self.account.access_token.is_empty() {
                     "-".to_string()
                 } else {
-                    format!(
-                        "token:{}:{}",
-                        self.account.access_token, self.account.uuid
-                    )
+                    format!("token:{}:{}", self.account.access_token, self.account.uuid)
                 },
             )
             .replace(
@@ -227,7 +231,8 @@ impl ProcessState {
                 .unwrap_or(false)
         };
         if result {
-            self.log_lines.push("--- Process killed by user ---".to_string());
+            self.log_lines
+                .push("--- Process killed by user ---".to_string());
         }
         result
     }
@@ -277,15 +282,18 @@ fn read_process_output(
     // Read stderr in a separate thread
     let stderr_state = Arc::clone(state);
     let stderr_ctx = ctx.clone();
-    let stderr_thread = child.stderr.take().map(|stderr| std::thread::spawn(move || {
+    let stderr_thread = child.stderr.take().map(|stderr| {
+        std::thread::spawn(move || {
             let reader = std::io::BufReader::new(stderr);
             for line in reader.lines().map_while(|l| l.ok()) {
                 let mut s = stderr_state.lock_or_recover();
-                s.log_lines.push(format!("[ERR] {}", crate::core::strip_ansi(&line)));
+                s.log_lines
+                    .push(format!("[ERR] {}", crate::core::strip_ansi(&line)));
                 drop(s);
                 stderr_ctx.request_repaint();
             }
-        }));
+        })
+    });
 
     // Read stdout on this thread
     if let Some(stdout) = child.stdout.take() {
@@ -443,29 +451,30 @@ pub fn prepare_and_launch(
 
     // Run Forge/NeoForge processors if needed (must happen after client JAR download)
     if matches!(instance.loader, ModLoader::Forge | ModLoader::NeoForge)
-        && let Some(ref lv) = resolved_loader_version {
-            set_progress(
-                &progress,
-                &format!("Running {} processors...", instance.loader),
-            );
-            ctx.request_repaint();
-            let progress_for_proc = Arc::clone(&progress);
-            let ctx_for_proc = ctx.clone();
-            crate::core::forge::run_processors_if_needed(
-                &client,
-                &instance.loader,
-                &instance.mc_version,
-                lv,
-                &java.path,
-                &client_jar,
-                |msg| {
-                    let mut p = progress_for_proc.lock_or_recover();
-                    p.message = msg.to_string();
-                    drop(p);
-                    ctx_for_proc.request_repaint();
-                },
-            )?;
-        }
+        && let Some(ref lv) = resolved_loader_version
+    {
+        set_progress(
+            &progress,
+            &format!("Running {} processors...", instance.loader),
+        );
+        ctx.request_repaint();
+        let progress_for_proc = Arc::clone(&progress);
+        let ctx_for_proc = ctx.clone();
+        crate::core::forge::run_processors_if_needed(
+            &client,
+            &instance.loader,
+            &instance.mc_version,
+            lv,
+            &java.path,
+            &client_jar,
+            |msg| {
+                let mut p = progress_for_proc.lock_or_recover();
+                p.message = msg.to_string();
+                drop(p);
+                ctx_for_proc.request_repaint();
+            },
+        )?;
+    }
 
     // Download libraries
     set_progress(&progress, "Downloading libraries...");

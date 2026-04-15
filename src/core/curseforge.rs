@@ -50,9 +50,10 @@ impl CfLogo {
             return &self.thumbnail_url;
         }
         if let Some(ref url) = self.url
-            && !url.is_empty() {
-                return url;
-            }
+            && !url.is_empty()
+        {
+            return url;
+        }
         &self.thumbnail_url
     }
 }

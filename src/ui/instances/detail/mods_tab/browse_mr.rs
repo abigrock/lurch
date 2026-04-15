@@ -2,8 +2,8 @@ use eframe::egui;
 use std::sync::{Arc, Mutex};
 
 use super::super::InstanceDetailView;
-use crate::core::instance::Instance;
 use crate::core::MutexExt;
+use crate::core::instance::Instance;
 use crate::core::modrinth;
 use crate::ui::browse_common::{BrowseAction, BrowseConfig, BrowseItem, BrowseSearchResult};
 
@@ -48,7 +48,10 @@ impl InstanceDetailView {
         let cat_refs: Vec<&str> = cat_labels.iter().map(|s| s.as_str()).collect();
 
         // ── Sort labels ──────────────────────────────────────────
-        let sort_labels: Vec<&str> = modrinth::MrSortIndex::ALL.iter().map(|s| s.label()).collect();
+        let sort_labels: Vec<&str> = modrinth::MrSortIndex::ALL
+            .iter()
+            .map(|s| s.label())
+            .collect();
 
         // ── Version filter label ─────────────────────────────────
         let loader_str = instance.loader.to_string();
@@ -153,7 +156,9 @@ impl InstanceDetailView {
                 }
                 BrowseAction::SearchError(e) => {
                     self.pending_toasts
-                        .push(crate::ui::notifications::Toast::error(format!("Search failed: {e}")));
+                        .push(crate::ui::notifications::Toast::error(format!(
+                            "Search failed: {e}"
+                        )));
                 }
                 BrowseAction::VersionFilterChanged(_) => {
                     // handled implicitly — FireSearch will also be emitted
@@ -172,9 +177,11 @@ impl InstanceDetailView {
                 || msg.starts_with("Install failed")
                 || msg.starts_with("Search failed")
             {
-                self.pending_toasts.push(crate::ui::notifications::Toast::error(msg));
+                self.pending_toasts
+                    .push(crate::ui::notifications::Toast::error(msg));
             } else {
-                self.pending_toasts.push(crate::ui::notifications::Toast::success(msg));
+                self.pending_toasts
+                    .push(crate::ui::notifications::Toast::success(msg));
             }
             self.needs_rescan = true;
             ui.ctx().data_mut(|d| {

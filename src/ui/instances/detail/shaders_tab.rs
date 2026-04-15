@@ -23,21 +23,23 @@ impl InstanceDetailView {
                         .add_filter("Shader Packs", &["zip"])
                         .set_title("Select shader pack(s)")
                         .pick_files()
-                    {
-                        for path in paths {
-                            if let Some(name) = path.file_name() {
-                                let dest = shaderpacks_dir.join(name);
-                                match std::fs::copy(&path, &dest) {
-                                    Ok(_) => self.shaders_needs_rescan = true,
-                                    Err(e) => {
-                                        self.pending_toasts.push(crate::ui::notifications::Toast::error(
-                                            format!("Error copying shader: {e}"),
-                                        ));
-                                    }
+                {
+                    for path in paths {
+                        if let Some(name) = path.file_name() {
+                            let dest = shaderpacks_dir.join(name);
+                            match std::fs::copy(&path, &dest) {
+                                Ok(_) => self.shaders_needs_rescan = true,
+                                Err(e) => {
+                                    self.pending_toasts.push(
+                                        crate::ui::notifications::Toast::error(format!(
+                                            "Error copying shader: {e}"
+                                        )),
+                                    );
                                 }
                             }
                         }
                     }
+                }
 
                 if ui.add(theme.accent_button("Open Folder")).clicked() {
                     let _ = std::fs::create_dir_all(shaderpacks_dir);
@@ -101,7 +103,8 @@ impl InstanceDetailView {
                         let row_h = ui.spacing().interact_size.y + 4.0;
                         let row_resp = ui.allocate_ui_with_layout(
                             egui::vec2(ui.available_width(), row_h),
-                            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+                            egui::Layout::left_to_right(egui::Align::Center)
+                                .with_cross_justify(true),
                             |ui| {
                                 if s.is_folder {
                                     ui.add(theme.icon_button(egui_phosphor::regular::FOLDER))
@@ -156,7 +159,10 @@ impl InstanceDetailView {
             match result {
                 Ok(_) => self.shaders_needs_rescan = true,
                 Err(e) => {
-                    self.pending_toasts.push(crate::ui::notifications::Toast::error(format!("Error: {e}")));
+                    self.pending_toasts
+                        .push(crate::ui::notifications::Toast::error(format!(
+                            "Error: {e}"
+                        )));
                 }
             }
         }
@@ -178,19 +184,26 @@ impl InstanceDetailView {
                     .open(&mut open)
                     .show(ui.ctx(), |ui| {
                         ui.label(format!("Remove shader pack \"{}\"?", shader_name));
-                        ui.label(theme.subtext("This will permanently delete the shader pack file."));
+                        ui.label(
+                            theme.subtext("This will permanently delete the shader pack file."),
+                        );
                         ui.add_space(8.0);
                         let row_h = ui.spacing().interact_size.y + 4.0;
                         ui.allocate_ui_with_layout(
                             egui::vec2(ui.available_width(), row_h),
-                            egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
+                            egui::Layout::left_to_right(egui::Align::Center)
+                                .with_cross_justify(true),
                             |ui| {
                                 if ui.add(theme.danger_button("Delete")).clicked() {
                                     let s = &self.installed_shaders[del_idx];
                                     match shaders::remove_shaderpack(shaderpacks_dir, &s.filename) {
                                         Ok(()) => self.shaders_needs_rescan = true,
                                         Err(e) => {
-                                            self.pending_toasts.push(crate::ui::notifications::Toast::error(format!("Error: {e}")));
+                                            self.pending_toasts.push(
+                                                crate::ui::notifications::Toast::error(format!(
+                                                    "Error: {e}"
+                                                )),
+                                            );
                                         }
                                     }
                                     self.confirm_shader_delete = None;
@@ -198,7 +211,8 @@ impl InstanceDetailView {
                                 if ui.add(theme.ghost_button("Cancel")).clicked() {
                                     self.confirm_shader_delete = None;
                                 }
-                            });
+                            },
+                        );
                     });
 
                 if !open {

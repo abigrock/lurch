@@ -320,9 +320,10 @@ pub fn download_file(
     // Skip if already exists with correct hash
     if dest.exists()
         && let Ok(existing_sha1) = sha1_file(dest)
-            && existing_sha1 == expected_sha1 {
-                return Ok(());
-            }
+        && existing_sha1 == expected_sha1
+    {
+        return Ok(());
+    }
 
     if let Some(parent) = dest.parent() {
         std::fs::create_dir_all(parent)?;
@@ -518,7 +519,6 @@ pub fn download_assets(
 
     Ok(())
 }
-
 
 pub enum ManifestState {
     Loading,

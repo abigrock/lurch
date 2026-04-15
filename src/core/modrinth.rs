@@ -169,9 +169,7 @@ pub struct MrCategory {
 pub fn fetch_mr_categories(project_type: &str) -> anyhow::Result<Vec<MrCategory>> {
     let client = crate::core::http_client();
 
-    let resp = client
-        .get(format!("{MODRINTH_BASE}/tag/category"))
-        .send()?;
+    let resp = client.get(format!("{MODRINTH_BASE}/tag/category")).send()?;
 
     let status = resp.status();
     let body = resp.text()?;
@@ -201,9 +199,10 @@ pub fn get_project_versions(
         params.push(format!("game_versions=[\"{v}\"]"));
     }
     if let Some(l) = loader
-        && l != "vanilla" {
-            params.push(format!("loaders=[\"{l}\"]"));
-        }
+        && l != "vanilla"
+    {
+        params.push(format!("loaders=[\"{l}\"]"));
+    }
     if !params.is_empty() {
         url = format!("{url}?{}", params.join("&"));
     }

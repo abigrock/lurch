@@ -1,6 +1,7 @@
 use egui::{
+    Button, Color32, CornerRadius, FontId, Frame, Margin, RichText, Stroke, Visuals,
     style::{HandleShape, ScrollStyle, Selection, WidgetVisuals},
-    vec2, Button, Color32, CornerRadius, FontId, Frame, Margin, RichText, Stroke, Visuals,
+    vec2,
 };
 use serde::Deserialize;
 use std::collections::HashMap;

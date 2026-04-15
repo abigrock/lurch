@@ -2,8 +2,8 @@ use eframe::egui;
 use std::sync::{Arc, Mutex};
 
 use super::super::InstanceDetailView;
-use crate::core::curseforge;
 use crate::core::MutexExt;
+use crate::core::curseforge;
 use crate::core::instance::Instance;
 use crate::ui::browse_common::{BrowseAction, BrowseConfig, BrowseItem, BrowseSearchResult};
 
@@ -51,7 +51,10 @@ impl InstanceDetailView {
         let cat_refs: Vec<&str> = cat_labels.iter().map(|s| s.as_str()).collect();
 
         // ── Sort labels ──────────────────────────────────────────
-        let sort_labels: Vec<&str> = curseforge::CfSortField::ALL.iter().map(|s| s.label()).collect();
+        let sort_labels: Vec<&str> = curseforge::CfSortField::ALL
+            .iter()
+            .map(|s| s.label())
+            .collect();
 
         // ── Version filter label ─────────────────────────────────
         let loader_str = instance.loader.to_string();
@@ -97,8 +100,7 @@ impl InstanceDetailView {
                         None
                     } else {
                         self.cf_categories.as_ref().and_then(|cats| {
-                            cats.get(self.cf_browse.selected_category - 1)
-                                .map(|c| c.id)
+                            cats.get(self.cf_browse.selected_category - 1).map(|c| c.id)
                         })
                     };
                     self.cf_browse.search.fire_with_repaint(ui.ctx(), move || {
@@ -128,9 +130,7 @@ impl InstanceDetailView {
                                         .collect(),
                                     id: hit.id.to_string(),
                                     slug: hit.slug.clone(),
-                                    allows_install: hit
-                                        .allow_mod_distribution
-                                        .unwrap_or(true),
+                                    allows_install: hit.allow_mod_distribution.unwrap_or(true),
                                 })
                                 .collect(),
                             total: resp.pagination.total_count,
@@ -144,7 +144,12 @@ impl InstanceDetailView {
                         let mc_ver = instance.mc_version.clone();
                         let mods_dir = mods_dir.to_path_buf();
                         self.open_cf_mod_version_picker(
-                            mod_id, title, &mc_ver, loader_type, &mods_dir, ui.ctx(),
+                            mod_id,
+                            title,
+                            &mc_ver,
+                            loader_type,
+                            &mods_dir,
+                            ui.ctx(),
                         );
                     }
                 }
@@ -157,7 +162,9 @@ impl InstanceDetailView {
                 }
                 BrowseAction::SearchError(e) => {
                     self.pending_toasts
-                        .push(crate::ui::notifications::Toast::error(format!("Search failed: {e}")));
+                        .push(crate::ui::notifications::Toast::error(format!(
+                            "Search failed: {e}"
+                        )));
                 }
                 BrowseAction::VersionFilterChanged(_) => {
                     // handled implicitly — FireSearch will also be emitted
@@ -176,9 +183,11 @@ impl InstanceDetailView {
                 || msg.starts_with("Install failed")
                 || msg.starts_with("Search failed")
             {
-                self.pending_toasts.push(crate::ui::notifications::Toast::error(msg));
+                self.pending_toasts
+                    .push(crate::ui::notifications::Toast::error(msg));
             } else {
-                self.pending_toasts.push(crate::ui::notifications::Toast::success(msg));
+                self.pending_toasts
+                    .push(crate::ui::notifications::Toast::success(msg));
             }
             self.needs_rescan = true;
             ui.ctx().data_mut(|d| {

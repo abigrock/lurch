@@ -1,9 +1,9 @@
-#![allow(dead_code)]
-use crate::core::instance::{Instance, ModpackOrigin, MissingModsState};
-pub use crate::core::launch::{LaunchProgress, ProcessState};
-use crate::core::curseforge_modpack::SkippedMod;
-use crate::core::update::UpdatedModpackMeta;
+#![allow(dead_code, clippy::type_complexity, clippy::large_enum_variant)]
 use crate::core::MutexExt;
+use crate::core::curseforge_modpack::SkippedMod;
+use crate::core::instance::{Instance, MissingModsState, ModpackOrigin};
+pub use crate::core::launch::{LaunchProgress, ProcessState};
+use crate::core::update::UpdatedModpackMeta;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 

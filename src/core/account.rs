@@ -70,9 +70,10 @@ impl AccountStore {
         self.accounts.retain(|a| a.uuid != uuid);
         // If removed the active one, activate the first remaining
         if !self.accounts.iter().any(|a| a.active)
-            && let Some(first) = self.accounts.first_mut() {
-                first.active = true;
-            }
+            && let Some(first) = self.accounts.first_mut()
+        {
+            first.active = true;
+        }
     }
 
     pub fn add_or_update(&mut self, account: Account) {

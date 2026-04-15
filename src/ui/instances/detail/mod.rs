@@ -8,8 +8,8 @@ use std::sync::{Arc, Mutex};
 
 use eframe::egui;
 
-use crate::core::curseforge::CfCategory;
 use crate::core::MutexExt;
+use crate::core::curseforge::CfCategory;
 use crate::core::instance::{Instance, ModOrigin};
 use crate::core::local_mods::{self, InstalledMod};
 use crate::core::modrinth::MrCategory;
@@ -152,60 +152,73 @@ impl InstanceDetailView {
         self
     }
 
-    pub fn show(
-        &mut self,
-        ui: &mut egui::Ui,
-        instance: &Instance,
-        theme: &crate::theme::Theme,
-    ) {
+    pub fn show(&mut self, ui: &mut egui::Ui, instance: &Instance, theme: &crate::theme::Theme) {
         // ── Header: back button + instance info ──────────────────
         let row_h = ui.spacing().interact_size.y + 12.0;
         ui.allocate_ui_with_layout(
             egui::vec2(ui.available_width(), row_h),
             egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
             |ui| {
-            if ui.add(theme.ghost_button(egui_phosphor::regular::ARROW_LEFT)).clicked() {
-                self.back_requested = true;
-            }
-            ui.separator();
-            let version_info = if instance.loader != crate::core::instance::ModLoader::Vanilla {
-                format!("{} - {}", instance.mc_version, instance.loader)
-            } else {
-                instance.mc_version.clone()
-            };
-            // Icon + name/version on the left for all instances
-            let icon_size = 40.0;
-            if let Some(url) = &instance.icon {
-                ui.add(egui::Image::new(url).fit_to_exact_size(egui::vec2(icon_size, icon_size)).corner_radius(6));
-            } else {
-                crate::ui::helpers::icon_placeholder(ui, &instance.name, icon_size, theme);
-            }
-            ui.vertical(|ui| {
-                ui.add(egui::Label::new(crate::ui::helpers::section_heading(&instance.name, theme)).truncate());
-                ui.add(egui::Label::new(theme.subtext(&version_info)).truncate());
-            });
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let mut clip = ui.clip_rect();
-                clip.min.x = ui.max_rect().min.x;
-                ui.set_clip_rect(clip);
-                if let Some(origin) = &instance.modpack_origin {
-                    let source_name = match origin.source.as_str() {
-                        "modrinth" => "Modrinth",
-                        "curseforge" => "CurseForge",
-                        _ => "source",
-                    };
-                    let open_page = ui.add(theme.ghost_button(&format!(
-                        "{}  Open on {}",
-                        egui_phosphor::regular::GLOBE,
-                        source_name
-                    )));
-                    if open_page.clicked()
-                        && let Some(url) = crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id) {
+                if ui
+                    .add(theme.ghost_button(egui_phosphor::regular::ARROW_LEFT))
+                    .clicked()
+                {
+                    self.back_requested = true;
+                }
+                ui.separator();
+                let version_info = if instance.loader != crate::core::instance::ModLoader::Vanilla {
+                    format!("{} - {}", instance.mc_version, instance.loader)
+                } else {
+                    instance.mc_version.clone()
+                };
+                // Icon + name/version on the left for all instances
+                let icon_size = 40.0;
+                if let Some(url) = &instance.icon {
+                    ui.add(
+                        egui::Image::new(url)
+                            .fit_to_exact_size(egui::vec2(icon_size, icon_size))
+                            .corner_radius(6),
+                    );
+                } else {
+                    crate::ui::helpers::icon_placeholder(ui, &instance.name, icon_size, theme);
+                }
+                ui.vertical(|ui| {
+                    ui.add(
+                        egui::Label::new(crate::ui::helpers::section_heading(
+                            &instance.name,
+                            theme,
+                        ))
+                        .truncate(),
+                    );
+                    ui.add(egui::Label::new(theme.subtext(&version_info)).truncate());
+                });
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let mut clip = ui.clip_rect();
+                    clip.min.x = ui.max_rect().min.x;
+                    ui.set_clip_rect(clip);
+                    if let Some(origin) = &instance.modpack_origin {
+                        let source_name = match origin.source.as_str() {
+                            "modrinth" => "Modrinth",
+                            "curseforge" => "CurseForge",
+                            _ => "source",
+                        };
+                        let open_page = ui.add(theme.ghost_button(&format!(
+                            "{}  Open on {}",
+                            egui_phosphor::regular::GLOBE,
+                            source_name
+                        )));
+                        if open_page.clicked()
+                            && let Some(url) = crate::core::local_mods::modpack_project_url(
+                                &origin.source,
+                                &origin.project_id,
+                            )
+                        {
                             let _ = open::that(&url);
                         }
-                }
-            });
-        });
+                    }
+                });
+            },
+        );
         ui.add_space(4.0);
 
         // ── Resolve directories ──────────────────────────────────
@@ -282,37 +295,38 @@ impl InstanceDetailView {
             egui::vec2(ui.available_width(), row_h),
             egui::Layout::left_to_right(egui::Align::Center).with_cross_justify(true),
             |ui| {
-            for (tab, name, count) in [
-                (DetailTab::Mods, "Mods", self.installed.len()),
-                (DetailTab::Shaders, "Shaders", self.installed_shaders.len()),
-                (DetailTab::Worlds, "Worlds", self.installed_worlds.len()),
-                (DetailTab::Servers, "Servers", self.server_list.len()),
-            ] {
-                let active = self.selected_tab == tab;
-                if tab_button(ui, name, active, theme) {
-                    self.selected_tab = tab;
+                for (tab, name, count) in [
+                    (DetailTab::Mods, "Mods", self.installed.len()),
+                    (DetailTab::Shaders, "Shaders", self.installed_shaders.len()),
+                    (DetailTab::Worlds, "Worlds", self.installed_worlds.len()),
+                    (DetailTab::Servers, "Servers", self.server_list.len()),
+                ] {
+                    let active = self.selected_tab == tab;
+                    if tab_button(ui, name, active, theme) {
+                        self.selected_tab = tab;
+                    }
+                    if count > 0 {
+                        let (fill, text_color) = if active {
+                            (theme.color("accent"), theme.button_fg())
+                        } else {
+                            (theme.color("surface"), theme.color("fg_dim"))
+                        };
+                        egui::Frame::new()
+                            .fill(fill)
+                            .corner_radius(10.0)
+                            .inner_margin(egui::Margin::symmetric(6, 2))
+                            .show(ui, |ui| {
+                                ui.label(
+                                    egui::RichText::new(count.to_string())
+                                        .size(10.0)
+                                        .color(text_color),
+                                );
+                            });
+                    }
+                    ui.add_space(4.0);
                 }
-                if count > 0 {
-                    let (fill, text_color) = if active {
-                        (theme.color("accent"), theme.button_fg())
-                    } else {
-                        (theme.color("surface"), theme.color("fg_dim"))
-                    };
-                    egui::Frame::new()
-                        .fill(fill)
-                        .corner_radius(10.0)
-                        .inner_margin(egui::Margin::symmetric(6, 2))
-                        .show(ui, |ui| {
-                            ui.label(
-                                egui::RichText::new(count.to_string())
-                                    .size(10.0)
-                                    .color(text_color),
-                            );
-                        });
-                }
-                ui.add_space(4.0);
-            }
-        });
+            },
+        );
         ui.separator();
 
         // ── Tab content ──────────────────────────────────────────

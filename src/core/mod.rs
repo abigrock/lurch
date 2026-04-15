@@ -1,5 +1,3 @@
-pub mod launch_manager;
-pub mod modpack_manager;
 pub mod account;
 pub mod config;
 pub mod curseforge;
@@ -9,15 +7,17 @@ pub mod import_export;
 pub mod instance;
 pub mod java;
 pub mod launch;
+pub mod launch_manager;
 pub mod loader_profiles;
 pub mod local_mods;
 pub mod mod_cache;
+pub mod modpack_manager;
 pub mod modrinth;
 pub mod modrinth_modpack;
 pub mod servers;
 pub mod shaders;
-pub mod version;
 pub mod update;
+pub mod version;
 pub mod worlds;
 
 // ── Modpack mod manifest entry ──────────────────────────────────────────────
@@ -91,8 +91,7 @@ pub fn sha1_hex(data: &[u8]) -> String {
 /// before they are persisted to disk.
 pub fn validate_jar(data: &[u8]) -> anyhow::Result<()> {
     use std::io::Cursor;
-    zip::ZipArchive::new(Cursor::new(data))
-        .map_err(|e| anyhow::anyhow!("corrupt JAR: {e}"))?;
+    zip::ZipArchive::new(Cursor::new(data)).map_err(|e| anyhow::anyhow!("corrupt JAR: {e}"))?;
     Ok(())
 }
 
@@ -118,15 +117,16 @@ pub fn strip_ansi(s: &str) -> String {
         if c == '\x1b' {
             // Consume CSI sequence: ESC [ <params> <final byte>
             if let Some(next) = chars.next()
-                && next == '[' {
-                    // Skip until final byte (ASCII 0x40..0x7E)
-                    for ch in chars.by_ref() {
-                        if ch.is_ascii() && ('@'..='~').contains(&ch) {
-                            break;
-                        }
+                && next == '['
+            {
+                // Skip until final byte (ASCII 0x40..0x7E)
+                for ch in chars.by_ref() {
+                    if ch.is_ascii() && ('@'..='~').contains(&ch) {
+                        break;
                     }
                 }
-                // else: non-CSI escape — drop ESC + next char
+            }
+            // else: non-CSI escape — drop ESC + next char
         } else {
             out.push(c);
         }

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use super::{CommandHideConsole, MutexExt};
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -10,8 +10,8 @@ pub struct JavaInstall {
     pub version: String,
     pub major: u32,
     pub arch: String,
-    pub vendor: String,         // e.g. "Temurin", "Microsoft", "Oracle", "GraalVM"
-    pub managed: bool,          // true if downloaded by Lurch
+    pub vendor: String, // e.g. "Temurin", "Microsoft", "Oracle", "GraalVM"
+    pub managed: bool,  // true if downloaded by Lurch
 }
 
 impl std::fmt::Display for JavaInstall {
@@ -22,7 +22,11 @@ impl std::fmt::Display for JavaInstall {
 
 /// Probe a java binary and extract version info
 pub fn probe_java(java_bin: &std::path::Path) -> Option<JavaInstall> {
-    let output = Command::new(java_bin).arg("-version").no_console_window().output().ok()?;
+    let output = Command::new(java_bin)
+        .arg("-version")
+        .no_console_window()
+        .output()
+        .ok()?;
 
     // java -version outputs to stderr
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -143,10 +147,11 @@ pub fn detect_java_installations() -> Vec<JavaInstall> {
             .join("bin")
             .join(java_binary_name());
         if bin.exists()
-            && let Some(inst) = probe_java(&bin) {
-                seen_paths.insert(inst.path.clone());
-                installs.push(inst);
-            }
+            && let Some(inst) = probe_java(&bin)
+        {
+            seen_paths.insert(inst.path.clone());
+            installs.push(inst);
+        }
     }
 
     // 2. Search PATH
@@ -155,9 +160,10 @@ pub fn detect_java_installations() -> Vec<JavaInstall> {
             let bin = dir.join(java_binary_name());
             if bin.exists()
                 && let Some(inst) = probe_java(&bin)
-                    && seen_paths.insert(inst.path.clone()) {
-                        installs.push(inst);
-                    }
+                && seen_paths.insert(inst.path.clone())
+            {
+                installs.push(inst);
+            }
         }
     }
 
@@ -169,27 +175,30 @@ pub fn detect_java_installations() -> Vec<JavaInstall> {
     // 4. Lurch-managed Java directory
     if let Ok(managed_dir) = java_managed_dir()
         && managed_dir.exists()
-            && let Ok(entries) = std::fs::read_dir(&managed_dir) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    let bin = path.join("bin").join(java_binary_name());
-                    if bin.exists()
-                        && let Some(mut inst) = probe_java(&bin)
-                            && seen_paths.insert(inst.path.clone()) {
-                                inst.managed = true;
-                                // Override vendor to match the download source
-                                let dir_name = path.file_name()
-                                    .map(|n| n.to_string_lossy().to_string())
-                                    .unwrap_or_default();
-                                if dir_name.starts_with("mojang-") {
-                                    inst.vendor = "Mojang".to_string();
-                                } else if dir_name.starts_with("java-") {
-                                    inst.vendor = "Adoptium".to_string();
-                                }
-                                installs.push(inst);
-                            }
+        && let Ok(entries) = std::fs::read_dir(&managed_dir)
+    {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let bin = path.join("bin").join(java_binary_name());
+            if bin.exists()
+                && let Some(mut inst) = probe_java(&bin)
+                && seen_paths.insert(inst.path.clone())
+            {
+                inst.managed = true;
+                // Override vendor to match the download source
+                let dir_name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_default();
+                if dir_name.starts_with("mojang-") {
+                    inst.vendor = "Mojang".to_string();
+                } else if dir_name.starts_with("java-") {
+                    inst.vendor = "Adoptium".to_string();
                 }
+                installs.push(inst);
             }
+        }
+    }
 
     // Sort by major version descending
     installs.sort_by(|a, b| b.major.cmp(&a.major));
@@ -204,11 +213,7 @@ pub fn java_managed_dir() -> anyhow::Result<PathBuf> {
 }
 
 fn java_binary_name() -> &'static str {
-    if cfg!(windows) {
-        "java.exe"
-    } else {
-        "java"
-    }
+    if cfg!(windows) { "java.exe" } else { "java" }
 }
 
 fn platform_java_dirs() -> Vec<PathBuf> {
@@ -263,18 +268,20 @@ fn scan_java_dir(
         let bin = path.join("bin").join(java_binary_name());
         if bin.exists() {
             if let Some(inst) = probe_java(&bin)
-                && seen.insert(inst.path.clone()) {
-                    installs.push(inst);
-                }
+                && seen.insert(inst.path.clone())
+            {
+                installs.push(inst);
+            }
             continue;
         }
         // macOS style: Contents/Home/bin/java
         let mac_bin = path.join("Contents/Home/bin").join(java_binary_name());
         if mac_bin.exists()
             && let Some(inst) = probe_java(&mac_bin)
-                && seen.insert(inst.path.clone()) {
-                    installs.push(inst);
-                }
+            && seen.insert(inst.path.clone())
+        {
+            installs.push(inst);
+        }
     }
 }
 
@@ -372,18 +379,17 @@ pub fn download_java(
     // If already downloaded, just probe and return
     let bin = target_dir.join("bin").join(java_binary_name());
     if bin.exists()
-        && let Some(mut inst) = probe_java(&bin) {
-            inst.managed = true;
-            inst.vendor = "Adoptium".to_string();
-            return Ok(inst);
-        }
+        && let Some(mut inst) = probe_java(&bin)
+    {
+        inst.managed = true;
+        inst.vendor = "Adoptium".to_string();
+        return Ok(inst);
+    }
 
     let url = adoptium_download_url(major_version);
     progress_cb(&format!("Downloading Java {}...", major_version));
 
-    let resp = client
-        .get(&url)
-        .send()?;
+    let resp = client.get(&url).send()?;
 
     if !resp.status().is_success() {
         anyhow::bail!(
@@ -565,10 +571,7 @@ pub fn fetch_mojang_component_manifest(
     let platform = mojang_platform_key();
 
     // Fetch top-level manifest
-    let resp: serde_json::Value = client
-        .get(MOJANG_JAVA_MANIFEST_URL)
-        .send()?
-        .json()?;
+    let resp: serde_json::Value = client.get(MOJANG_JAVA_MANIFEST_URL).send()?.json()?;
 
     // Navigate: resp[platform][component][0]
     let entry = resp
@@ -598,10 +601,7 @@ pub fn fetch_mojang_component_manifest(
         .to_string();
 
     // Fetch the per-component file manifest
-    let manifest: MojangFileManifest = client
-        .get(manifest_url)
-        .send()?
-        .json()?;
+    let manifest: MojangFileManifest = client.get(manifest_url).send()?.json()?;
 
     Ok((manifest, version_name))
 }
@@ -620,10 +620,11 @@ pub fn download_mojang_java(
     // If already downloaded, just probe and return
     let bin = target_dir.join("bin").join(java_binary_name());
     if bin.exists()
-        && let Some(mut inst) = probe_java(&bin) {
-            inst.managed = true;
-            return Ok(inst);
-        }
+        && let Some(mut inst) = probe_java(&bin)
+    {
+        inst.managed = true;
+        return Ok(inst);
+    }
 
     progress_cb(&format!(
         "Fetching Mojang Java runtime manifest ({})...",
@@ -829,8 +830,6 @@ pub fn delete_managed_java(install: &JavaInstall) -> anyhow::Result<()> {
     std::fs::remove_dir_all(install_dir)?;
     Ok(())
 }
-
-
 
 #[allow(dead_code)]
 pub struct JavaDownloadState {

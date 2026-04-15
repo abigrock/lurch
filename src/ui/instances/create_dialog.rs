@@ -1,7 +1,7 @@
-use super::{modpack_browser, AddInstanceTab, InstancesView};
-use crate::core::version::ManifestState;
-use crate::core::instance::{Instance, ModLoader};
+use super::{AddInstanceTab, InstancesView, modpack_browser};
 use crate::core::MutexExt;
+use crate::core::instance::{Instance, ModLoader};
+use crate::core::version::ManifestState;
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 
@@ -180,16 +180,17 @@ impl InstancesView {
                         if self.new_mc_version.is_empty()
                             && let Some(latest) = filtered.iter().find(|v| {
                                 v.version_type == crate::core::version::VersionType::Release
-                            }) {
-                                self.new_mc_version = latest.id.clone();
-                                if self.new_loader == ModLoader::Vanilla {
-                                    self.new_name = format!("Minecraft {}", self.new_mc_version);
-                                } else {
-                                    self.new_name =
-                                        format!("{} {}", self.new_loader, self.new_mc_version);
-                                }
-                                self.name_auto_generated = true;
+                            })
+                        {
+                            self.new_mc_version = latest.id.clone();
+                            if self.new_loader == ModLoader::Vanilla {
+                                self.new_name = format!("Minecraft {}", self.new_mc_version);
+                            } else {
+                                self.new_name =
+                                    format!("{} {}", self.new_loader, self.new_mc_version);
                             }
+                            self.name_auto_generated = true;
+                        }
 
                         ui.horizontal(|ui| {
                             let selected_label = if self.new_mc_version.is_empty() {

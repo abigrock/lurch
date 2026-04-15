@@ -1,14 +1,14 @@
-mod installed;
-mod browse_mr;
 mod browse_cf;
+mod browse_mr;
+mod installed;
 
 use eframe::egui;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use super::{InstanceDetailView, ModsSubTab};
-use crate::core::curseforge::{self, CfFile};
 use crate::core::MutexExt;
+use crate::core::curseforge::{self, CfFile};
 use crate::core::instance::ModOrigin;
 use crate::core::modrinth::{self, ProjectVersion};
 
@@ -61,9 +61,7 @@ impl InstanceDetailView {
             ModsSubTab::BrowseCurseForge => {
                 self.show_browse_curseforge_tab(ui, instance, mods_dir, theme)
             }
-            ModsSubTab::BrowseModrinth => {
-                self.show_browse_tab(ui, instance, mods_dir, theme)
-            }
+            ModsSubTab::BrowseModrinth => self.show_browse_tab(ui, instance, mods_dir, theme),
         }
 
         self.poll_mod_version_picker();
@@ -86,9 +84,8 @@ impl InstanceDetailView {
         let loader_str = loader.to_string();
         let ctx_clone = ctx.clone();
         std::thread::spawn(move || {
-            let result =
-                modrinth::get_project_versions(&pid, Some(&mc_ver), Some(&loader_str))
-                    .map_err(|e| e.to_string());
+            let result = modrinth::get_project_versions(&pid, Some(&mc_ver), Some(&loader_str))
+                .map_err(|e| e.to_string());
             *slot_clone.lock_or_recover() = Some(ModVersionFetchResult::MrVersions(result));
             ctx_clone.request_repaint();
         });
@@ -120,9 +117,8 @@ impl InstanceDetailView {
         let mc_ver = mc_version.to_string();
         let ctx_clone = ctx.clone();
         std::thread::spawn(move || {
-            let result =
-                curseforge::get_cf_mod_files(mod_id, &mc_ver, loader_type)
-                    .map_err(|e| e.to_string());
+            let result = curseforge::get_cf_mod_files(mod_id, &mc_ver, loader_type)
+                .map_err(|e| e.to_string());
             *slot_clone.lock_or_recover() = Some(ModVersionFetchResult::CfFiles(result));
             ctx_clone.request_repaint();
         });
@@ -166,11 +162,7 @@ impl InstanceDetailView {
         }
     }
 
-    fn show_mod_version_picker(
-        &mut self,
-        ui: &mut egui::Ui,
-        theme: &crate::theme::Theme,
-    ) {
+    fn show_mod_version_picker(&mut self, ui: &mut egui::Ui, theme: &crate::theme::Theme) {
         if self.mod_version_picker.is_none() {
             return;
         }
@@ -281,8 +273,7 @@ impl InstanceDetailView {
                             let mods_dir = vp.mods_dir.clone();
                             let origins = Arc::clone(&self.pending_origins);
                             let ctx = ui.ctx().clone();
-                            let status: Arc<Mutex<Option<String>>> =
-                                Arc::new(Mutex::new(None));
+                            let status: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
                             let status_clone = Arc::clone(&status);
 
                             std::thread::spawn(move || {
@@ -324,13 +315,11 @@ impl InstanceDetailView {
                             let mods_dir = vp.mods_dir.clone();
                             let origins = Arc::clone(&self.pending_origins);
                             let ctx = ui.ctx().clone();
-                            let status: Arc<Mutex<Option<String>>> =
-                                Arc::new(Mutex::new(None));
+                            let status: Arc<Mutex<Option<String>>> = Arc::new(Mutex::new(None));
                             let status_clone = Arc::clone(&status);
 
                             std::thread::spawn(move || {
-                                let msg = match curseforge::download_cf_file(&file, &mods_dir)
-                                {
+                                let msg = match curseforge::download_cf_file(&file, &mods_dir) {
                                     Ok(filename) => {
                                         origins.lock_or_recover().push(ModOrigin {
                                             filename: file.file_name.clone(),
@@ -348,10 +337,7 @@ impl InstanceDetailView {
                             });
 
                             ui.ctx().data_mut(|d| {
-                                d.insert_temp(
-                                    egui::Id::new("cf_install_status"),
-                                    status,
-                                );
+                                d.insert_temp(egui::Id::new("cf_install_status"), status);
                             });
                             self.needs_rescan = true;
                         }

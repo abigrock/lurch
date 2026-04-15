@@ -13,8 +13,8 @@ pub(crate) enum AddInstanceTab {
     CurseForge,
     Import,
 }
-use crate::core::instance::{Instance, ModLoader};
 use crate::core::MutexExt;
+use crate::core::instance::{Instance, ModLoader};
 use crate::core::java::JavaInstall;
 use crate::ui::helpers::ViewMode;
 use eframe::egui;
@@ -211,7 +211,11 @@ impl InstancesView {
             }
             self.poll_modpack_version_picker();
             self.show_modpack_version_picker(ui);
-            if self.modpack_version_picker.as_ref().is_some_and(|vp| vp.fetch_handle.is_some()) {
+            if self
+                .modpack_version_picker
+                .as_ref()
+                .is_some_and(|vp| vp.fetch_handle.is_some())
+            {
                 ui.ctx().request_repaint();
             }
             // ── Kill confirmation dialog ────────────────────────────────
@@ -235,10 +239,12 @@ impl InstancesView {
                         ui.label(t.subtext("This will forcefully terminate the running instance."));
                         ui.add_space(8.0);
                         ui.horizontal(|ui| {
-                            let confirm_clicked = ui.add(
-                                t.danger_button(&format!("{} Kill", egui_phosphor::regular::SKULL)),
-                            )
-                            .clicked();
+                            let confirm_clicked = ui
+                                .add(t.danger_button(&format!(
+                                    "{} Kill",
+                                    egui_phosphor::regular::SKULL
+                                )))
+                                .clicked();
                             if confirm_clicked {
                                 self.kill_requested = Some(kill_id.clone());
                                 self.confirm_kill = None;
@@ -294,15 +300,20 @@ impl InstancesView {
         if let Some(fetch) = &self.export_task {
             let finished = fetch.lock_or_recover().take();
             if let Some(result) = finished {
-                self.toast_removals.push("Exporting instance...".to_string());
+                self.toast_removals
+                    .push("Exporting instance...".to_string());
                 match result {
                     Ok(name) => {
                         self.pending_toasts
-                            .push(crate::ui::notifications::Toast::success(format!("Exported \"{name}\"")));
+                            .push(crate::ui::notifications::Toast::success(format!(
+                                "Exported \"{name}\""
+                            )));
                     }
                     Err(e) => {
                         self.pending_toasts
-                            .push(crate::ui::notifications::Toast::error(format!("Export failed: {e}")));
+                            .push(crate::ui::notifications::Toast::error(format!(
+                                "Export failed: {e}"
+                            )));
                     }
                 }
                 self.export_task = None;
@@ -313,7 +324,8 @@ impl InstancesView {
         if let Some(fetch) = &self.import_task {
             let finished = fetch.lock_or_recover().take();
             if let Some(result) = finished {
-                self.toast_removals.push("Importing instance...".to_string());
+                self.toast_removals
+                    .push("Importing instance...".to_string());
                 match result {
                     Ok(mut inst) => {
                         // Auto-deduplicate name if it collides with an existing instance
@@ -331,15 +343,19 @@ impl InstancesView {
                                 n += 1;
                             }
                         }
-                        self.pending_toasts.push(crate::ui::notifications::Toast::success(
-                            format!("Imported \"{}\"", inst.name),
-                        ));
+                        self.pending_toasts
+                            .push(crate::ui::notifications::Toast::success(format!(
+                                "Imported \"{}\"",
+                                inst.name
+                            )));
                         instances.push(inst);
                         self.mod_counts_dirty = true;
                     }
                     Err(e) => {
                         self.pending_toasts
-                            .push(crate::ui::notifications::Toast::error(format!("Import failed: {e}")));
+                            .push(crate::ui::notifications::Toast::error(format!(
+                                "Import failed: {e}"
+                            )));
                     }
                 }
                 self.import_task = None;
@@ -375,8 +391,7 @@ impl InstancesView {
                         let add_clicked = {
                             let t = &self.theme;
                             if is_wide {
-                                let lbl =
-                                    format!("{} Add Instance", egui_phosphor::regular::PLUS);
+                                let lbl = format!("{} Add Instance", egui_phosphor::regular::PLUS);
                                 ui.add(t.accent_button(&lbl)).clicked()
                             } else {
                                 ui.add(t.accent_icon_button(egui_phosphor::regular::PLUS))
@@ -426,8 +441,7 @@ impl InstancesView {
                                     ui.add(t.accent_icon_button(icon))
                                         .on_hover_text("Display options (active)")
                                 } else {
-                                    ui.add(t.icon_button(icon))
-                                        .on_hover_text("Display options")
+                                    ui.add(t.icon_button(icon)).on_hover_text("Display options")
                                 }
                             };
 
@@ -456,12 +470,36 @@ impl InstancesView {
                                         .selected_text(&loader_text)
                                         .width(ui.available_width() - 8.0)
                                         .show_ui(ui, |ui| {
-                                            ui.selectable_value(&mut self.loader_filter, None, "All Loaders");
-                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Vanilla), "Vanilla");
-                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Fabric), "Fabric");
-                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Forge), "Forge");
-                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::NeoForge), "NeoForge");
-                                            ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Quilt), "Quilt");
+                                            ui.selectable_value(
+                                                &mut self.loader_filter,
+                                                None,
+                                                "All Loaders",
+                                            );
+                                            ui.selectable_value(
+                                                &mut self.loader_filter,
+                                                Some(ModLoader::Vanilla),
+                                                "Vanilla",
+                                            );
+                                            ui.selectable_value(
+                                                &mut self.loader_filter,
+                                                Some(ModLoader::Fabric),
+                                                "Fabric",
+                                            );
+                                            ui.selectable_value(
+                                                &mut self.loader_filter,
+                                                Some(ModLoader::Forge),
+                                                "Forge",
+                                            );
+                                            ui.selectable_value(
+                                                &mut self.loader_filter,
+                                                Some(ModLoader::NeoForge),
+                                                "NeoForge",
+                                            );
+                                            ui.selectable_value(
+                                                &mut self.loader_filter,
+                                                Some(ModLoader::Quilt),
+                                                "Quilt",
+                                            );
                                         });
 
                                     ui.add_space(8.0);
@@ -471,10 +509,26 @@ impl InstancesView {
                                         .selected_text(self.sort_mode.label())
                                         .width(ui.available_width() - 8.0)
                                         .show_ui(ui, |ui| {
-                                            ui.selectable_value(&mut self.sort_mode, InstanceSortMode::LastPlayed, "Last Played");
-                                            ui.selectable_value(&mut self.sort_mode, InstanceSortMode::NameAsc, "Name (A-Z)");
-                                            ui.selectable_value(&mut self.sort_mode, InstanceSortMode::CreatedDesc, "Newest First");
-                                            ui.selectable_value(&mut self.sort_mode, InstanceSortMode::McVersion, "MC Version");
+                                            ui.selectable_value(
+                                                &mut self.sort_mode,
+                                                InstanceSortMode::LastPlayed,
+                                                "Last Played",
+                                            );
+                                            ui.selectable_value(
+                                                &mut self.sort_mode,
+                                                InstanceSortMode::NameAsc,
+                                                "Name (A-Z)",
+                                            );
+                                            ui.selectable_value(
+                                                &mut self.sort_mode,
+                                                InstanceSortMode::CreatedDesc,
+                                                "Newest First",
+                                            );
+                                            ui.selectable_value(
+                                                &mut self.sort_mode,
+                                                InstanceSortMode::McVersion,
+                                                "MC Version",
+                                            );
                                         });
 
                                     ui.add_space(8.0);
@@ -515,10 +569,26 @@ impl InstancesView {
                                 .selected_text(self.sort_mode.label())
                                 .width(100.0)
                                 .show_ui(ui, |ui| {
-                                    ui.selectable_value(&mut self.sort_mode, InstanceSortMode::LastPlayed, "Last Played");
-                                    ui.selectable_value(&mut self.sort_mode, InstanceSortMode::NameAsc, "Name (A-Z)");
-                                    ui.selectable_value(&mut self.sort_mode, InstanceSortMode::CreatedDesc, "Newest First");
-                                    ui.selectable_value(&mut self.sort_mode, InstanceSortMode::McVersion, "MC Version");
+                                    ui.selectable_value(
+                                        &mut self.sort_mode,
+                                        InstanceSortMode::LastPlayed,
+                                        "Last Played",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.sort_mode,
+                                        InstanceSortMode::NameAsc,
+                                        "Name (A-Z)",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.sort_mode,
+                                        InstanceSortMode::CreatedDesc,
+                                        "Newest First",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.sort_mode,
+                                        InstanceSortMode::McVersion,
+                                        "MC Version",
+                                    );
                                 });
 
                             // Loader filter
@@ -530,12 +600,36 @@ impl InstancesView {
                                 .selected_text(&loader_text)
                                 .width(100.0)
                                 .show_ui(ui, |ui| {
-                                    ui.selectable_value(&mut self.loader_filter, None, "All Loaders");
-                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Vanilla), "Vanilla");
-                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Fabric), "Fabric");
-                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Forge), "Forge");
-                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::NeoForge), "NeoForge");
-                                    ui.selectable_value(&mut self.loader_filter, Some(ModLoader::Quilt), "Quilt");
+                                    ui.selectable_value(
+                                        &mut self.loader_filter,
+                                        None,
+                                        "All Loaders",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.loader_filter,
+                                        Some(ModLoader::Vanilla),
+                                        "Vanilla",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.loader_filter,
+                                        Some(ModLoader::Fabric),
+                                        "Fabric",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.loader_filter,
+                                        Some(ModLoader::Forge),
+                                        "Forge",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.loader_filter,
+                                        Some(ModLoader::NeoForge),
+                                        "NeoForge",
+                                    );
+                                    ui.selectable_value(
+                                        &mut self.loader_filter,
+                                        Some(ModLoader::Quilt),
+                                        "Quilt",
+                                    );
                                 });
                         }
 
@@ -604,16 +698,16 @@ impl InstancesView {
                 .enumerate()
                 .filter(|(_, inst)| {
                     // Name search filter
-                    if !search_lower.is_empty()
-                        && !inst.name.to_lowercase().contains(&search_lower)
+                    if !search_lower.is_empty() && !inst.name.to_lowercase().contains(&search_lower)
                     {
                         return false;
                     }
                     // Loader filter
                     if let Some(ref lf) = self.loader_filter
-                        && &inst.loader != lf {
-                            return false;
-                        }
+                        && &inst.loader != lf
+                    {
+                        return false;
+                    }
                     true
                 })
                 .map(|(idx, _)| idx)
@@ -682,78 +776,81 @@ impl InstancesView {
                 ui.add_space(4.0);
             }
 
-            egui::ScrollArea::vertical().id_salt("instance_list").auto_shrink([false, false]).show(ui, |ui| {
-                if self.view_mode == ViewMode::Grid {
-                    let gap = ui.spacing().item_spacing.x;
-                    ui.spacing_mut().item_spacing.y = gap;
-                }
-                let group_keys: Vec<String> = groups.keys().cloned().collect();
-                for group_name in group_keys {
-                    let indices = groups[&group_name].clone();
-                    let header_text = self.theme.subtext(&group_name);
-                    egui::CollapsingHeader::new(header_text)
-                        .default_open(true)
-                        .open(if is_searching { Some(true) } else { None })
-                        .id_salt(format!("group_{group_name}"))
-                        .show(ui, |ui| match self.view_mode {
-                            ViewMode::List => {
-                                self.show_list(
-                                    ui,
-                                    instances,
-                                    &indices,
-                                    &mut to_delete,
-                                    &mut to_duplicate,
-                                    &mut to_rename_confirm,
-                                    &mut rename_cancelled,
-                                );
-                            }
-                            ViewMode::Grid => {
-                                self.show_grid(
-                                    ui,
-                                    instances,
-                                    &indices,
-                                    &mut to_delete,
-                                    &mut to_duplicate,
-                                    &mut to_rename_confirm,
-                                    &mut rename_cancelled,
-                                );
-                            }
-                        });
-                    ui.add_space(4.0);
-                }
+            egui::ScrollArea::vertical()
+                .id_salt("instance_list")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    if self.view_mode == ViewMode::Grid {
+                        let gap = ui.spacing().item_spacing.x;
+                        ui.spacing_mut().item_spacing.y = gap;
+                    }
+                    let group_keys: Vec<String> = groups.keys().cloned().collect();
+                    for group_name in group_keys {
+                        let indices = groups[&group_name].clone();
+                        let header_text = self.theme.subtext(&group_name);
+                        egui::CollapsingHeader::new(header_text)
+                            .default_open(true)
+                            .open(if is_searching { Some(true) } else { None })
+                            .id_salt(format!("group_{group_name}"))
+                            .show(ui, |ui| match self.view_mode {
+                                ViewMode::List => {
+                                    self.show_list(
+                                        ui,
+                                        instances,
+                                        &indices,
+                                        &mut to_delete,
+                                        &mut to_duplicate,
+                                        &mut to_rename_confirm,
+                                        &mut rename_cancelled,
+                                    );
+                                }
+                                ViewMode::Grid => {
+                                    self.show_grid(
+                                        ui,
+                                        instances,
+                                        &indices,
+                                        &mut to_delete,
+                                        &mut to_duplicate,
+                                        &mut to_rename_confirm,
+                                        &mut rename_cancelled,
+                                    );
+                                }
+                            });
+                        ui.add_space(4.0);
+                    }
 
-                if !ungrouped.is_empty() {
-                    let ungrouped_header = self.theme.subtext("Ungrouped");
-                    egui::CollapsingHeader::new(ungrouped_header)
-                        .default_open(true)
-                        .open(if is_searching { Some(true) } else { None })
-                        .id_salt("group_ungrouped")
-                        .show(ui, |ui| match self.view_mode {
-                            ViewMode::List => {
-                                self.show_list(
-                                    ui,
-                                    instances,
-                                    &ungrouped,
-                                    &mut to_delete,
-                                    &mut to_duplicate,
-                                    &mut to_rename_confirm,
-                                    &mut rename_cancelled,
-                                );
-                            }
-                            ViewMode::Grid => {
-                                self.show_grid(
-                                    ui,
-                                    instances,
-                                    &ungrouped,
-                                    &mut to_delete,
-                                    &mut to_duplicate,
-                                    &mut to_rename_confirm,
-                                    &mut rename_cancelled,
-                                );
-                            }
-                        });
-                }
-            });
+                    if !ungrouped.is_empty() {
+                        let ungrouped_header = self.theme.subtext("Ungrouped");
+                        egui::CollapsingHeader::new(ungrouped_header)
+                            .default_open(true)
+                            .open(if is_searching { Some(true) } else { None })
+                            .id_salt("group_ungrouped")
+                            .show(ui, |ui| match self.view_mode {
+                                ViewMode::List => {
+                                    self.show_list(
+                                        ui,
+                                        instances,
+                                        &ungrouped,
+                                        &mut to_delete,
+                                        &mut to_duplicate,
+                                        &mut to_rename_confirm,
+                                        &mut rename_cancelled,
+                                    );
+                                }
+                                ViewMode::Grid => {
+                                    self.show_grid(
+                                        ui,
+                                        instances,
+                                        &ungrouped,
+                                        &mut to_delete,
+                                        &mut to_duplicate,
+                                        &mut to_rename_confirm,
+                                        &mut rename_cancelled,
+                                    );
+                                }
+                            });
+                    }
+                });
 
             // Apply mutations
             if rename_cancelled {
@@ -780,37 +877,46 @@ impl InstancesView {
             // Handle export (background thread to avoid blocking UI)
             if let Some(idx) = self.export_requested.take()
                 && let Some(inst) = instances.get(idx)
-                    && let Some(path) = rfd::FileDialog::new()
-                        .set_title("Export Instance")
-                        .set_file_name(format!("{}.zip", inst.name))
-                        .add_filter("Zip Archive", &["zip"])
-                        .save_file()
-                    {
-                        let inst_clone = inst.clone();
-                        let name = inst.name.clone();
-                        let slot: Arc<Mutex<Option<Result<String, String>>>> =
-                            Arc::new(Mutex::new(None));
-                        let slot_clone = Arc::clone(&slot);
-                        let ctx_clone = ui.ctx().clone();
-                        std::thread::spawn(move || {
-                            let result = crate::core::import_export::export_instance(
-                                &inst_clone, &path,
-                            )
-                            .map(|()| name)
-                            .map_err(|e| e.to_string());
-                            *slot_clone.lock_or_recover() = Some(result);
-                            ctx_clone.request_repaint();
-                        });
-                        self.export_task = Some(slot);
-                        self.pending_toasts.push(crate::ui::notifications::Toast::success("Exporting instance...".to_string()));
-                    }
+                && let Some(path) = rfd::FileDialog::new()
+                    .set_title("Export Instance")
+                    .set_file_name(format!("{}.zip", inst.name))
+                    .add_filter("Zip Archive", &["zip"])
+                    .save_file()
+            {
+                let inst_clone = inst.clone();
+                let name = inst.name.clone();
+                let slot: Arc<Mutex<Option<Result<String, String>>>> = Arc::new(Mutex::new(None));
+                let slot_clone = Arc::clone(&slot);
+                let ctx_clone = ui.ctx().clone();
+                std::thread::spawn(move || {
+                    let result = crate::core::import_export::export_instance(&inst_clone, &path)
+                        .map(|()| name)
+                        .map_err(|e| e.to_string());
+                    *slot_clone.lock_or_recover() = Some(result);
+                    ctx_clone.request_repaint();
+                });
+                self.export_task = Some(slot);
+                self.pending_toasts
+                    .push(crate::ui::notifications::Toast::success(
+                        "Exporting instance...".to_string(),
+                    ));
+            }
 
             // Handle deferred modpack version picker (avoids borrow conflict in popup closure)
-            if let Some((id, name, source, project_id, version_id)) = self.modpack_version_picker_requested.take() {
-                self.open_modpack_version_picker(&id, &name, &source, &project_id, &version_id, false, ui.ctx());
+            if let Some((id, name, source, project_id, version_id)) =
+                self.modpack_version_picker_requested.take()
+            {
+                self.open_modpack_version_picker(
+                    &id,
+                    &name,
+                    &source,
+                    &project_id,
+                    &version_id,
+                    false,
+                    ui.ctx(),
+                );
             }
         }
-
     }
 
     // ── List view ────────────────────────────────────────────────────────────
@@ -842,12 +948,7 @@ impl InstancesView {
                     let icon_resp = if let Some(url) = &inst.icon {
                         ui.add(egui::Image::new(url).fit_to_exact_size(egui::vec2(48.0, 48.0)))
                     } else {
-                        crate::ui::helpers::icon_placeholder(
-                            ui,
-                            &inst.name,
-                            48.0,
-                            &self.theme,
-                        )
+                        crate::ui::helpers::icon_placeholder(ui, &inst.name, 48.0, &self.theme)
                     };
                     if is_running {
                         let color = self.theme.color("success");
@@ -884,25 +985,21 @@ impl InstancesView {
                         if inst.loader != ModLoader::Vanilla {
                             info_parts.push(inst.loader.to_string());
                         }
-                        let mod_count =
-                            self.mod_counts.get(&inst.id).copied().unwrap_or(0);
+                        let mod_count = self.mod_counts.get(&inst.id).copied().unwrap_or(0);
                         if mod_count > 0 {
                             info_parts.push(format!(
                                 "{} {mod_count}",
                                 egui_phosphor::regular::PUZZLE_PIECE,
                             ));
                         }
-                        let tag_refs: Vec<&str> =
-                            info_parts.iter().map(|s| s.as_str()).collect();
-                        crate::ui::helpers::show_category_tags(
-                            ui,
-                            &tag_refs,
-                            10,
-                            &self.theme,
-                        );
+                        let tag_refs: Vec<&str> = info_parts.iter().map(|s| s.as_str()).collect();
+                        crate::ui::helpers::show_category_tags(ui, &tag_refs, 10, &self.theme);
                         let lp_text = inst.last_played.as_deref().unwrap_or("Never played");
                         let t = &self.theme;
-                        ui.label(t.subtext(&format!("{} {lp_text}", egui_phosphor::regular::CLOCK)).size(11.0));
+                        ui.label(
+                            t.subtext(&format!("{} {lp_text}", egui_phosphor::regular::CLOCK))
+                                .size(11.0),
+                        );
                         if self.modpack_updates.contains_key(&inst.id) {
                             let t = &self.theme;
                             let update_fill = t.color("accent");
@@ -922,62 +1019,62 @@ impl InstancesView {
                         }
                     });
 
-                    ui.with_layout(
-                        egui::Layout::right_to_left(egui::Align::Center),
-                        |ui| {
-                            let t = &self.theme;
-                            let more_btn = ui.add(t.icon_button(egui_phosphor::regular::DOTS_THREE));
-                            let more_btn = more_btn.on_hover_text("More actions");
-                            let inst = &instances[idx];
-                            let theme_ref = &self.theme;
-                            let out = egui::Popup::menu(&more_btn).show(|ui| {
-                                instance_context_menu_body(ui, theme_ref, inst, idx, is_running)
-                            });
-                            if let Some(out) = out.map(|r| r.inner) {
-                                if let Some(id) = out.manage {
-                                    self.detail_view = Some(detail::InstanceDetailView::new(id));
-                                }
-                                if let Some(id) = out.rename {
-                                    self.renaming = Some(id);
-                                    self.rename_text = instances[idx].name.clone();
-                                }
-                                if let Some(id) = out.configure {
-                                    self.editing = Some(id);
-                                }
-                                if let Some(i) = out.duplicate {
-                                    *to_duplicate = Some(i);
-                                }
-                                if let Some(i) = out.export {
-                                    self.export_requested = Some(i);
-                                }
-                                if let Some(id) = out.kill {
-                                    self.confirm_kill = Some(id);
-                                }
-                                if let Some(id) = out.delete {
-                                    *to_delete = Some(id);
-                                }
-                                if let Some(req) = out.version_picker {
-                                    self.modpack_version_picker_requested = Some(req);
-                                }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let t = &self.theme;
+                        let more_btn = ui.add(t.icon_button(egui_phosphor::regular::DOTS_THREE));
+                        let more_btn = more_btn.on_hover_text("More actions");
+                        let inst = &instances[idx];
+                        let theme_ref = &self.theme;
+                        let out = egui::Popup::menu(&more_btn).show(|ui| {
+                            instance_context_menu_body(ui, theme_ref, inst, idx, is_running)
+                        });
+                        if let Some(out) = out.map(|r| r.inner) {
+                            if let Some(id) = out.manage {
+                                self.detail_view = Some(detail::InstanceDetailView::new(id));
                             }
+                            if let Some(id) = out.rename {
+                                self.renaming = Some(id);
+                                self.rename_text = instances[idx].name.clone();
+                            }
+                            if let Some(id) = out.configure {
+                                self.editing = Some(id);
+                            }
+                            if let Some(i) = out.duplicate {
+                                *to_duplicate = Some(i);
+                            }
+                            if let Some(i) = out.export {
+                                self.export_requested = Some(i);
+                            }
+                            if let Some(id) = out.kill {
+                                self.confirm_kill = Some(id);
+                            }
+                            if let Some(id) = out.delete {
+                                *to_delete = Some(id);
+                            }
+                            if let Some(req) = out.version_picker {
+                                self.modpack_version_picker_requested = Some(req);
+                            }
+                        }
 
-                            let t = &self.theme;
-                            if !is_running {
-                                let launch_clicked = ui.add(t.accent_button("▶ Launch"))
-                                    .clicked();
-                                if launch_clicked {
-                                    self.launch_requested = Some(inst_id.clone());
-                                }
-                            } else {
-                                let console_clicked = ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)))
-                                    .on_hover_text("Open console")
-                                    .clicked();
-                                if console_clicked {
-                                    self.console_requested = Some(inst_id.clone());
-                                }
+                        let t = &self.theme;
+                        if !is_running {
+                            let launch_clicked = ui.add(t.accent_button("▶ Launch")).clicked();
+                            if launch_clicked {
+                                self.launch_requested = Some(inst_id.clone());
                             }
-                        },
-                    );
+                        } else {
+                            let console_clicked = ui
+                                .add(t.accent_button(&format!(
+                                    "{} Console",
+                                    egui_phosphor::regular::TERMINAL_WINDOW
+                                )))
+                                .on_hover_text("Open console")
+                                .clicked();
+                            if console_clicked {
+                                self.console_requested = Some(inst_id.clone());
+                            }
+                        }
+                    });
                 });
             }
         });
@@ -1004,10 +1101,8 @@ impl InstancesView {
         let cols = ((available + gap) / (card_w + gap)).floor().max(1.0) as usize;
 
         for row_chunk in indices.chunks(cols) {
-            let (row_rect, _) = ui.allocate_exact_size(
-                egui::vec2(available, card_h),
-                egui::Sense::hover(),
-            );
+            let (row_rect, _) =
+                ui.allocate_exact_size(egui::vec2(available, card_h), egui::Sense::hover());
 
             let mut x = row_rect.min.x;
             for &idx in row_chunk {
@@ -1022,23 +1117,23 @@ impl InstancesView {
                 );
 
                 // RefCell splits the borrow so both closures can access rename_text
-                let rename_cell = std::cell::RefCell::new(
-                    std::mem::take(&mut self.rename_text),
-                );
+                let rename_cell = std::cell::RefCell::new(std::mem::take(&mut self.rename_text));
                 // Collected request to open version picker (can't call &mut self inside closure)
-                let mut open_version_picker_req: Option<(String, String, String, String, String)> = None;
+                let mut open_version_picker_req: Option<(String, String, String, String, String)> =
+                    None;
 
                 crate::ui::helpers::grid_card(
                     ui,
                     cell_rect,
                     &self.theme,
                     |ui| {
-                        let mod_count =
-                            self.mod_counts.get(&inst.id).copied().unwrap_or(0);
+                        let mod_count = self.mod_counts.get(&inst.id).copied().unwrap_or(0);
 
-                            ui.horizontal(|ui| {
+                        ui.horizontal(|ui| {
                             let icon_resp = if let Some(url) = &inst.icon {
-                                ui.add(egui::Image::new(url).fit_to_exact_size(egui::vec2(36.0, 36.0)))
+                                ui.add(
+                                    egui::Image::new(url).fit_to_exact_size(egui::vec2(36.0, 36.0)),
+                                )
                             } else {
                                 crate::ui::helpers::icon_placeholder(
                                     ui,
@@ -1064,16 +1159,12 @@ impl InstancesView {
                                     if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
                                         *rename_cancelled = true;
                                     } else {
-                                        *to_rename_confirm = Some((
-                                            inst_id.clone(),
-                                            rename_cell.borrow().clone(),
-                                        ));
+                                        *to_rename_confirm =
+                                            Some((inst_id.clone(), rename_cell.borrow().clone()));
                                     }
                                 } else if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                                    *to_rename_confirm = Some((
-                                        inst_id.clone(),
-                                        rename_cell.borrow().clone(),
-                                    ));
+                                    *to_rename_confirm =
+                                        Some((inst_id.clone(), rename_cell.borrow().clone()));
                                 }
                                 response.request_focus();
                             } else {
@@ -1110,30 +1201,48 @@ impl InstancesView {
                         }
                         let lp_text = inst.last_played.as_deref().unwrap_or("Never played");
                         let t = &self.theme;
-                        ui.label(t.subtext(&format!(
-                            "{} {lp_text}",
-                            egui_phosphor::regular::CLOCK,
-                        )).size(11.0));
+                        ui.label(
+                            t.subtext(&format!("{} {lp_text}", egui_phosphor::regular::CLOCK,))
+                                .size(11.0),
+                        );
                     },
                     |ui| {
                         let t = &self.theme;
                         if !is_running {
-                            let btn_width = ui.available_width() - 36.0 - ui.spacing().item_spacing.x;
-                            let launch_clicked = ui.add(t.accent_button("▶ Launch").min_size(egui::vec2(btn_width, crate::theme::BUTTON_HEIGHT)))
+                            let btn_width =
+                                ui.available_width() - 36.0 - ui.spacing().item_spacing.x;
+                            let launch_clicked = ui
+                                .add(
+                                    t.accent_button("▶ Launch").min_size(egui::vec2(
+                                        btn_width,
+                                        crate::theme::BUTTON_HEIGHT,
+                                    )),
+                                )
                                 .clicked();
                             if launch_clicked {
                                 self.launch_requested = Some(inst_id.clone());
                             }
                         } else {
-                            let btn_width = ui.available_width() - 36.0 - ui.spacing().item_spacing.x;
-                            let console_clicked = ui.add(t.accent_button(&format!("{} Console", egui_phosphor::regular::TERMINAL_WINDOW)).min_size(egui::vec2(btn_width, crate::theme::BUTTON_HEIGHT)))
+                            let btn_width =
+                                ui.available_width() - 36.0 - ui.spacing().item_spacing.x;
+                            let console_clicked = ui
+                                .add(
+                                    t.accent_button(&format!(
+                                        "{} Console",
+                                        egui_phosphor::regular::TERMINAL_WINDOW
+                                    ))
+                                    .min_size(egui::vec2(btn_width, crate::theme::BUTTON_HEIGHT)),
+                                )
                                 .clicked();
                             if console_clicked {
                                 self.console_requested = Some(inst_id.clone());
                             }
                         }
                         let t = &self.theme;
-                        let more_btn = ui.add(t.ghost_button(egui_phosphor::regular::DOTS_THREE).min_size(egui::vec2(32.0, 32.0)));
+                        let more_btn = ui.add(
+                            t.ghost_button(egui_phosphor::regular::DOTS_THREE)
+                                .min_size(egui::vec2(32.0, 32.0)),
+                        );
                         let more_btn = more_btn.on_hover_text("More actions");
                         let inst = &instances[idx];
                         let theme_ref = &self.theme;
@@ -1173,7 +1282,15 @@ impl InstancesView {
                 self.rename_text = rename_cell.into_inner();
 
                 if let Some((id, name, source, pid, vid)) = open_version_picker_req {
-                    self.open_modpack_version_picker(&id, &name, &source, &pid, &vid, false, ui.ctx());
+                    self.open_modpack_version_picker(
+                        &id,
+                        &name,
+                        &source,
+                        &pid,
+                        &vid,
+                        false,
+                        ui.ctx(),
+                    );
                 }
 
                 x += card_w + gap;
@@ -1213,11 +1330,9 @@ impl InstancesView {
                         .map_err(|e| e.to_string());
                     modpack_browser::VersionFetchResult::CfFiles(r)
                 }
-                _ => {
-                    modpack_browser::VersionFetchResult::MrVersions(Err(
-                        format!("Unknown source: {src}"),
-                    ))
-                }
+                _ => modpack_browser::VersionFetchResult::MrVersions(Err(format!(
+                    "Unknown source: {src}"
+                ))),
             };
             *slot_clone.lock_or_recover() = Some(result);
             ctx_clone.request_repaint();
@@ -1250,13 +1365,19 @@ impl InstancesView {
             match result {
                 modpack_browser::VersionFetchResult::MrVersions(Ok(versions)) => {
                     if !vp.preselect_latest {
-                        vp.selected_index = versions.iter().position(|v| v.id == vp.current_version_id).unwrap_or(0);
+                        vp.selected_index = versions
+                            .iter()
+                            .position(|v| v.id == vp.current_version_id)
+                            .unwrap_or(0);
                     }
                     vp.mr_versions = versions;
                 }
                 modpack_browser::VersionFetchResult::CfFiles(Ok(files)) => {
                     if !vp.preselect_latest {
-                        vp.selected_index = files.iter().position(|f| f.id.to_string() == vp.current_version_id).unwrap_or(0);
+                        vp.selected_index = files
+                            .iter()
+                            .position(|f| f.id.to_string() == vp.current_version_id)
+                            .unwrap_or(0);
                     }
                     vp.cf_files = files;
                 }
@@ -1317,20 +1438,14 @@ fn instance_context_menu_body(
     if ui
         .add_enabled(
             !is_running,
-            theme.menu_item(&format!(
-                "{} Configure",
-                egui_phosphor::regular::GEAR_SIX
-            )),
+            theme.menu_item(&format!("{} Configure", egui_phosphor::regular::GEAR_SIX)),
         )
         .clicked()
     {
         out.configure = Some(inst_id.clone());
     }
     if ui
-        .add(theme.menu_item(&format!(
-            "{} Open Folder",
-            egui_phosphor::regular::FOLDER
-        )))
+        .add(theme.menu_item(&format!("{} Open Folder", egui_phosphor::regular::FOLDER)))
         .clicked()
         && let Ok(dir) = inst.instance_dir()
     {
@@ -1339,10 +1454,7 @@ fn instance_context_menu_body(
     if ui
         .add_enabled(
             !is_running,
-            theme.menu_item(&format!(
-                "{} Duplicate",
-                egui_phosphor::regular::CLIPBOARD
-            )),
+            theme.menu_item(&format!("{} Duplicate", egui_phosphor::regular::CLIPBOARD)),
         )
         .clicked()
     {
@@ -1369,12 +1481,11 @@ fn instance_context_menu_body(
                 egui_phosphor::regular::GLOBE
             )))
             .clicked()
-            && let Some(url) = crate::core::local_mods::modpack_project_url(
-                &origin.source,
-                &origin.project_id,
-            ) {
-                let _ = open::that(&url);
-            }
+            && let Some(url) =
+                crate::core::local_mods::modpack_project_url(&origin.source, &origin.project_id)
+        {
+            let _ = open::that(&url);
+        }
         if ui
             .add_enabled(
                 !is_running,
@@ -1421,8 +1532,18 @@ impl InstancesView {
         let mut action: Option<ModpackVersionPickerAction> = None;
 
         // Extract scalars without holding a borrow across the closure
-        let is_loading = self.modpack_version_picker.as_ref().unwrap().fetch_handle.is_some();
-        let title = self.modpack_version_picker.as_ref().unwrap().instance_name.clone();
+        let is_loading = self
+            .modpack_version_picker
+            .as_ref()
+            .unwrap()
+            .fetch_handle
+            .is_some();
+        let title = self
+            .modpack_version_picker
+            .as_ref()
+            .unwrap()
+            .instance_name
+            .clone();
         let theme = self.theme.clone();
 
         egui::Window::new(format!("Change Version: \"{}\"", title))
@@ -1463,7 +1584,10 @@ impl InstancesView {
                                             version.name, game_vers, loaders
                                         );
                                         if is_current {
-                                            label = format!("{} {label}", egui_phosphor::regular::CHECK_CIRCLE);
+                                            label = format!(
+                                                "{} {label}",
+                                                egui_phosphor::regular::CHECK_CIRCLE
+                                            );
                                         }
                                         if ui.selectable_label(selected, &label).clicked() {
                                             vp.selected_index = i;
@@ -1481,7 +1605,8 @@ impl InstancesView {
                                 .show(ui, |ui| {
                                     for (i, file) in vp.cf_files.iter().enumerate() {
                                         let selected = vp.selected_index == i;
-                                        let is_current = file.id.to_string() == vp.current_version_id;
+                                        let is_current =
+                                            file.id.to_string() == vp.current_version_id;
                                         let release_tag = match file.release_type {
                                             1 => "Release",
                                             2 => "Beta",
@@ -1494,7 +1619,10 @@ impl InstancesView {
                                             file.display_name, release_tag, game_vers
                                         );
                                         if is_current {
-                                            label = format!("{} {label}", egui_phosphor::regular::CHECK_CIRCLE);
+                                            label = format!(
+                                                "{} {label}",
+                                                egui_phosphor::regular::CHECK_CIRCLE
+                                            );
                                         }
                                         if ui.selectable_label(selected, &label).clicked() {
                                             vp.selected_index = i;
@@ -1515,7 +1643,9 @@ impl InstancesView {
                         "curseforge" => !vp.cf_files.is_empty(),
                         _ => false,
                     };
-                    let apply_clicked = ui.add_enabled(has_versions, t.accent_button("Apply")).clicked();
+                    let apply_clicked = ui
+                        .add_enabled(has_versions, t.accent_button("Apply"))
+                        .clicked();
                     if apply_clicked {
                         action = Some(ModpackVersionPickerAction::Apply);
                     }

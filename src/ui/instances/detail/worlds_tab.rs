@@ -135,8 +135,11 @@ impl InstanceDetailView {
                                 match worlds::remove_world(saves_dir, del_name) {
                                     Ok(()) => self.worlds_needs_rescan = true,
                                     Err(e) => {
-                                        self.pending_toasts
-                                            .push(crate::ui::notifications::Toast::error(format!("Error: {e}")));
+                                        self.pending_toasts.push(
+                                            crate::ui::notifications::Toast::error(format!(
+                                                "Error: {e}"
+                                            )),
+                                        );
                                     }
                                 }
                                 self.confirm_world_delete = None;
