@@ -1,3 +1,4 @@
+use crate::core::ModpackModEntry;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -221,4 +222,11 @@ impl std::fmt::Display for ModLoader {
             Self::Quilt => "Quilt",
         })
     }
+}
+
+/// Shown when a modpack instance is missing expected mod files before launch.
+pub struct MissingModsState {
+    pub instance_id: String,
+    pub instance_name: String,
+    pub missing_files: Vec<ModpackModEntry>,
 }

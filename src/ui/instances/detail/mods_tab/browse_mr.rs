@@ -153,7 +153,7 @@ impl InstanceDetailView {
                 }
                 BrowseAction::SearchError(e) => {
                     self.pending_toasts
-                        .push(crate::app::Toast::error(format!("Search failed: {e}")));
+                        .push(crate::ui::notifications::Toast::error(format!("Search failed: {e}")));
                 }
                 BrowseAction::VersionFilterChanged(_) => {
                     // handled implicitly — FireSearch will also be emitted
@@ -172,9 +172,9 @@ impl InstanceDetailView {
                 || msg.starts_with("Install failed")
                 || msg.starts_with("Search failed")
             {
-                self.pending_toasts.push(crate::app::Toast::error(msg));
+                self.pending_toasts.push(crate::ui::notifications::Toast::error(msg));
             } else {
-                self.pending_toasts.push(crate::app::Toast::success(msg));
+                self.pending_toasts.push(crate::ui::notifications::Toast::success(msg));
             }
             self.needs_rescan = true;
             ui.ctx().data_mut(|d| {

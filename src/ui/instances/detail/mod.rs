@@ -49,7 +49,7 @@ pub struct InstanceDetailView {
     installed: Vec<InstalledMod>,
     pub mr_browse: BrowseTab,
     pub cf_browse: BrowseTab,
-    pub pending_toasts: Vec<crate::app::Toast>,
+    pub pending_toasts: Vec<crate::ui::notifications::Toast>,
     needs_rescan: bool,
     // Category fetch (kept in caller, not in BrowseTab)
     mr_categories: Option<Vec<MrCategory>>,

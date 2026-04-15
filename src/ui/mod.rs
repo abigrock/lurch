@@ -1,3 +1,4 @@
+pub mod notifications;
 pub mod accounts;
 pub mod browse_common;
 pub mod console;

@@ -70,7 +70,7 @@ impl ModpackBrowser {
         ui: &mut egui::Ui,
         source: ModpackSource,
         theme: &Theme,
-        pending_toasts: &mut Vec<crate::app::Toast>,
+        pending_toasts: &mut Vec<crate::ui::notifications::Toast>,
     ) {
         match source {
             ModpackSource::CurseForge => {
@@ -101,7 +101,7 @@ impl ModpackBrowser {
         &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
-        pending_toasts: &mut Vec<crate::app::Toast>,
+        pending_toasts: &mut Vec<crate::ui::notifications::Toast>,
     ) {
         // 1. Category fetch + poll
         if self.mr_categories.is_none() && self.mr_categories_fetch.is_none() {
@@ -215,7 +215,7 @@ impl ModpackBrowser {
                     }
                 }
                 BrowseAction::SearchError(e) => {
-                    pending_toasts.push(crate::app::Toast::error(format!("Search failed: {e}")));
+                    pending_toasts.push(crate::ui::notifications::Toast::error(format!("Search failed: {e}")));
                 }
                 BrowseAction::VersionFilterChanged(_) => {} // not used for modpacks
             }
@@ -226,7 +226,7 @@ impl ModpackBrowser {
         &mut self,
         ui: &mut egui::Ui,
         theme: &Theme,
-        pending_toasts: &mut Vec<crate::app::Toast>,
+        pending_toasts: &mut Vec<crate::ui::notifications::Toast>,
     ) {
         // 1. Category fetch + poll
         if self.cf_categories.is_none() && self.cf_categories_fetch.is_none() {
@@ -347,7 +347,7 @@ impl ModpackBrowser {
                     }
                 }
                 BrowseAction::SearchError(e) => {
-                    pending_toasts.push(crate::app::Toast::error(format!(
+                    pending_toasts.push(crate::ui::notifications::Toast::error(format!(
                         "CurseForge search failed: {e}"
                     )));
                 }

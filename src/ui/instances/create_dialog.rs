@@ -1,5 +1,5 @@
 use super::{modpack_browser, AddInstanceTab, InstancesView};
-use crate::app::ManifestState;
+use crate::core::version::ManifestState;
 use crate::core::instance::{Instance, ModLoader};
 use crate::core::MutexExt;
 use eframe::egui;
@@ -433,7 +433,7 @@ impl InstancesView {
                             });
                             self.import_task = Some(slot);
                             self.show_add_instance = false;
-                            self.pending_toasts.push(crate::app::Toast::success("Importing instance...".to_string()));
+                            self.pending_toasts.push(crate::ui::notifications::Toast::success("Importing instance...".to_string()));
                         }
                         Ok(crate::core::import_export::ArchiveType::ModrinthMrpack) => {
                             self.local_mrpack_import = Some(path);
@@ -444,10 +444,10 @@ impl InstancesView {
                             self.show_add_instance = false;
                         }
                         Ok(crate::core::import_export::ArchiveType::Unknown) => {
-                            self.pending_toasts.push(crate::app::Toast::error("Unrecognized archive format. Expected a Lurch export, Modrinth .mrpack, or CurseForge modpack."));
+                            self.pending_toasts.push(crate::ui::notifications::Toast::error("Unrecognized archive format. Expected a Lurch export, Modrinth .mrpack, or CurseForge modpack."));
                         }
                         Err(e) => {
-                            self.pending_toasts.push(crate::app::Toast::error(format!("Import failed: {e}")));
+                            self.pending_toasts.push(crate::ui::notifications::Toast::error(format!("Import failed: {e}")));
                         }
                     }
                 }

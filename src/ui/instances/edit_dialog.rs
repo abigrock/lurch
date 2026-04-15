@@ -1,5 +1,5 @@
 use super::InstancesView;
-use crate::app::ManifestState;
+use crate::core::version::ManifestState;
 use crate::core::instance::{Instance, ModLoader};
 use crate::core::java::JavaInstall;
 use crate::core::version::{VersionEntry, VersionType};

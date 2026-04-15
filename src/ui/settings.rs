@@ -56,7 +56,7 @@ impl SettingsView {
         builtin_theme_count: usize,
         current_theme_idx: &mut usize,
         java_installs: &mut Vec<JavaInstall>,
-        java_download: &mut Option<Arc<Mutex<crate::app::JavaDownloadState>>>,
+        java_download: &mut Option<Arc<Mutex<crate::core::java::JavaDownloadState>>>,
         theme: &Theme,
     ) {
     ui.label(crate::ui::helpers::section_heading("Settings", theme));
@@ -289,7 +289,7 @@ impl SettingsView {
                     if download_clicked {
                         let version = self.java_version;
                         let provider = self.java_provider;
-                        let state = Arc::new(Mutex::new(crate::app::JavaDownloadState {
+                        let state = Arc::new(Mutex::new(crate::core::java::JavaDownloadState {
                             version,
                             message: format!("Starting Java {} download...", version),
                             done: false,

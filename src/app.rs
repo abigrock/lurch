@@ -1,3 +1,7 @@
+use crate::core::version::ManifestState;
+use crate::core::java::JavaDownloadState;
+use crate::ui::notifications::Toast;
+use crate::core::instance::MissingModsState;
 use crate::core::account::AccountStore;
 use crate::core::MutexExt;
 use crate::core::config::AppConfig;
@@ -5,8 +9,6 @@ use crate::core::curseforge_modpack;
 use crate::core::instance::{self, Instance};
 use crate::core::java::{self, JavaInstall};
 use crate::core::launch::{prepare_and_launch, LaunchProgress, ProcessState};
-use crate::core::modrinth_modpack;
-use crate::core::version::VersionManifest;
 use crate::core::ModpackModEntry;
 use crate::theme::{bundled_themes, load_user_themes, seed_user_themes_dir, Theme};
 use crate::ui::accounts::AccountsView;
@@ -46,30 +48,6 @@ impl BackgroundTask {
     }
 }
 
-/// A transient notification shown as a floating overlay.
-pub struct Toast {
-    pub message: String,
-    pub is_error: bool,
-    pub created_at: Instant,
-}
-
-impl Toast {
-    pub fn success(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            is_error: false,
-            created_at: Instant::now(),
-        }
-    }
-
-    pub fn error(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            is_error: true,
-            created_at: Instant::now(),
-        }
-    }
-}
 
 /// A mod the user must download manually because CurseForge blocks third-party distribution.
 /// Lurch watches the user's Downloads folder for this file and auto-moves it.
@@ -144,19 +122,7 @@ pub struct App {
     last_frame_time: Option<Instant>,
 }
 
-#[allow(dead_code)]
-pub struct JavaDownloadState {
-    pub version: u32,
-    pub message: String,
-    pub done: bool,
-    pub result: Option<Result<JavaInstall, String>>,
-}
 
-pub enum ManifestState {
-    Loading,
-    Loaded(VersionManifest),
-    Failed(String),
-}
 
 pub struct JavaPromptState {
     pub instance_id: String,
@@ -165,12 +131,6 @@ pub struct JavaPromptState {
     pub component: Option<String>,
 }
 
-/// Shown when a modpack instance is missing expected mod files before launch.
-pub struct MissingModsState {
-    pub instance_id: String,
-    pub instance_name: String,
-    pub missing_files: Vec<ModpackModEntry>,
-}
 
 impl App {
     pub fn new(ctx: egui::Context) -> Self {
@@ -507,367 +467,6 @@ impl App {
         });
     }
 
-    fn run_modpack_install<F>(
-        &mut self,
-        console_label: String,
-        initial_message: String,
-        ctx: &egui::Context,
-        install_fn: F,
-    ) where
-        F: FnOnce(
-                Arc<Mutex<LaunchProgress>>,
-                egui::Context,
-                reqwest::blocking::Client,
-                u32,
-                u32,
-            ) -> anyhow::Result<Instance>
-            + Send
-            + 'static,
-    {
-        let progress = Arc::new(Mutex::new(LaunchProgress {
-            message: initial_message,
-            done: false,
-            error: None,
-        }));
-
-        let install_id = format!("modpack-install-{}", uuid::Uuid::new_v4());
-        let instance_slot: Arc<Mutex<Option<Instance>>> = Arc::new(Mutex::new(None));
-        let slot_clone = Arc::clone(&instance_slot);
-
-        self.background_tasks.push(BackgroundTask {
-            id: install_id,
-            label: console_label,
-            progress: Arc::clone(&progress),
-            instance_slot: Some(Arc::clone(&instance_slot)),
-            update_slot: None,
-            skipped_slot: None,
-        });
-
-        let ctx_clone = ctx.clone();
-        let progress_clone = Arc::clone(&progress);
-        let default_min_mem = self.config.default_min_memory_mb;
-        let default_max_mem = self.config.default_max_memory_mb;
-        let client = self.http_client.clone();
-
-        std::thread::spawn(move || {
-            let result = install_fn(
-                Arc::clone(&progress_clone),
-                ctx_clone.clone(),
-                client,
-                default_min_mem,
-                default_max_mem,
-            );
-
-            match result {
-                Ok(inst) => {
-                    *slot_clone.lock_or_recover() = Some(inst);
-                    let mut p = progress_clone.lock_or_recover();
-                    p.message = "Modpack installed successfully!".to_string();
-                    p.done = true;
-                }
-                Err(e) => {
-                    let mut p = progress_clone.lock_or_recover();
-                    p.done = true;
-                    p.error = Some(e.to_string());
-                }
-            }
-            ctx_clone.request_repaint();
-        });
-
-    }
-
-    fn install_modpack(
-        &mut self,
-        project_id: String,
-        title: String,
-        icon_url: Option<String>,
-        version_id: Option<String>,
-        version_name: Option<String>,
-        ctx: &egui::Context,
-    ) {
-        let display_title = title.clone();
-        self.run_modpack_install(
-            format!("Modpack: {}", title),
-            format!("Installing modpack \"{}\"...", title),
-            ctx,
-            move |progress, ctx, client, min_mem, max_mem| {
-                // Fetch version from Modrinth (specific or latest)
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = format!("Fetching modpack info for \"{}\"...", display_title);
-                }
-                ctx.request_repaint();
-
-                let versions = crate::core::modrinth::get_project_versions(&project_id, None, None)?;
-                let version = if let Some(ref vid) = version_id {
-                    versions
-                        .iter()
-                        .find(|v| v.id == *vid)
-                        .ok_or_else(|| anyhow::anyhow!("Selected version not found"))?
-                } else {
-                    versions
-                        .first()
-                        .ok_or_else(|| anyhow::anyhow!("No versions found for modpack"))?
-                };
-                let file = version
-                    .files
-                    .iter()
-                    .find(|f| f.primary)
-                    .or(version.files.first())
-                    .ok_or_else(|| anyhow::anyhow!("No files in modpack version"))?;
-
-                // Download .mrpack to temp dir
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = "Downloading modpack...".to_string();
-                }
-                ctx.request_repaint();
-
-                let temp_dir = std::env::temp_dir().join("lurch_modpack_install");
-                std::fs::create_dir_all(&temp_dir)?;
-                let mrpack_path = temp_dir.join(&file.filename);
-
-                let resp = client.get(&file.url).send()?;
-                if !resp.status().is_success() {
-                    anyhow::bail!("Failed to download mrpack: HTTP {}", resp.status());
-                }
-                let bytes = resp.bytes()?;
-                std::fs::write(&mrpack_path, &bytes)?;
-
-                // Parse and install
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = "Parsing modpack...".to_string();
-                }
-                ctx.request_repaint();
-
-                let index = modrinth_modpack::parse_mrpack(&mrpack_path)?;
-
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = format!("Creating instance \"{}\"...", index.name);
-                }
-                ctx.request_repaint();
-
-                let instance = modrinth_modpack::create_instance_from_modpack(&index)?;
-                let minecraft_dir = instance.minecraft_dir()?;
-
-                let progress_for_files = Arc::clone(&progress);
-                let ctx_for_files = ctx.clone();
-                modrinth_modpack::install_modpack_files(
-                    &index,
-                    &mrpack_path,
-                    &minecraft_dir,
-                    &client,
-                    move |done, total, stage| {
-                        let mut p = progress_for_files.lock_or_recover();
-                        p.message = if total > 0 {
-                            format!("{stage} ({done}/{total})")
-                        } else {
-                            stage.to_string()
-                        };
-                        drop(p);
-                        ctx_for_files.request_repaint();
-                    },
-                )?;
-
-                let _ = std::fs::remove_dir_all(&temp_dir);
-
-                let mut instance = instance;
-                instance.min_memory_mb = min_mem;
-                instance.max_memory_mb = max_mem;
-                instance.icon = icon_url;
-                instance.modpack_origin = Some(crate::core::instance::ModpackOrigin {
-                    source: "modrinth".to_string(),
-                    project_id: project_id.clone(),
-                    version_id: version.id.clone(),
-                    version_name: version_name.clone().unwrap_or_else(|| version.name.clone()),
-                });
-                instance.save_to_dir()?;
-
-                Ok(instance)
-            },
-        );
-    }
-
-    fn install_cf_modpack(
-        &mut self,
-        mod_id: u64,
-        title: String,
-        icon_url: Option<String>,
-        file_id: Option<u64>,
-        file_name: Option<String>,
-        ctx: &egui::Context,
-    ) {
-        let display_title = title.clone();
-        let skipped: Arc<Mutex<Vec<curseforge_modpack::SkippedMod>>> =
-            Arc::new(Mutex::new(Vec::new()));
-        let skipped_clone = Arc::clone(&skipped);
-
-        self.run_modpack_install(
-            format!("Modpack: {}", title),
-            format!("Installing modpack \"{}\"...", title),
-            ctx,
-            move |progress, ctx, client, min_mem, max_mem| {
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = format!("Fetching modpack info for \"{}\"...", display_title);
-                }
-                ctx.request_repaint();
-
-                let files = crate::core::curseforge::get_cf_mod_files(mod_id, "", None)?;
-                let file = if let Some(fid) = file_id {
-                    files
-                        .iter()
-                        .find(|f| f.id == fid)
-                        .ok_or_else(|| anyhow::anyhow!("Selected file not found"))?
-                } else {
-                    files
-                        .first()
-                        .ok_or_else(|| anyhow::anyhow!("No files found for modpack"))?
-                };
-                let temp_dir = std::env::temp_dir().join("lurch_cf_modpack_install");
-                let zip_path = if let Some(url) = file.download_url.as_ref() {
-                    {
-                        let mut p = progress.lock_or_recover();
-                        p.message = "Downloading modpack...".to_string();
-                    }
-                    ctx.request_repaint();
-
-                    std::fs::create_dir_all(&temp_dir)?;
-                    let path = temp_dir.join(&file.file_name);
-                    let resp = client.get(url).send()?;
-                    if !resp.status().is_success() {
-                        anyhow::bail!("Failed to download modpack: HTTP {}", resp.status());
-                    }
-                    let bytes = resp.bytes()?;
-                    std::fs::write(&path, &bytes)?;
-                    path
-                } else {
-                    crate::core::curseforge_modpack::wait_for_cf_manual_download(
-                        mod_id, file, &temp_dir, &progress, &ctx,
-                    )?
-                };
-
-                // Parse and install
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = "Parsing modpack...".to_string();
-                }
-                ctx.request_repaint();
-
-                let manifest = curseforge_modpack::parse_cf_modpack(&zip_path)?;
-
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = format!("Creating instance \"{}\"...", manifest.name);
-                }
-                ctx.request_repaint();
-
-                let instance = curseforge_modpack::create_instance_from_cf_modpack(&manifest)?;
-                let minecraft_dir = instance.minecraft_dir()?;
-
-                let progress_for_files = Arc::clone(&progress);
-                let ctx_for_files = ctx.clone();
-                let skipped_mods = curseforge_modpack::install_cf_modpack_files(
-                    &manifest,
-                    &zip_path,
-                    &minecraft_dir,
-                    move |done, total, stage| {
-                        let mut p = progress_for_files.lock_or_recover();
-                        p.message = if total > 0 {
-                            format!("{stage} ({done}/{total})")
-                        } else {
-                            stage.to_string()
-                        };
-                        drop(p);
-                        ctx_for_files.request_repaint();
-                    },
-                )?;
-
-                // Store skipped mods for the main thread to handle
-                *skipped_clone.lock_or_recover() = skipped_mods;
-
-                let _ = std::fs::remove_dir_all(&temp_dir);
-
-                let mut instance = instance;
-                instance.min_memory_mb = min_mem;
-                instance.max_memory_mb = max_mem;
-                instance.icon = icon_url;
-                instance.modpack_origin = Some(crate::core::instance::ModpackOrigin {
-                    source: "curseforge".to_string(),
-                    project_id: mod_id.to_string(),
-                    version_id: file.id.to_string(),
-                    version_name: file_name
-                        .clone()
-                        .unwrap_or_else(|| file.display_name.clone()),
-                });
-                instance.save_to_dir()?;
-
-                Ok(instance)
-            },
-        );
-
-        // Attach skipped_slot to the just-created background task
-        if let Some(task) = self.background_tasks.last_mut() {
-            task.skipped_slot = Some(skipped);
-        }
-    }
-
-    fn import_local_mrpack(&mut self, path: std::path::PathBuf, ctx: &egui::Context) {
-use crate::core::modrinth_modpack;
-
-        self.run_modpack_install(
-            "Modpack Import".to_string(),
-            "Importing Modrinth modpack...".to_string(),
-            ctx,
-            move |progress, ctx, client, min_mem, max_mem| {
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = "Parsing modpack...".to_string();
-                }
-                ctx.request_repaint();
-
-                let index = modrinth_modpack::parse_mrpack(&path)?;
-
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = format!("Creating instance \"{}\"...", index.name);
-                }
-                ctx.request_repaint();
-
-                let instance = modrinth_modpack::create_instance_from_modpack(&index)?;
-                let minecraft_dir = instance.minecraft_dir()?;
-
-                let progress_for_files = Arc::clone(&progress);
-                let ctx_for_files = ctx.clone();
-                modrinth_modpack::install_modpack_files(
-                    &index,
-                    &path,
-                    &minecraft_dir,
-                    &client,
-                    move |done, total, stage| {
-                        let mut p = progress_for_files.lock_or_recover();
-                        p.message = if total > 0 {
-                            format!("{stage} ({done}/{total})")
-                        } else {
-                            stage.to_string()
-                        };
-                        drop(p);
-                        ctx_for_files.request_repaint();
-                    },
-                )?;
-
-                let mut instance = instance;
-                instance.min_memory_mb = min_mem;
-                instance.max_memory_mb = max_mem;
-                instance.save_to_dir()?;
-
-                Ok(instance)
-            },
-        );
-    }
-
     fn poll_background_tasks(&mut self, ctx: &egui::Context) {
         // Poll for available Java versions from Adoptium
         self.settings_view.poll();
@@ -1164,7 +763,13 @@ use crate::core::modrinth_modpack;
 
         // Handle modpack install requests from instances view
         if let Some(req) = self.instances_view.modpack_browser.install_requested.take() {
-            self.install_modpack(
+            let manager = crate::core::modpack_manager::ModpackManager::new(
+                self.http_client.clone(),
+                self.config.default_min_memory_mb,
+                self.config.default_max_memory_mb,
+            );
+            let label = format!("Modpack: {}", req.title);
+            let (progress, instance_slot) = manager.install_modpack(
                 req.project_id,
                 req.title,
                 req.icon_url,
@@ -1172,6 +777,14 @@ use crate::core::modrinth_modpack;
                 req.version_name,
                 ctx,
             );
+            self.background_tasks.push(BackgroundTask {
+                id: format!("modpack-install-{}", uuid::Uuid::new_v4()),
+                label,
+                progress,
+                instance_slot: Some(instance_slot),
+                update_slot: None,
+                skipped_slot: None,
+            });
         }
 
         // Handle CurseForge modpack install requests from instances view
@@ -1181,7 +794,13 @@ use crate::core::modrinth_modpack;
             .cf_install_requested
             .take()
         {
-            self.install_cf_modpack(
+            let manager = crate::core::modpack_manager::ModpackManager::new(
+                self.http_client.clone(),
+                self.config.default_min_memory_mb,
+                self.config.default_max_memory_mb,
+            );
+            let label = format!("CurseForge: {}", req.title);
+            let (progress, instance_slot, skipped) = manager.install_cf_modpack(
                 req.mod_id,
                 req.title,
                 req.icon_url,
@@ -1189,14 +808,48 @@ use crate::core::modrinth_modpack;
                 req.file_name,
                 ctx,
             );
+            self.background_tasks.push(BackgroundTask {
+                id: format!("modpack-install-{}", uuid::Uuid::new_v4()),
+                label,
+                progress,
+                instance_slot: Some(instance_slot),
+                update_slot: None,
+                skipped_slot: Some(skipped),
+            });
         }
 
         // Handle local modpack imports from instances view
         if let Some(path) = self.instances_view.local_mrpack_import.take() {
-            self.import_local_mrpack(path, ctx);
+            let manager = crate::core::modpack_manager::ModpackManager::new(
+                self.http_client.clone(),
+                self.config.default_min_memory_mb,
+                self.config.default_max_memory_mb,
+            );
+            let (progress, instance_slot) = manager.import_local_mrpack(path, ctx);
+            self.background_tasks.push(BackgroundTask {
+                id: format!("modpack-import-{}", uuid::Uuid::new_v4()),
+                label: "Modpack Import".to_string(),
+                progress,
+                instance_slot: Some(instance_slot),
+                update_slot: None,
+                skipped_slot: None,
+            });
         }
         if let Some(path) = self.instances_view.local_cf_modpack_import.take() {
-            self.import_local_cf_modpack(path, ctx);
+            let manager = crate::core::modpack_manager::ModpackManager::new(
+                self.http_client.clone(),
+                self.config.default_min_memory_mb,
+                self.config.default_max_memory_mb,
+            );
+            let (progress, instance_slot) = manager.import_local_cf_modpack(path, ctx);
+            self.background_tasks.push(BackgroundTask {
+                id: format!("modpack-import-{}", uuid::Uuid::new_v4()),
+                label: "CurseForge Import".to_string(),
+                progress,
+                instance_slot: Some(instance_slot),
+                update_slot: None,
+                skipped_slot: None,
+            });
         }
 
         if let Some(instance_id) = self.instances_view.update_modpack_requested.take()
@@ -1700,70 +1353,6 @@ use crate::core::modrinth_modpack;
         }
         if dismiss {
             self.show_manual_downloads_dialog = false;
-        }
-    }
-
-    fn import_local_cf_modpack(&mut self, path: std::path::PathBuf, ctx: &egui::Context) {
-        use crate::core::curseforge_modpack;
-
-        let skipped: Arc<Mutex<Vec<curseforge_modpack::SkippedMod>>> =
-            Arc::new(Mutex::new(Vec::new()));
-        let skipped_clone = Arc::clone(&skipped);
-
-        self.run_modpack_install(
-            "Modpack Import".to_string(),
-            "Importing CurseForge modpack...".to_string(),
-            ctx,
-            move |progress, ctx, _client, min_mem, max_mem| {
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = "Parsing modpack...".to_string();
-                }
-                ctx.request_repaint();
-
-                let manifest = curseforge_modpack::parse_cf_modpack(&path)?;
-
-                {
-                    let mut p = progress.lock_or_recover();
-                    p.message = format!("Creating instance \"{}\"...", manifest.name);
-                }
-                ctx.request_repaint();
-
-                let instance = curseforge_modpack::create_instance_from_cf_modpack(&manifest)?;
-                let minecraft_dir = instance.minecraft_dir()?;
-
-                let progress_for_files = Arc::clone(&progress);
-                let ctx_for_files = ctx.clone();
-                let skipped_mods = curseforge_modpack::install_cf_modpack_files(
-                    &manifest,
-                    &path,
-                    &minecraft_dir,
-                    move |done, total, stage| {
-                        let mut p = progress_for_files.lock_or_recover();
-                        p.message = if total > 0 {
-                            format!("{stage} ({done}/{total})")
-                        } else {
-                            stage.to_string()
-                        };
-                        drop(p);
-                        ctx_for_files.request_repaint();
-                    },
-                )?;
-
-                *skipped_clone.lock_or_recover() = skipped_mods;
-
-                let mut instance = instance;
-                instance.min_memory_mb = min_mem;
-                instance.max_memory_mb = max_mem;
-                instance.save_to_dir()?;
-
-                Ok(instance)
-            },
-        );
-
-        // Attach skipped_slot to the just-created background task
-        if let Some(task) = self.background_tasks.last_mut() {
-            task.skipped_slot = Some(skipped);
         }
     }
 

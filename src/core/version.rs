@@ -519,3 +519,9 @@ pub fn download_assets(
     Ok(())
 }
 
+
+pub enum ManifestState {
+    Loading,
+    Loaded(crate::core::version::VersionManifest),
+    Failed(String),
+}

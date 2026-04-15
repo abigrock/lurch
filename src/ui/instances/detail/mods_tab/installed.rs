@@ -51,7 +51,7 @@ impl InstanceDetailView {
                                     self.mod_origin_updates.push(origin);
                                 }
                                 Err(e) => {
-                                    self.pending_toasts.push(crate::app::Toast::error(format!("Error copying mod: {e}")));
+                                    self.pending_toasts.push(crate::ui::notifications::Toast::error(format!("Error copying mod: {e}")));
                                 }
                             }
                         }
@@ -249,7 +249,7 @@ impl InstanceDetailView {
             match result {
                 Ok(_) => self.needs_rescan = true,
                 Err(e) => {
-                    self.pending_toasts.push(crate::app::Toast::error(format!("Error: {e}")));
+                    self.pending_toasts.push(crate::ui::notifications::Toast::error(format!("Error: {e}")));
                 }
             }
         }
@@ -384,7 +384,7 @@ impl InstanceDetailView {
                                 match local_mods::remove_mod(mods_dir, &m.filename) {
                                     Ok(()) => self.needs_rescan = true,
                                     Err(e) => {
-                                        self.pending_toasts.push(crate::app::Toast::error(format!("Error: {e}")));
+                                        self.pending_toasts.push(crate::ui::notifications::Toast::error(format!("Error: {e}")));
                                     }
                                 }
                                 self.confirm_mod_delete = None;

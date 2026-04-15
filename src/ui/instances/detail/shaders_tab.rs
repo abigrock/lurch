@@ -30,7 +30,7 @@ impl InstanceDetailView {
                                 match std::fs::copy(&path, &dest) {
                                     Ok(_) => self.shaders_needs_rescan = true,
                                     Err(e) => {
-                                        self.pending_toasts.push(crate::app::Toast::error(
+                                        self.pending_toasts.push(crate::ui::notifications::Toast::error(
                                             format!("Error copying shader: {e}"),
                                         ));
                                     }
@@ -156,7 +156,7 @@ impl InstanceDetailView {
             match result {
                 Ok(_) => self.shaders_needs_rescan = true,
                 Err(e) => {
-                    self.pending_toasts.push(crate::app::Toast::error(format!("Error: {e}")));
+                    self.pending_toasts.push(crate::ui::notifications::Toast::error(format!("Error: {e}")));
                 }
             }
         }
@@ -190,7 +190,7 @@ impl InstanceDetailView {
                                     match shaders::remove_shaderpack(shaderpacks_dir, &s.filename) {
                                         Ok(()) => self.shaders_needs_rescan = true,
                                         Err(e) => {
-                                            self.pending_toasts.push(crate::app::Toast::error(format!("Error: {e}")));
+                                            self.pending_toasts.push(crate::ui::notifications::Toast::error(format!("Error: {e}")));
                                         }
                                     }
                                     self.confirm_shader_delete = None;

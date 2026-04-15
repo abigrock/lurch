@@ -831,3 +831,11 @@ pub fn delete_managed_java(install: &JavaInstall) -> anyhow::Result<()> {
 }
 
 
+
+#[allow(dead_code)]
+pub struct JavaDownloadState {
+    pub version: u32,
+    pub message: String,
+    pub done: bool,
+    pub result: Option<Result<crate::core::java::JavaInstall, String>>,
+}

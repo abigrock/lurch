@@ -1,3 +1,5 @@
+pub mod launch_manager;
+pub mod modpack_manager;
 pub mod account;
 pub mod config;
 pub mod curseforge;

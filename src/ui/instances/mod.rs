@@ -3,7 +3,7 @@ mod detail;
 mod edit_dialog;
 pub mod modpack_browser;
 
-use crate::app::ManifestState;
+use crate::core::version::ManifestState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub(crate) enum AddInstanceTab {
@@ -59,7 +59,7 @@ pub struct InstancesView {
     pub detail_view: Option<detail::InstanceDetailView>,
     pub export_requested: Option<usize>,
     pub modpack_version_picker_requested: Option<(String, String, String, String, String)>,
-    pub pending_toasts: Vec<crate::app::Toast>,
+    pub pending_toasts: Vec<crate::ui::notifications::Toast>,
     pub modpack_browser: modpack_browser::ModpackBrowser,
     pub local_mrpack_import: Option<std::path::PathBuf>,
     pub local_cf_modpack_import: Option<std::path::PathBuf>,
@@ -298,11 +298,11 @@ impl InstancesView {
                 match result {
                     Ok(name) => {
                         self.pending_toasts
-                            .push(crate::app::Toast::success(format!("Exported \"{name}\"")));
+                            .push(crate::ui::notifications::Toast::success(format!("Exported \"{name}\"")));
                     }
                     Err(e) => {
                         self.pending_toasts
-                            .push(crate::app::Toast::error(format!("Export failed: {e}")));
+                            .push(crate::ui::notifications::Toast::error(format!("Export failed: {e}")));
                     }
                 }
                 self.export_task = None;
@@ -331,7 +331,7 @@ impl InstancesView {
                                 n += 1;
                             }
                         }
-                        self.pending_toasts.push(crate::app::Toast::success(
+                        self.pending_toasts.push(crate::ui::notifications::Toast::success(
                             format!("Imported \"{}\"", inst.name),
                         ));
                         instances.push(inst);
@@ -339,7 +339,7 @@ impl InstancesView {
                     }
                     Err(e) => {
                         self.pending_toasts
-                            .push(crate::app::Toast::error(format!("Import failed: {e}")));
+                            .push(crate::ui::notifications::Toast::error(format!("Import failed: {e}")));
                     }
                 }
                 self.import_task = None;
@@ -802,7 +802,7 @@ impl InstancesView {
                             ctx_clone.request_repaint();
                         });
                         self.export_task = Some(slot);
-                        self.pending_toasts.push(crate::app::Toast::success("Exporting instance...".to_string()));
+                        self.pending_toasts.push(crate::ui::notifications::Toast::success("Exporting instance...".to_string()));
                     }
 
             // Handle deferred modpack version picker (avoids borrow conflict in popup closure)
