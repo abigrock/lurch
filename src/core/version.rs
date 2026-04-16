@@ -13,15 +13,7 @@ const RESOURCES_BASE: &str = "https://resources.download.minecraft.net/";
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct VersionManifest {
-    pub latest: LatestVersions,
     pub versions: Vec<VersionEntry>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Deserialize)]
-pub struct LatestVersions {
-    pub release: String,
-    pub snapshot: String,
 }
 
 #[allow(dead_code)]
@@ -146,8 +138,6 @@ pub struct Artifact {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Downloads {
     pub client: DownloadEntry,
-    #[serde(default)]
-    pub server: Option<DownloadEntry>,
 }
 
 #[allow(dead_code)]

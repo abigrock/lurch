@@ -31,7 +31,6 @@ pub struct CfMod {
     pub logo: Option<CfLogo>,
     pub categories: Vec<CfCategory>,
     pub allow_mod_distribution: Option<bool>,
-    pub latest_files_indexes: Vec<CfLatestFileIndex>,
 }
 
 #[allow(dead_code)]
@@ -68,16 +67,6 @@ pub struct CfCategory {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CfLatestFileIndex {
-    pub game_version: String,
-    pub file_id: u64,
-    pub filename: String,
-    pub mod_loader: Option<u32>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct CfPagination {
     pub index: u32,
     pub page_size: u32,
@@ -100,12 +89,10 @@ pub struct CfFile {
     pub mod_id: u64,
     pub display_name: String,
     pub file_name: String,
-    pub release_type: u32, // 1=Release, 2=Beta, 3=Alpha
-    pub file_length: u64,
+    pub release_type: u32,            // 1=Release, 2=Beta, 3=Alpha
     pub download_url: Option<String>, // null when distribution disabled
     pub game_versions: Vec<String>,
     pub hashes: Vec<CfHash>,
-    pub dependencies: Vec<CfDependency>,
 }
 
 #[allow(dead_code)]
@@ -113,14 +100,6 @@ pub struct CfFile {
 pub struct CfHash {
     pub value: String,
     pub algo: u32, // 1=SHA1, 2=MD5
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CfDependency {
-    pub mod_id: u64,
-    pub relation_type: u32, // 1=Embedded, 2=Optional, 3=Required, 4=Tool, 5=Incompatible, 6=Include
 }
 
 /// Map our ModLoader enum to CurseForge's modLoaderType integer.

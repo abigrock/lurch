@@ -1,8 +1,8 @@
 use eframe::egui;
 use std::sync::{Arc, Mutex};
 
-use crate::core::account::{self, Account, AccountStore};
 use crate::core::BgTaskSlot;
+use crate::core::account::{self, Account, AccountStore};
 
 enum AuthFlowState {
     Idle,
@@ -183,8 +183,7 @@ impl AccountsView {
         for uuid in refresh_uuids_to_check {
             let key = egui::Id::new("refresh_result").with(&uuid);
             #[allow(clippy::type_complexity)]
-            let maybe_result: Option<BgTaskSlot<Account>> =
-                ui.ctx().data(|d| d.get_temp(key));
+            let maybe_result: Option<BgTaskSlot<Account>> = ui.ctx().data(|d| d.get_temp(key));
             if let Some(arc) = maybe_result {
                 let finished = arc
                     .lock()
@@ -193,8 +192,7 @@ impl AccountsView {
                     .unwrap_or(false);
                 if finished {
                     let result = arc.lock().ok().and_then(|mut g| g.take());
-                    ui.ctx()
-                        .data_mut(|d| d.remove::<BgTaskSlot<Account>>(key));
+                    ui.ctx().data_mut(|d| d.remove::<BgTaskSlot<Account>>(key));
                     match result {
                         Some(Ok(updated)) => {
                             store.add_or_update(updated);
@@ -214,24 +212,21 @@ impl AccountsView {
         // --- Auth flow UI ---
         // Extract data needed for WaitingForUser before the match to avoid double-borrow
         #[allow(clippy::type_complexity)]
-        let waiting_data: Option<(
-            String,
-            String,
-            BgTaskSlot<Account>,
-        )> = if let AuthFlowState::WaitingForUser {
-            user_code,
-            verification_uri,
-            result,
-        } = &self.auth_state
-        {
-            Some((
-                user_code.clone(),
-                verification_uri.clone(),
-                Arc::clone(result),
-            ))
-        } else {
-            None
-        };
+        let waiting_data: Option<(String, String, BgTaskSlot<Account>)> =
+            if let AuthFlowState::WaitingForUser {
+                user_code,
+                verification_uri,
+                result,
+            } = &self.auth_state
+            {
+                Some((
+                    user_code.clone(),
+                    verification_uri.clone(),
+                    Arc::clone(result),
+                ))
+            } else {
+                None
+            };
 
         // Show error state (styled alert) and allow retry
         if let AuthFlowState::Error(msg) = &self.auth_state {

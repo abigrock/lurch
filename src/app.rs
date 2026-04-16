@@ -181,13 +181,14 @@ fn poll_manual_downloads(
         return;
     }
     let now = Instant::now();
-    let should_check = last_download_check.is_none_or(|t| now.duration_since(t) >= Duration::from_secs(2));
+    let should_check =
+        last_download_check.is_none_or(|t| now.duration_since(t) >= Duration::from_secs(2));
 
     if should_check {
         *last_download_check = Some(now);
 
-        if let Some(downloads_dir) = directories::UserDirs::new()
-            .and_then(|u| u.download_dir().map(|d| d.to_path_buf()))
+        if let Some(downloads_dir) =
+            directories::UserDirs::new().and_then(|u| u.download_dir().map(|d| d.to_path_buf()))
         {
             let mut found_indices = Vec::new();
             for (i, pending) in pending_manual_downloads.iter().enumerate() {
@@ -213,10 +214,7 @@ fn poll_manual_downloads(
                             found_indices.push(i);
                         }
                         Err(e) => {
-                            log::warn!(
-                                "Failed to move {} to mods dir: {e}",
-                                pending.file_name
-                            );
+                            log::warn!("Failed to move {} to mods dir: {e}", pending.file_name);
                         }
                     }
                 }
@@ -615,7 +613,13 @@ impl App {
                 if let Some(skipped_slot) = &task.skipped_slot {
                     let skipped = skipped_slot.lock_or_recover();
                     let mods_dir = inst.minecraft_dir().ok().map(|d| d.join("mods"));
-                    handle_skipped_mods(&skipped, mods_dir, &mut self.pending_manual_downloads, &mut self.toasts, &mut self.show_manual_downloads_dialog);
+                    handle_skipped_mods(
+                        &skipped,
+                        mods_dir,
+                        &mut self.pending_manual_downloads,
+                        &mut self.toasts,
+                        &mut self.show_manual_downloads_dialog,
+                    );
                 }
 
                 self.instances.push(inst);
@@ -658,7 +662,13 @@ impl App {
                 // Handle skipped (distribution-blocked) mods from CF update
                 if let Some(skipped_slot) = &task.skipped_slot {
                     let skipped = skipped_slot.lock_or_recover();
-                    handle_skipped_mods(&skipped, mods_dir.clone(), &mut self.pending_manual_downloads, &mut self.toasts, &mut self.show_manual_downloads_dialog);
+                    handle_skipped_mods(
+                        &skipped,
+                        mods_dir.clone(),
+                        &mut self.pending_manual_downloads,
+                        &mut self.toasts,
+                        &mut self.show_manual_downloads_dialog,
+                    );
                 }
 
                 self.toasts

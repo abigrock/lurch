@@ -67,7 +67,7 @@ pub struct InstancesView {
     pub loader_versions_loading: bool,
     pub loader_versions_error: Option<String>,
     #[allow(clippy::type_complexity)]
-    pub loader_versions_fetch: Option<crate::core::BgTaskSlot<Vec<(String, bool)> >>,
+    pub loader_versions_fetch: Option<crate::core::BgTaskSlot<Vec<(String, bool)>>>,
     pub new_loader_version: String,
     pub mod_counts: HashMap<String, usize>,
     pub mod_counts_dirty: bool,
@@ -91,7 +91,7 @@ pub struct InstancesView {
     pub edit_loader_versions_loading: bool,
     pub edit_loader_versions_error: Option<String>,
     #[allow(clippy::type_complexity)]
-    pub edit_loader_versions_fetch: Option<crate::core::BgTaskSlot<Vec<(String, bool)> >>,
+    pub edit_loader_versions_fetch: Option<crate::core::BgTaskSlot<Vec<(String, bool)>>>,
     edit_initialized_for: Option<String>,
     modpack_version_picker: Option<ModpackVersionPickerState>,
     pub change_modpack_version: Option<(String, crate::core::update::ModpackUpdateInfo)>,
