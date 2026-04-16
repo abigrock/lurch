@@ -169,6 +169,73 @@ fn handle_skipped_mods(
     *show_manual_downloads_dialog = true;
 }
 
+/// Poll the Downloads directory for pending manual downloads (blocked CF mods).
+/// Moves files from Downloads to the target mods dir and caches them.
+fn poll_manual_downloads(
+    pending_manual_downloads: &mut Vec<PendingManualDownload>,
+    toasts: &mut Vec<Toast>,
+    last_download_check: &mut Option<Instant>,
+    ctx: &egui::Context,
+) {
+    if pending_manual_downloads.is_empty() {
+        return;
+    }
+    let now = Instant::now();
+    let should_check = last_download_check.is_none_or(|t| now.duration_since(t) >= Duration::from_secs(2));
+
+    if should_check {
+        *last_download_check = Some(now);
+
+        if let Some(downloads_dir) = directories::UserDirs::new()
+            .and_then(|u| u.download_dir().map(|d| d.to_path_buf()))
+        {
+            let mut found_indices = Vec::new();
+            for (i, pending) in pending_manual_downloads.iter().enumerate() {
+                let src = downloads_dir.join(&pending.file_name);
+                if src.exists() {
+                    if let Err(e) = std::fs::create_dir_all(&pending.target_dir) {
+                        log::warn!("Failed to create target dir: {e}");
+                        continue;
+                    }
+                    let dst = pending.target_dir.join(&pending.file_name);
+                    // Try rename first, fall back to copy+delete for cross-device moves
+                    let moved = std::fs::rename(&src, &dst).or_else(|_| {
+                        std::fs::copy(&src, &dst).and_then(|_| std::fs::remove_file(&src))
+                    });
+                    match moved {
+                        Ok(_) => {
+                            // Cache the manually-downloaded file for future installs.
+                            crate::core::mod_cache::cache_file(&pending.file_name, &dst);
+                            toasts.push(Toast::success(format!(
+                                "Auto-installed \"{}\"",
+                                pending.display_name
+                            )));
+                            found_indices.push(i);
+                        }
+                        Err(e) => {
+                            log::warn!(
+                                "Failed to move {} to mods dir: {e}",
+                                pending.file_name
+                            );
+                        }
+                    }
+                }
+            }
+            let moved_any = !found_indices.is_empty();
+            for i in found_indices.into_iter().rev() {
+                pending_manual_downloads.remove(i);
+            }
+            if moved_any && pending_manual_downloads.is_empty() {
+                toasts.push(Toast::success("All blocked mods installed!".to_string()));
+                *last_download_check = None;
+            }
+        }
+    }
+
+    // Keep polling every 2 seconds while downloads are pending
+    ctx.request_repaint_after(Duration::from_secs(2));
+}
+
 impl App {
     pub fn new(ctx: egui::Context) -> Self {
         let config = AppConfig::load();
@@ -651,65 +718,12 @@ impl App {
         }
 
         // Poll Downloads directory for pending manual downloads (blocked CF mods)
-        if !self.pending_manual_downloads.is_empty() {
-            let now = Instant::now();
-            let should_check = self
-                .last_download_check
-                .is_none_or(|t| now.duration_since(t) >= Duration::from_secs(2));
-
-            if should_check {
-                self.last_download_check = Some(now);
-
-                if let Some(downloads_dir) = directories::UserDirs::new()
-                    .and_then(|u| u.download_dir().map(|d| d.to_path_buf()))
-                {
-                    let mut found_indices = Vec::new();
-                    for (i, pending) in self.pending_manual_downloads.iter().enumerate() {
-                        let src = downloads_dir.join(&pending.file_name);
-                        if src.exists() {
-                            if let Err(e) = std::fs::create_dir_all(&pending.target_dir) {
-                                log::warn!("Failed to create target dir: {e}");
-                                continue;
-                            }
-                            let dst = pending.target_dir.join(&pending.file_name);
-                            // Try rename first, fall back to copy+delete for cross-device moves
-                            let moved = std::fs::rename(&src, &dst).or_else(|_| {
-                                std::fs::copy(&src, &dst).and_then(|_| std::fs::remove_file(&src))
-                            });
-                            match moved {
-                                Ok(_) => {
-                                    // Cache the manually-downloaded file for future installs.
-                                    crate::core::mod_cache::cache_file(&pending.file_name, &dst);
-                                    self.toasts.push(Toast::success(format!(
-                                        "Auto-installed \"{}\"",
-                                        pending.display_name
-                                    )));
-                                    found_indices.push(i);
-                                }
-                                Err(e) => {
-                                    log::warn!(
-                                        "Failed to move {} to mods dir: {e}",
-                                        pending.file_name
-                                    );
-                                }
-                            }
-                        }
-                    }
-                    let moved_any = !found_indices.is_empty();
-                    for i in found_indices.into_iter().rev() {
-                        self.pending_manual_downloads.remove(i);
-                    }
-                    if moved_any && self.pending_manual_downloads.is_empty() {
-                        self.toasts
-                            .push(Toast::success("All blocked mods installed!".to_string()));
-                        self.last_download_check = None;
-                    }
-                }
-            }
-
-            // Keep polling every 2 seconds while downloads are pending
-            ctx.request_repaint_after(Duration::from_secs(2));
-        }
+        poll_manual_downloads(
+            &mut self.pending_manual_downloads,
+            &mut self.toasts,
+            &mut self.last_download_check,
+            ctx,
+        );
     }
 
     fn handle_view_requests(&mut self, ctx: &egui::Context) {
