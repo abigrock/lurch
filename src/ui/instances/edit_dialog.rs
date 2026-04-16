@@ -304,7 +304,11 @@ impl InstancesView {
                         // Java path
                         ui.label("Java:");
                         let selected_text = match &inst.java_path {
-                            None => "Auto-detect (recommended)".to_string(),
+                            None => {
+                                // Show recommended Java version for this MC version
+                                let recommended = crate::core::java::recommended_java_version(&inst.mc_version);
+                                format!("Auto-detect (Java {} recommended)", recommended)
+                            }
                             Some(path) => java_installs
                                 .iter()
                                 .find(|j| j.path == *path)
