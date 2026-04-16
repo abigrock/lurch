@@ -334,10 +334,11 @@ impl InstancesView {
                             .selected_text(&selected_text)
                             .width(300.0)
                             .show_ui(ui, |ui| {
+                                let recommended = crate::core::java::recommended_java_version(&inst.mc_version);
                                 if ui
                                     .selectable_label(
                                         inst.java_path.is_none(),
-                                        "Auto-detect (recommended)",
+                                        &format!("Auto-detect (Java {} recommended)", recommended),
                                     )
                                     .clicked()
                                 {
