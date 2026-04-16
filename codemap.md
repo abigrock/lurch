@@ -5,7 +5,7 @@ A Minecraft launcher written in Rust using eframe/egui, supporting multiple mod 
 
 ## System Entry Points
 - `src/main.rs`: Application entry — configures eframe window, loads fonts, creates App
-- `src/app.rs`: Central orchestrator (~2200 lines) — all state, background task polling, request dispatch
+- `src/app.rs`: Central orchestrator (~1800 lines) — all state, background task polling, request dispatch
 - `Cargo.toml`: Dependency manifest (eframe 0.34.1, egui 0.34.1, reqwest, serde, tokio, etc.)
 
 ## Architecture Overview

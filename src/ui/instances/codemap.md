@@ -7,7 +7,7 @@ Instance management UI — instance list/grid, creation dialogs, modpack browsin
 - **ViewMode enum**: `List` (instance grid + create dialog), `Modpacks` (delegates to `ModpackBrowser`), `Detail(view)` (delegates to `InstanceDetailView`)
 - **Install requests as Option fields**: `install_requested: Option<ModpackInstallRequest>`, set by UI click, consumed by `App::handle_view_requests()` via `take()`
 - **SearchState<R>**: Generic search state from `helpers.rs` used for Modrinth/CurseForge searches
-- **Background polling**: `loader_versions_fetch: Option<Arc<Mutex<Option<Result<...>>>>>` follows standard Arc<Mutex> polling pattern
+- **Background polling**: `loader_versions_fetch: Option<BgTaskSlot<Vec<(String, bool)>>>` follows standard `BgTaskSlot` polling pattern
 - **ModpackBrowser** now uses `BrowseTab` from `browse_common.rs` for shared search/filter/browse logic
 
 ## Modules

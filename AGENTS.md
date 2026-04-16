@@ -15,18 +15,18 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 
 - **Language**: Rust (edition 2024)
 - **GUI**: eframe/egui (immediate mode)
-- **Entry**: `src/main.rs` → `src/app.rs` (central `App` struct, ~2200 LOC)
+- **Entry**: `src/main.rs` → `src/app.rs` (central `App` struct, ~1800 LOC)
 - **Pattern**: Background threads + `Arc<Mutex<T>>` polling, UI request flags → App dispatch
-- **Total**: ~14k LOC core/UI, ~7.4k LOC in UI layer, ~6.5k LOC in `core/` business logic
+- **Total**: ~17.6k LOC total, ~8.1k LOC in UI layer, ~7.1k LOC in `core/` business logic
 
 ## Key Conventions
 
 ### State & Data Flow
 - All state lives in the `App` struct (`src/app.rs`)
-- Background work uses `std::thread::spawn` + `Arc<Mutex<Option<Result<T>>>>` — polled each frame in `App::poll_background_tasks()`
+- Background work uses `std::thread::spawn` + `BgTaskSlot<T>` (type alias for `Arc<Mutex<Option<Result<T, String>>>>`) — polled each frame in `App::poll_background_tasks()`
 - **Mutex poison safety** — all `.lock()` calls use `.lock_or_recover()` (trait `MutexExt` in `src/core/mod.rs`) which recovers from poisoned mutexes instead of panicking
 - UI views set request flags (e.g., `launch_requested`), consumed by `App::handle_view_requests()`
-- **View-level background tasks** — views can own their own `Arc<Mutex<Option<Result<T>>>>` fields (e.g., `export_task`, `import_task` in `InstancesView`) for view-scoped background work, polled in the view's `show()` method rather than `App::poll_background_tasks()`
+- **View-level background tasks** — views can own their own `BgTaskSlot<T>` fields (e.g., `export_task`, `import_task` in `InstancesView`) for view-scoped background work, polled in the view's `show()` method rather than `App::poll_background_tasks()`
 - **Toast replacement** — for multi-step operations that show progress toasts, views use `pending_toasts: Vec<Toast>` (drained to `App.toasts` in `handle_view_requests()`) and `toast_removals: Vec<String>` (processed first to remove stale toasts before adding new ones) to cleanly swap "in-progress" toasts with result toasts in the same frame
 - File downloads are SHA1-verified via `crate::core::sha1_hex()` (wraps `sha1_smol`). Downloads without SHA1 (Maven-style loader libs, Forge installer, some mods) use **post-download JAR validation** via `validate_jar()` / `is_jar_valid()` to detect truncated or corrupt `.jar` files.
 - Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `validate_jar()`, `is_jar_valid()`, `maven_path()`, `extract_zip_overrides()`, `MutexExt` trait, `CommandHideConsole` trait (suppresses console window on Windows for `Command::new` calls), `BgTaskSlot<T>` type alias (`Arc<Mutex<Option<Result<T, String>>>>`)

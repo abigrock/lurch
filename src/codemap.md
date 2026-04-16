@@ -5,7 +5,7 @@ Application root — contains the entry point, central App orchestrator, and all
 
 ## Design
 - **`main.rs`**: Entry point — configures eframe native options (1100x700 window, icon), loads Phosphor icon fonts, creates `App` instance, runs event loop
-- **`app.rs`**: Central `App` struct (~2200 lines) — holds all application state, implements `eframe::App`. Orchestrates:
+- **`app.rs`**: Central `App` struct (~1800 lines) — holds all application state, implements `eframe::App`. Orchestrates:
   - Background task polling via `Arc<Mutex<T>>` slots
   - View request handling (UI sets flags → App dispatches to core logic)
   - Game launching, modpack installs/updates, Java management
@@ -17,8 +17,8 @@ Application root — contains the entry point, central App orchestrator, and all
 
 ## Architecture Patterns
 - **Immediate mode GUI**: App implements `eframe::App`, all state centralized in App struct
-- **Background threading**: `std::thread::spawn` + `Arc<Mutex<T>>` for async operations
-- **Polling**: `App::poll_background_tasks()` checks mutex slots each frame
+- **Background threading**: `std::thread::spawn` + `BgTaskSlot<T>` for async operations
+- **Polling**: `App::poll_background_tasks()` checks mutex slots each frame; extracted helpers: `handle_skipped_mods()` (blocked CurseForge mod handling), `poll_manual_downloads()` (Downloads-dir watcher)
 - **Request flags**: UI views set boolean flags, `App::handle_view_requests()` dispatches
 
 ## Integration
