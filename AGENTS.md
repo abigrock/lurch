@@ -28,7 +28,9 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 - UI views set request flags (e.g., `launch_requested`), consumed by `App::handle_view_requests()`
 - **View-level background tasks** — views can own their own `BgTaskSlot<T>` fields (e.g., `export_task`, `import_task` in `InstancesView`) for view-scoped background work, polled in the view's `show()` method rather than `App::poll_background_tasks()`
 - **Toast replacement** — for multi-step operations that show progress toasts, views use `pending_toasts: Vec<Toast>` (drained to `App.toasts` in `handle_view_requests()`) and `toast_removals: Vec<String>` (processed first to remove stale toasts before adding new ones) to cleanly swap "in-progress" toasts with result toasts in the same frame
-- File downloads are SHA1-verified via `crate::core::sha1_hex()` (wraps `sha1_smol`). Downloads without SHA1 (Maven-style loader libs, Forge installer, some mods) use **post-download JAR validation** via `validate_jar()` / `is_jar_valid()` to detect truncated or corrupt `.jar` files.
+- **Parallel Downloads** — `src/core/version.rs` (assets) and `src/core/java.rs` (Mojang JRE) use an 8-thread pool for efficient parallel file downloads.
+- **Verification** — File downloads are SHA1-verified via `crate::core::sha1_hex()` (wraps `sha1_smol`). Downloads without SHA1 (Maven-style loader libs, Forge installer, some mods) use **post-download JAR validation** via `validate_jar()` / `is_jar_valid()` to detect truncated or corrupt `.jar` files.
+- **Java binary discovery** — discovery and probe logic (`find_java_bin_in_dir` in `src/core/java.rs`) handles platform-specific structures (e.g., macOS `Contents/Home/bin/java`) and automatically ensures executable permissions on Unix systems after discovery or download.
 - Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `validate_jar()`, `is_jar_valid()`, `strip_ansi()`, `maven_path()`, `extract_zip_overrides()`, `MutexExt` trait, `CommandHideConsole` trait (suppresses console window on Windows for `Command::new` calls), `BgTaskSlot<T>` type alias (`Arc<Mutex<Option<Result<T, String>>>>`)
 - JSON persistence for config, instances, accounts in platform directories (`src/util/paths.rs`)
 - Mod loaders: Vanilla, Forge, NeoForge, Fabric, Quilt — profiles merged in `src/core/loader_profiles.rs`
@@ -48,7 +50,7 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
   - `ghost_button(label)` — transparent fill + surface_hover stroke + fg_dim text
   - `icon_button(icon)` — ghost style, square `BUTTON_HEIGHT × BUTTON_HEIGHT` for icon-only buttons
   - `accent_icon_button(icon)` — accent fill + contrast-aware text, square `BUTTON_HEIGHT × BUTTON_HEIGHT` for highlighted icon-only buttons (e.g., active filter indicator)
-  - `menu_item(label)` — fg_dim text, no custom fill/stroke (denser, for popup menus)
+  - `menu_item(label)` — fg_dim text, no command fill/stroke (denser, for popup menus)
 - **Size constants**: `BUTTON_HEIGHT = 32.0`, `TAB_HEIGHT = 28.0`
 - **Other helpers**: `section_header()` (15pt bold fg), `title()` (bold fg), `subtext()` (12pt fg_muted), `card_frame()` (bg_secondary fill), `sidebar_frame()`, `topbar_frame()` (bg_tertiary), `code_frame()` (bg_tertiary), `content_frame()` (bg fill), `badge_frame(fill)` (pill), `style_menu(ui)`, `mono_font()`
 - UI helpers (`src/ui/helpers.rs`): `section_heading()` (wraps theme's `section_header`), `card_frame()`, `card_grid()`, `SearchState<R>` generic, `row_hover_highlight()`, `project_tooltip()`, `load_more_button()`, `empty_state()`, `format_human_timestamp()`, `tab_button()` (uses `TAB_HEIGHT`), `closable_tab_button()` (supports active state and close button)

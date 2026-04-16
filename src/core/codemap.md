@@ -8,7 +8,7 @@ Business logic layer — all non-UI functionality for the Minecraft launcher: au
 - **Pipeline**: `launch.rs` orchestrates a multi-step launch sequence (version fetch → loader merge → Java selection → client JAR → Forge processors → libraries → assets → environment merge → spawn)
 - **Auth Chain**: `account.rs` implements Microsoft Device Code Flow (MS → XBL → XSTS → MC → Profile) with token refresh
 - **Profile Merging**: `loader_profiles.rs` merges mod loader profiles (Fabric/Quilt/Forge) into base Mojang version info
-- **Parallel Downloads**: `version.rs` uses 8-thread pool for asset downloads; `java.rs` uses parallel manifest downloads for Mojang JRE
+- **Parallel Downloads**: `version.rs` uses 8-thread pool for asset downloads; `java.rs` uses parallel file downloads for Mojang JRE
 - **SHA1 Verification**: All downloaded files verified via shared `sha1_hex()` in `mod.rs`
 - **JSON Persistence**: Instances, accounts, config stored as JSON in platform directories
 
@@ -20,7 +20,7 @@ Business logic layer — all non-UI functionality for the Minecraft launcher: au
 | `config.rs` | App configuration persistence | `AppConfig` (includes `global_env_vars`) |
 | `instance.rs` | Instance model + CRUD | `Instance` (includes `env_vars` string), `ModLoader` enum |
 | `account.rs` | Microsoft OAuth + offline accounts | `MinecraftAccount`, `AccountStore` |
-| `java.rs` | Java detection, download (Adoptium + Mojang JRE), version recommendation | `JavaInstallation`, `detect_java_installations()` |
+| `java.rs` | Java detection (handles macOS, Unix perms), download (Adoptium + Mojang JRE), recommendation | `JavaInstall`, `detect_java_installations()`, `find_java_bin_in_dir()` |
 | `launch.rs` | Game launch pipeline, process management; merges global and instance env vars | `LaunchContext`, `ProcessState` |
 | `version.rs` | Mojang manifest, library/asset downloads | `VersionManifest`, `VersionInfo`, rule evaluation |
 | `forge.rs` | Forge/NeoForge installer processing | Forge profile merging, processor execution |

@@ -216,6 +216,38 @@ fn java_binary_name() -> &'static str {
     if cfg!(windows) { "java.exe" } else { "java" }
 }
 
+/// Helper to find the java binary inside an installation directory,
+/// handling macOS structure and ensuring it's executable on Unix.
+fn find_java_bin_in_dir(install_dir: &std::path::Path) -> Option<PathBuf> {
+    let mut bin = install_dir.join("bin").join(java_binary_name());
+
+    if !bin.exists() {
+        // macOS style: Contents/Home/bin/java
+        let mac_bin = install_dir.join("Contents/Home/bin").join(java_binary_name());
+        if mac_bin.exists() {
+            bin = mac_bin;
+        } else {
+            return None;
+        }
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(metadata) = std::fs::metadata(&bin) {
+            let mut perms = metadata.permissions();
+            let mode = perms.mode();
+            if mode & 0o111 == 0 {
+                // Ensure executable bits are set
+                perms.set_mode(mode | 0o111);
+                let _ = std::fs::set_permissions(&bin, perms);
+            }
+        }
+    }
+
+    Some(bin)
+}
+
 fn platform_java_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
 
@@ -264,23 +296,12 @@ fn scan_java_dir(
         if !path.is_dir() {
             continue;
         }
-        // Try bin/java directly
-        let bin = path.join("bin").join(java_binary_name());
-        if bin.exists() {
+        if let Some(bin) = find_java_bin_in_dir(&path) {
             if let Some(inst) = probe_java(&bin)
                 && seen.insert(inst.path.clone())
             {
                 installs.push(inst);
             }
-            continue;
-        }
-        // macOS style: Contents/Home/bin/java
-        let mac_bin = path.join("Contents/Home/bin").join(java_binary_name());
-        if mac_bin.exists()
-            && let Some(inst) = probe_java(&mac_bin)
-            && seen.insert(inst.path.clone())
-        {
-            installs.push(inst);
         }
     }
 }
@@ -365,13 +386,12 @@ pub fn download_java(
     let target_dir = managed_dir.join(format!("java-{}", major_version));
 
     // If already downloaded, just probe and return
-    let bin = target_dir.join("bin").join(java_binary_name());
-    if bin.exists()
-        && let Some(mut inst) = probe_java(&bin)
-    {
-        inst.managed = true;
-        inst.vendor = "Adoptium".to_string();
-        return Ok(inst);
+    if let Some(bin) = find_java_bin_in_dir(&target_dir) {
+        if let Some(mut inst) = probe_java(&bin) {
+            inst.managed = true;
+            inst.vendor = "Adoptium".to_string();
+            return Ok(inst);
+        }
     }
 
     let url = adoptium_download_url(major_version);
@@ -410,11 +430,18 @@ pub fn download_java(
     let _ = std::fs::remove_dir_all(&temp_extract);
 
     // Probe the newly installed Java
-    let bin = target_dir.join("bin").join(java_binary_name());
+    let bin = find_java_bin_in_dir(&target_dir).ok_or_else(|| {
+        anyhow::anyhow!(
+            "Downloaded Java {} but could not find the binary in {}",
+            major_version,
+            target_dir.display()
+        )
+    })?;
     let mut inst = probe_java(&bin).ok_or_else(|| {
         anyhow::anyhow!(
-            "Downloaded Java {} but could not probe the binary",
-            major_version
+            "Downloaded Java {} but could not probe the binary at {}",
+            major_version,
+            bin.display()
         )
     })?;
     inst.managed = true;
@@ -606,12 +633,11 @@ pub fn download_mojang_java(
     let target_dir = managed_dir.join(format!("mojang-{}", component));
 
     // If already downloaded, just probe and return
-    let bin = target_dir.join("bin").join(java_binary_name());
-    if bin.exists()
-        && let Some(mut inst) = probe_java(&bin)
-    {
-        inst.managed = true;
-        return Ok(inst);
+    if let Some(bin) = find_java_bin_in_dir(&target_dir) {
+        if let Some(mut inst) = probe_java(&bin) {
+            inst.managed = true;
+            return Ok(inst);
+        }
     }
 
     progress_cb(&format!(
@@ -759,11 +785,18 @@ pub fn download_mojang_java(
     let _ = links;
 
     // Probe the installed binary
-    let bin = target_dir.join("bin").join(java_binary_name());
+    let bin = find_java_bin_in_dir(&target_dir).ok_or_else(|| {
+        anyhow::anyhow!(
+            "Downloaded Mojang Java ({}) but could not find the binary in {}",
+            component,
+            target_dir.display()
+        )
+    })?;
     let mut inst = probe_java(&bin).ok_or_else(|| {
         anyhow::anyhow!(
-            "Downloaded Mojang Java ({}) but could not probe the binary",
-            component
+            "Downloaded Mojang Java ({}) but could not probe the binary at {}",
+            component,
+            bin.display()
         )
     })?;
     inst.managed = true;
