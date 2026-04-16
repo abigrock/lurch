@@ -49,6 +49,7 @@ impl ModpackManager {
             message: initial_message,
             done: false,
             error: None,
+            cancelled: false,
         }));
 
         let instance_slot = Arc::new(Mutex::new(None));
@@ -162,43 +163,57 @@ impl ModpackManager {
                 }
                 ctx.request_repaint();
 
-                let instance = modrinth_modpack::create_instance_from_modpack(&index)?;
-                let minecraft_dir = instance.minecraft_dir()?;
+                let mut instance = modrinth_modpack::create_instance_from_modpack(&index)?;
 
-                let progress_for_files = Arc::clone(&progress);
-                let ctx_for_files = ctx.clone();
-                modrinth_modpack::install_modpack_files(
-                    &index,
-                    &mrpack_path,
-                    &minecraft_dir,
-                    &client,
-                    move |done: usize, total: usize, stage: &str| {
-                        let mut p = progress_for_files.lock_or_recover();
-                        p.message = if total > 0 {
-                            format!("{stage} ({done}/{total})")
-                        } else {
-                            stage.to_string()
-                        };
-                        drop(p);
-                        ctx_for_files.request_repaint();
-                    },
-                )?;
+                let res = (|| -> anyhow::Result<()> {
+                    let minecraft_dir = instance.minecraft_dir()?;
 
-                let _ = std::fs::remove_dir_all(&temp_dir);
+                    let progress_for_files = Arc::clone(&progress);
+                    let ctx_for_files = ctx.clone();
+                    modrinth_modpack::install_modpack_files(
+                        &index,
+                        &mrpack_path,
+                        &minecraft_dir,
+                        &client,
+                        move |done: usize, total: usize, stage: &str| {
+                            let mut p = progress_for_files.lock_or_recover();
+                            if p.cancelled {
+                                return false;
+                            }
+                            p.message = if total > 0 {
+                                format!("{stage} ({done}/{total})")
+                            } else {
+                                stage.to_string()
+                            };
+                            drop(p);
+                            ctx_for_files.request_repaint();
+                            true
+                        },
+                    )?;
 
-                let mut instance = instance;
-                instance.min_memory_mb = min_mem;
-                instance.max_memory_mb = max_mem;
-                instance.icon = icon_url;
-                instance.modpack_origin = Some(ModpackOrigin {
-                    source: "modrinth".to_string(),
-                    project_id: project_id.clone(),
-                    version_id: version.id.clone(),
-                    version_name: version_name.clone().unwrap_or_else(|| version.name.clone()),
-                });
-                instance.save_to_dir()?;
+                    let _ = std::fs::remove_dir_all(&temp_dir);
 
-                Ok(instance)
+                    instance.min_memory_mb = min_mem;
+                    instance.max_memory_mb = max_mem;
+                    instance.icon = icon_url;
+                    instance.modpack_origin = Some(ModpackOrigin {
+                        source: "modrinth".to_string(),
+                        project_id: project_id.clone(),
+                        version_id: version.id.clone(),
+                        version_name: version_name.clone().unwrap_or_else(|| version.name.clone()),
+                    });
+                    instance.save_to_dir()?;
+
+                    Ok(())
+                })();
+
+                match res {
+                    Ok(()) => Ok(instance),
+                    Err(e) => {
+                        let _ = instance.delete_dirs();
+                        Err(e)
+                    }
+                }
             },
         );
 
@@ -285,46 +300,62 @@ impl ModpackManager {
                 }
                 ctx.request_repaint();
 
-                let instance = curseforge_modpack::create_instance_from_cf_modpack(&manifest)?;
-                let minecraft_dir = instance.minecraft_dir()?;
+                let mut instance = curseforge_modpack::create_instance_from_cf_modpack(&manifest)?;
+                let mut skipped_mods = Vec::new();
 
-                let progress_for_files = Arc::clone(&progress);
-                let ctx_for_files = ctx.clone();
-                let skipped_mods = curseforge_modpack::install_cf_modpack_files(
-                    &manifest,
-                    &zip_path,
-                    &minecraft_dir,
-                    move |done: usize, total: usize, stage: &str| {
-                        let mut p = progress_for_files.lock_or_recover();
-                        p.message = if total > 0 {
-                            format!("{stage} ({done}/{total})")
-                        } else {
-                            stage.to_string()
-                        };
-                        drop(p);
-                        ctx_for_files.request_repaint();
-                    },
-                )?;
+                let res = (|| -> anyhow::Result<()> {
+                    let minecraft_dir = instance.minecraft_dir()?;
 
-                *skipped_clone.lock_or_recover() = skipped_mods;
+                    let progress_for_files = Arc::clone(&progress);
+                    let ctx_for_files = ctx.clone();
+                    skipped_mods = curseforge_modpack::install_cf_modpack_files(
+                        &manifest,
+                        &zip_path,
+                        &minecraft_dir,
+                        move |done: usize, total: usize, stage: &str| {
+                            let mut p = progress_for_files.lock_or_recover();
+                            if p.cancelled {
+                                return false;
+                            }
+                            p.message = if total > 0 {
+                                format!("{stage} ({done}/{total})")
+                            } else {
+                                stage.to_string()
+                            };
+                            drop(p);
+                            ctx_for_files.request_repaint();
+                            true
+                        },
+                    )?;
 
-                let _ = std::fs::remove_dir_all(&temp_dir);
+                    let _ = std::fs::remove_dir_all(&temp_dir);
 
-                let mut instance = instance;
-                instance.min_memory_mb = min_mem;
-                instance.max_memory_mb = max_mem;
-                instance.icon = icon_url;
-                instance.modpack_origin = Some(ModpackOrigin {
-                    source: "curseforge".to_string(),
-                    project_id: mod_id.to_string(),
-                    version_id: file.id.to_string(),
-                    version_name: file_name
-                        .clone()
-                        .unwrap_or_else(|| file.display_name.clone()),
-                });
-                instance.save_to_dir()?;
+                    instance.min_memory_mb = min_mem;
+                    instance.max_memory_mb = max_mem;
+                    instance.icon = icon_url;
+                    instance.modpack_origin = Some(ModpackOrigin {
+                        source: "curseforge".to_string(),
+                        project_id: mod_id.to_string(),
+                        version_id: file.id.to_string(),
+                        version_name: file_name
+                            .clone()
+                            .unwrap_or_else(|| file.display_name.clone()),
+                    });
+                    instance.save_to_dir()?;
 
-                Ok(instance)
+                    Ok(())
+                })();
+
+                match res {
+                    Ok(()) => {
+                        *skipped_clone.lock_or_recover() = skipped_mods;
+                        Ok(instance)
+                    }
+                    Err(e) => {
+                        let _ = instance.delete_dirs();
+                        Err(e)
+                    }
+                }
             },
         );
 
@@ -358,34 +389,48 @@ impl ModpackManager {
                 }
                 ctx.request_repaint();
 
-                let instance = modrinth_modpack::create_instance_from_modpack(&index)?;
-                let minecraft_dir = instance.minecraft_dir()?;
+                let mut instance = modrinth_modpack::create_instance_from_modpack(&index)?;
 
-                let progress_for_files = Arc::clone(&progress);
-                let ctx_for_files = ctx.clone();
-                modrinth_modpack::install_modpack_files(
-                    &index,
-                    &path,
-                    &minecraft_dir,
-                    &client,
-                    move |done: usize, total: usize, stage: &str| {
-                        let mut p = progress_for_files.lock_or_recover();
-                        p.message = if total > 0 {
-                            format!("{stage} ({done}/{total})")
-                        } else {
-                            stage.to_string()
-                        };
-                        drop(p);
-                        ctx_for_files.request_repaint();
-                    },
-                )?;
+                let res = (|| -> anyhow::Result<()> {
+                    let minecraft_dir = instance.minecraft_dir()?;
 
-                let mut instance = instance;
-                instance.min_memory_mb = min_mem;
-                instance.max_memory_mb = max_mem;
-                instance.save_to_dir()?;
+                    let progress_for_files = Arc::clone(&progress);
+                    let ctx_for_files = ctx.clone();
+                    modrinth_modpack::install_modpack_files(
+                        &index,
+                        &path,
+                        &minecraft_dir,
+                        &client,
+                        move |done: usize, total: usize, stage: &str| {
+                            let mut p = progress_for_files.lock_or_recover();
+                            if p.cancelled {
+                                return false;
+                            }
+                            p.message = if total > 0 {
+                                format!("{stage} ({done}/{total})")
+                            } else {
+                                stage.to_string()
+                            };
+                            drop(p);
+                            ctx_for_files.request_repaint();
+                            true
+                        },
+                    )?;
 
-                Ok(instance)
+                    instance.min_memory_mb = min_mem;
+                    instance.max_memory_mb = max_mem;
+                    instance.save_to_dir()?;
+
+                    Ok(())
+                })();
+
+                match res {
+                    Ok(()) => Ok(instance),
+                    Err(e) => {
+                        let _ = instance.delete_dirs();
+                        Err(e)
+                    }
+                }
             },
         );
 
@@ -419,33 +464,47 @@ impl ModpackManager {
                 }
                 ctx.request_repaint();
 
-                let instance = curseforge_modpack::create_instance_from_cf_modpack(&manifest)?;
-                let minecraft_dir = instance.minecraft_dir()?;
+                let mut instance = curseforge_modpack::create_instance_from_cf_modpack(&manifest)?;
 
-                let progress_for_files = Arc::clone(&progress);
-                let ctx_for_files = ctx.clone();
-                curseforge_modpack::install_cf_modpack_files(
-                    &manifest,
-                    &path,
-                    &minecraft_dir,
-                    move |done: usize, total: usize, stage: &str| {
-                        let mut p = progress_for_files.lock_or_recover();
-                        p.message = if total > 0 {
-                            format!("{stage} ({done}/{total})")
-                        } else {
-                            stage.to_string()
-                        };
-                        drop(p);
-                        ctx_for_files.request_repaint();
-                    },
-                )?;
+                let res = (|| -> anyhow::Result<()> {
+                    let minecraft_dir = instance.minecraft_dir()?;
 
-                let mut instance = instance;
-                instance.min_memory_mb = min_mem;
-                instance.max_memory_mb = max_mem;
-                instance.save_to_dir()?;
+                    let progress_for_files = Arc::clone(&progress);
+                    let ctx_for_files = ctx.clone();
+                    curseforge_modpack::install_cf_modpack_files(
+                        &manifest,
+                        &path,
+                        &minecraft_dir,
+                        move |done: usize, total: usize, stage: &str| {
+                            let mut p = progress_for_files.lock_or_recover();
+                            if p.cancelled {
+                                return false;
+                            }
+                            p.message = if total > 0 {
+                                format!("{stage} ({done}/{total})")
+                            } else {
+                                stage.to_string()
+                            };
+                            drop(p);
+                            ctx_for_files.request_repaint();
+                            true
+                        },
+                    )?;
 
-                Ok(instance)
+                    instance.min_memory_mb = min_mem;
+                    instance.max_memory_mb = max_mem;
+                    instance.save_to_dir()?;
+
+                    Ok(())
+                })();
+
+                match res {
+                    Ok(()) => Ok(instance),
+                    Err(e) => {
+                        let _ = instance.delete_dirs();
+                        Err(e)
+                    }
+                }
             },
         );
 

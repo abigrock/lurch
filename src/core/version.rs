@@ -431,7 +431,7 @@ pub fn download_libraries(
 pub fn download_assets(
     info: &VersionInfo,
     client: &reqwest::blocking::Client,
-    progress: impl Fn(usize, usize) + Send + Sync,
+    progress: impl Fn(usize, usize) -> bool + Send + Sync,
 ) -> anyhow::Result<()> {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -456,7 +456,9 @@ pub fn download_assets(
     let total = objects.len();
     let completed = AtomicUsize::new(0);
 
-    progress(0, total);
+    if !progress(0, total) {
+        anyhow::bail!("Cancelled");
+    }
 
     let num_threads = 8.min(total);
     if num_threads == 0 {
@@ -478,7 +480,9 @@ pub fn download_assets(
                         let url = format!("{RESOURCES_BASE}{prefix}/{}", obj.hash);
                         download_file(client, &url, &dest, &obj.hash)?;
                         let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
-                        progress(done, total);
+                        if !progress(done, total) {
+                            anyhow::bail!("Cancelled");
+                        }
                     }
                     Ok(())
                 })

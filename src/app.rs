@@ -409,8 +409,17 @@ impl App {
                                 return false;
                             }
                             let mod_path = mods_dir.join(&f.name);
+                            if mod_path.exists() {
+                                // Check for corruption (truncated/invalid JAR)
+                                return !crate::core::is_jar_valid(&mod_path);
+                            }
+
                             let disabled_mod_path = mods_dir.join(format!("{}.disabled", f.name));
-                            !mod_path.exists() && !disabled_mod_path.exists()
+                            if disabled_mod_path.exists() {
+                                return !crate::core::is_jar_valid(&disabled_mod_path);
+                            }
+
+                            true // Missing
                         })
                         .collect();
                     if !missing.is_empty() {
@@ -454,6 +463,7 @@ impl App {
                 message: String::new(),
                 done: true,
                 error: Some("No active account. Please add an account first.".to_string()),
+                cancelled: false,
             }));
             self.running_processes.push(RunningProcess {
                 instance_id: instance_id.to_string(),
@@ -486,6 +496,7 @@ impl App {
                         message: String::new(),
                         done: true,
                         error: Some("Version manifest not loaded yet.".to_string()),
+                        cancelled: false,
                     }));
                     self.running_processes.push(RunningProcess {
                         instance_id: instance_id.to_string(),
@@ -1124,21 +1135,21 @@ impl App {
         let mut cancel = false;
         let mut download = false;
 
-        egui::Window::new("Missing Mods")
+        egui::Window::new("Missing or Corrupted Mods")
             .collapsible(false)
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ctx, |ui| {
                 ui.label(theme.title(&format!(
-                    "\"{}\" is missing {} mod file{}",
+                    "\"{}\" has {} missing or corrupted mod file{}",
                     instance_name,
                     missing_files.len(),
                     if missing_files.len() == 1 { "" } else { "s" },
                 )));
                 ui.add_space(4.0);
                 ui.label(theme.subtext(
-                    "The following mods from the modpack were not found. They may have been \
-                     accidentally deleted.",
+                    "The following mods from the modpack were not found or appear to be \
+                     invalid. They may have been accidentally deleted or corrupted.",
                 ));
 
                 ui.add_space(8.0);
@@ -1234,7 +1245,10 @@ impl App {
                                 {
                                     Ok(bytes) => {
                                         let dest = mods_dir.join(&m.name);
-                                        if std::fs::write(&dest, &bytes).is_ok() {
+                                        // Validate JAR before writing
+                                        if crate::core::validate_jar(&bytes).is_ok()
+                                            && std::fs::write(&dest, &bytes).is_ok()
+                                        {
                                             crate::core::mod_cache::cache_file(&m.name, &dest);
                                             success += 1;
                                         } else {
@@ -1280,6 +1294,7 @@ impl App {
 
         let count = self.pending_manual_downloads.len();
         let mut dismiss = false;
+        let mut cancel_all = false;
         let mut open_all = false;
         let mut open_indices: Vec<usize> = Vec::new();
 
@@ -1334,11 +1349,14 @@ impl App {
 
                 ui.add_space(8.0);
 
-                // Dismiss button
-                let dismiss_clicked = ui.add(theme.ghost_button("Dismiss")).clicked();
-                if dismiss_clicked {
-                    dismiss = true;
-                }
+                ui.horizontal(|ui| {
+                    if ui.add(theme.ghost_button("Dismiss")).clicked() {
+                        dismiss = true;
+                    }
+                    if ui.add(theme.danger_button("Cancel All")).clicked() {
+                        cancel_all = true;
+                    }
+                });
             });
 
         // Handle actions after the closure
@@ -1352,7 +1370,10 @@ impl App {
                 let _ = open::that(&pending.download_url);
             }
         }
-        if dismiss {
+        if cancel_all {
+            self.pending_manual_downloads.clear();
+            self.show_manual_downloads_dialog = false;
+        } else if dismiss {
             self.show_manual_downloads_dialog = false;
         }
     }
@@ -1369,6 +1390,7 @@ impl App {
             message: format!("Updating modpack \"{}\"...", title),
             done: false,
             error: None,
+            cancelled: false,
         }));
 
         let update_tab_id = format!("modpack-update-{}", instance_id);
@@ -1776,23 +1798,53 @@ impl eframe::App for App {
                                 offset: [0, 4],
                             })
                             .show(ui, |ui| {
-                                ui.set_max_width(toast_width - 28.0);
+                                let available_w = toast_width - 28.0;
+                                ui.set_max_width(available_w);
+
                                 ui.horizontal(|ui| {
                                     ui.add(egui::Spinner::new().color(accent_color));
-                                    ui.vertical(|ui| {
-                                        ui.label(
-                                            egui::RichText::new(&task.label)
-                                                .color(text_color)
-                                                .size(13.0),
-                                        );
-                                        if !progress_msg.is_empty() {
-                                            ui.label(
-                                                egui::RichText::new(&progress_msg)
-                                                    .color(muted_color)
-                                                    .size(11.0),
+
+                                    let text_w = available_w - 70.0;
+                                    ui.allocate_ui_with_layout(
+                                        egui::vec2(text_w, ui.available_height()),
+                                        egui::Layout::top_down(egui::Align::Min),
+                                        |ui| {
+                                            ui.add(
+                                                egui::Label::new(
+                                                    egui::RichText::new(&task.label)
+                                                        .color(text_color)
+                                                        .size(13.0),
+                                                )
+                                                .truncate(),
                                             );
-                                        }
-                                    });
+                                            if !progress_msg.is_empty() {
+                                                ui.add(
+                                                    egui::Label::new(
+                                                        egui::RichText::new(&progress_msg)
+                                                            .color(muted_color)
+                                                            .size(11.0),
+                                                    )
+                                                    .truncate(),
+                                                );
+                                            }
+                                        },
+                                    );
+
+                                    ui.with_layout(
+                                        egui::Layout::right_to_left(egui::Align::Center),
+                                        |ui| {
+                                            if ui
+                                                .add(theme.icon_button(egui_phosphor::regular::X))
+                                                .on_hover_text("Cancel task")
+                                                .clicked()
+                                            {
+                                                let mut p = task.progress.lock_or_recover();
+                                                p.cancelled = true;
+                                                p.done = true;
+                                                p.error = Some("Cancelled by user".to_string());
+                                            }
+                                        },
+                                    );
                                 });
                             });
 

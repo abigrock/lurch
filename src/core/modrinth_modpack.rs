@@ -147,14 +147,16 @@ pub fn install_modpack_files(
     mrpack_path: &Path,
     minecraft_dir: &Path,
     client: &reqwest::blocking::Client,
-    progress: impl Fn(usize, usize, &str) + Send + Sync,
+    progress: impl Fn(usize, usize, &str) -> bool + Send + Sync,
 ) -> anyhow::Result<()> {
     // Filter to client-only files
     let client_files: Vec<&ModpackFile> =
         index.files.iter().filter(|f| is_client_file(f)).collect();
 
     let total = client_files.len();
-    progress(0, total, "Downloading modpack files...");
+    if !progress(0, total, "Downloading modpack files...") {
+        anyhow::bail!("Cancelled");
+    }
 
     // Download files in parallel (8 threads)
     let completed = AtomicUsize::new(0);
@@ -172,7 +174,9 @@ pub fn install_modpack_files(
                         for file in chunk {
                             download_modpack_file(file, minecraft_dir, client)?;
                             let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
-                            progress(done, total, "Downloading modpack files...");
+                            if !progress(done, total, "Downloading modpack files...") {
+                                anyhow::bail!("Cancelled");
+                            }
                         }
                         Ok(())
                     })
@@ -192,7 +196,9 @@ pub fn install_modpack_files(
     }
 
     // Extract overrides (snapshot servers.dat first for merge)
-    progress(0, 0, "Extracting overrides...");
+    if !progress(0, 0, "Extracting overrides...") {
+        anyhow::bail!("Cancelled");
+    }
     let servers_dat = minecraft_dir.join("servers.dat");
     let pre_existing_servers = crate::core::servers::snapshot_servers(&servers_dat);
     extract_overrides(mrpack_path, minecraft_dir, "overrides/")?;
@@ -338,6 +344,9 @@ pub fn update_modrinth_modpack(
         client,
         move |done, total, stage| {
             let mut p = progress_for_files.lock_or_recover();
+            if p.cancelled {
+                return false;
+            }
             p.message = if total > 0 {
                 format!("{stage} ({done}/{total})")
             } else {
@@ -345,6 +354,7 @@ pub fn update_modrinth_modpack(
             };
             drop(p);
             ctx_for_files.request_repaint();
+            true
         },
     )?;
 

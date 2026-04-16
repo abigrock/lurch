@@ -243,6 +243,19 @@ impl ConsoleView {
                 ui.horizontal(|ui| {
                     ui.add(egui::Spinner::new().color(theme.color("accent")));
                     ui.label(theme.subtext(&msg));
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui
+                            .add(theme.ghost_button("Cancel"))
+                            .on_hover_text("Cancel launch process")
+                            .clicked()
+                        {
+                            let mut p = running_processes[idx].progress.lock_or_recover();
+                            p.cancelled = true;
+                            p.done = true;
+                            p.error = Some("Cancelled by user".to_string());
+                        }
+                    });
                 });
                 ui.add_space(4.0);
             }

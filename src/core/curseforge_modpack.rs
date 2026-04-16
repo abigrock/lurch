@@ -144,14 +144,16 @@ pub fn install_cf_modpack_files(
     manifest: &CfManifest,
     zip_path: &Path,
     minecraft_dir: &Path,
-    progress: impl Fn(usize, usize, &str) + Send + Sync,
+    progress: impl Fn(usize, usize, &str) -> bool + Send + Sync,
 ) -> anyhow::Result<Vec<SkippedMod>> {
     let required_files: Vec<&CfManifestFile> =
         manifest.files.iter().filter(|f| f.required).collect();
     let total = required_files.len();
 
     // Step 1: Batch-resolve file IDs via CurseForge API
-    progress(0, total, "Resolving mod files...");
+    if !progress(0, total, "Resolving mod files...") {
+        anyhow::bail!("Cancelled");
+    }
 
     let file_ids: Vec<u64> = required_files.iter().map(|f| f.file_id).collect();
     let resolved = curseforge::batch_get_files(&file_ids)?;
@@ -162,7 +164,9 @@ pub fn install_cf_modpack_files(
 
     // Step 2: Batch-fetch project info to route files to correct directories
     //         (mods → mods/, shaders → shaderpacks/, resource packs → resourcepacks/)
-    progress(0, total, "Resolving project types...");
+    if !progress(0, total, "Resolving project types...") {
+        anyhow::bail!("Cancelled");
+    }
     let project_ids: Vec<u64> = required_files
         .iter()
         .map(|f| f.project_id)
@@ -260,7 +264,9 @@ pub fn install_cf_modpack_files(
         )
     };
 
-    progress(0, download_total, &download_msg);
+    if !progress(0, download_total, &download_msg) {
+        anyhow::bail!("Cancelled");
+    }
 
     let num_threads = 8.min(download_total).max(1);
     let chunk_size = download_total.div_ceil(num_threads);
@@ -324,7 +330,9 @@ pub fn install_cf_modpack_files(
                             )?;
 
                             let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
-                            progress(done, download_total, download_msg);
+                            if !progress(done, download_total, download_msg) {
+                                anyhow::bail!("Cancelled");
+                            }
                         }
                         Ok(())
                     })
@@ -395,6 +403,9 @@ pub fn install_cf_modpack_files(
     progress(0, 0, "Extracting overrides...");
     let servers_dat = minecraft_dir.join("servers.dat");
     let pre_existing_servers = crate::core::servers::snapshot_servers(&servers_dat);
+    if !progress(0, 0, "Extracting overrides...") {
+        anyhow::bail!("Cancelled");
+    }
     extract_cf_overrides(zip_path, minecraft_dir, &overrides_prefix)?;
     let _ = crate::core::servers::merge_modpack_servers(&servers_dat, &pre_existing_servers);
 
@@ -501,6 +512,9 @@ pub fn update_curseforge_modpack(
         minecraft_dir,
         move |done, total, stage| {
             let mut p = progress_for_files.lock_or_recover();
+            if p.cancelled {
+                return false;
+            }
             p.message = if total > 0 {
                 format!("{stage} ({done}/{total})")
             } else {
@@ -508,6 +522,7 @@ pub fn update_curseforge_modpack(
             };
             drop(p);
             ctx_for_files.request_repaint();
+            true
         },
     )?;
 
@@ -574,6 +589,9 @@ pub fn wait_for_cf_manual_download(
 
     let expected = downloads_dir.join(&file.file_name);
     loop {
+        if progress.lock_or_recover().cancelled {
+            anyhow::bail!("Manual download cancelled");
+        }
         if expected.exists() {
             // Brief extra wait so the browser finishes writing.
             std::thread::sleep(Duration::from_secs(1));

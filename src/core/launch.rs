@@ -353,6 +353,9 @@ pub fn prepare_and_launch(
     // Fetch version info
     set_progress(&progress, "Fetching version info...");
     ctx.request_repaint();
+    if progress.lock_or_recover().cancelled {
+        anyhow::bail!("Launch cancelled");
+    }
     let mut version_info = version::fetch_version_info(&client, &version_url)?;
 
     // If instance has a mod loader, fetch and merge the loader profile
@@ -362,6 +365,9 @@ pub fn prepare_and_launch(
             &format!("Resolving {} version...", instance.loader),
         );
         ctx.request_repaint();
+        if progress.lock_or_recover().cancelled {
+            anyhow::bail!("Launch cancelled");
+        }
         let lv = loader_profiles::resolve_loader_version(
             &client,
             &instance.loader,
@@ -374,6 +380,9 @@ pub fn prepare_and_launch(
             &format!("Fetching {} profile...", instance.loader),
         );
         ctx.request_repaint();
+        if progress.lock_or_recover().cancelled {
+            anyhow::bail!("Launch cancelled");
+        }
         loader_profiles::fetch_and_merge_loader_profile(
             &client,
             &instance.loader,
@@ -395,6 +404,9 @@ pub fn prepare_and_launch(
 
     set_progress(&progress, &format!("Selecting Java {required_java}..."));
     ctx.request_repaint();
+    if progress.lock_or_recover().cancelled {
+        anyhow::bail!("Launch cancelled");
+    }
 
     let java = if let Some(ref custom_path) = instance.java_path {
         // Instance has a custom Java path — honour the user's choice
@@ -423,14 +435,21 @@ pub fn prepare_and_launch(
                     .and_then(|jv| jv.component.clone())
                     .or_else(|| java::major_to_mojang_component(required_java).map(String::from));
 
-                let mojang_result = component
-                    .as_deref()
-                    .and_then(|comp| java::download_mojang_java(&client, comp, &progress_cb).ok());
+                let mojang_result = component.as_deref().and_then(|comp| {
+                    if progress.lock_or_recover().cancelled {
+                        None
+                    } else {
+                        java::download_mojang_java(&client, comp, &progress_cb).ok()
+                    }
+                });
 
                 match mojang_result {
                     Some(inst) => inst,
                     None => {
                         // Fallback to Adoptium
+                        if progress.lock_or_recover().cancelled {
+                            anyhow::bail!("Launch cancelled");
+                        }
                         java::download_java(&client, required_java, &progress_cb)?
                     }
                 }
@@ -443,10 +462,16 @@ pub fn prepare_and_launch(
         &format!("Using Java {} ({})", java.version, java.path.display()),
     );
     ctx.request_repaint();
+    if progress.lock_or_recover().cancelled {
+        anyhow::bail!("Launch cancelled");
+    }
 
     // Download client JAR
     set_progress(&progress, "Downloading client...");
     ctx.request_repaint();
+    if progress.lock_or_recover().cancelled {
+        anyhow::bail!("Launch cancelled");
+    }
     let client_jar = version::download_client_jar(&client, &version_info)?;
 
     // Run Forge/NeoForge processors if needed (must happen after client JAR download)
@@ -458,6 +483,9 @@ pub fn prepare_and_launch(
             &format!("Running {} processors...", instance.loader),
         );
         ctx.request_repaint();
+        if progress.lock_or_recover().cancelled {
+            anyhow::bail!("Launch cancelled");
+        }
         let progress_for_proc = Arc::clone(&progress);
         let ctx_for_proc = ctx.clone();
         crate::core::forge::run_processors_if_needed(
@@ -479,19 +507,33 @@ pub fn prepare_and_launch(
     // Download libraries
     set_progress(&progress, "Downloading libraries...");
     ctx.request_repaint();
+    if progress.lock_or_recover().cancelled {
+        anyhow::bail!("Launch cancelled");
+    }
     let library_paths = version::download_libraries(&client, &version_info)?;
 
     // Download assets
     set_progress(&progress, "Downloading assets (0/?)...");
     ctx.request_repaint();
+    if progress.lock_or_recover().cancelled {
+        anyhow::bail!("Launch cancelled");
+    }
     let progress_for_assets = Arc::clone(&progress);
     let ctx_for_assets = ctx.clone();
     version::download_assets(&version_info, &client, move |done, total| {
         let mut p = progress_for_assets.lock_or_recover();
+        if p.cancelled {
+            return false;
+        }
         p.message = format!("Downloading assets ({done}/{total})...");
         drop(p);
         ctx_for_assets.request_repaint();
+        true
     })?;
+
+    if progress.lock_or_recover().cancelled {
+        anyhow::bail!("Launch cancelled");
+    }
 
     // Prepare natives directory
     let natives_dir = instance.instance_dir()?.join("natives");
@@ -501,6 +543,9 @@ pub fn prepare_and_launch(
 
     set_progress(&progress, "Launching...");
     ctx.request_repaint();
+    if progress.lock_or_recover().cancelled {
+        anyhow::bail!("Launch cancelled");
+    }
 
     let launch_ctx = LaunchContext {
         instance: instance.clone(),
@@ -522,6 +567,7 @@ pub struct LaunchProgress {
     pub message: String,
     pub done: bool,
     pub error: Option<String>,
+    pub cancelled: bool,
 }
 
 impl LaunchProgress {
@@ -530,6 +576,7 @@ impl LaunchProgress {
             message: "Preparing...".to_string(),
             done: false,
             error: None,
+            cancelled: false,
         }
     }
 }
