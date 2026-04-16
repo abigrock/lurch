@@ -460,7 +460,7 @@ pub fn download_assets(
     }
 
     use rayon::prelude::*;
-    let completed = std::sync::atomic::AtomicUsize::new(0);
+    let completed = AtomicUsize::new(0);
 
     objects
         .into_par_iter()
@@ -469,7 +469,7 @@ pub fn download_assets(
             let dest = objects_dir.join(prefix).join(&obj.hash);
             let url = format!("{RESOURCES_BASE}{prefix}/{}", obj.hash);
             download_file(client, &url, &dest, &obj.hash)?;
-            let done = completed.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+            let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
             if !progress(done, total) {
                 anyhow::bail!("Cancelled");
             }

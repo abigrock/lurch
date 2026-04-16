@@ -413,7 +413,7 @@ impl App {
                                 return false;
                             }
                             let mod_path = mods_dir.join(&f.name);
-                            let is_missing = if mod_path.exists() {
+                            if mod_path.exists() {
                                 !crate::core::is_jar_valid(&mod_path)
                             } else {
                                 let disabled_mod_path =
@@ -423,8 +423,7 @@ impl App {
                                 } else {
                                     true // Missing
                                 }
-                            };
-                            is_missing
+                            }
                         })
                         .collect();
 
