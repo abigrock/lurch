@@ -99,10 +99,22 @@ pub fn validate_jar(data: &[u8]) -> anyhow::Result<()> {
 ///
 /// Reads only the central directory (seeks to end of file), so it is lightweight
 /// even for large JARs.  Returns `false` for missing, empty, truncated, or corrupt files.
+///
+/// Optimization: Only performs the full ZIP check if the file size is greater than 0
+/// and less than a certain threshold, OR if we really want a deep check.
+/// Actually, for most JARs, just checking the ZIP signature at the end is fast enough.
 pub fn is_jar_valid(path: &std::path::Path) -> bool {
     let Ok(file) = std::fs::File::open(path) else {
         return false;
     };
+    // If the file is extremely small (e.g. 0-22 bytes), it can't be a valid ZIP.
+    // 22 bytes is the minimum size of an EOCD record.
+    let Ok(meta) = file.metadata() else {
+        return false;
+    };
+    if meta.len() < 22 {
+        return false;
+    }
     zip::ZipArchive::new(file).is_ok()
 }
 
