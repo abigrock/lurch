@@ -11,6 +11,8 @@ pub struct SettingsView {
     pub java_versions_fetch: Option<Arc<Mutex<Option<Vec<u32>>>>>,
     pub java_provider: usize,
     pub confirm_java_remove: Option<usize>,
+    pub new_env_key: String,
+    pub new_env_val: String,
 }
 
 impl SettingsView {
@@ -33,6 +35,8 @@ impl SettingsView {
             java_versions_fetch: Some(java_versions_fetch),
             java_provider: 0,
             confirm_java_remove: None,
+            new_env_key: String::new(),
+            new_env_val: String::new(),
         }
     }
 
@@ -647,6 +651,92 @@ impl SettingsView {
                             // Save immediately so get_api_key() (which reads from disk) picks it up
                             let _ = config.save();
                         }
+                    });
+                ui.add_space(16.0);
+
+                // ── Global Environment Variables ──
+                let header_text = theme.section_header(&format!(
+                    "{} Global Environment Variables",
+                    egui_phosphor::regular::LIST
+                ));
+                egui::CollapsingHeader::new(header_text)
+                    .default_open(false)
+                    .id_salt("settings_env_vars")
+                    .show(ui, |ui| {
+                        ui.add_space(8.0);
+                        ui.label(theme.subtext(
+                            "These variables will be applied to all launched instances.",
+                        ));
+                        ui.add_space(8.0);
+
+                        let mut changed = false;
+                        let mut to_remove = None;
+                        for (idx, (key, val)) in config.global_env_vars.iter_mut().enumerate() {
+                            let row_h = ui.spacing().interact_size.y + 4.0;
+                            ui.allocate_ui_with_layout(
+                                egui::vec2(ui.available_width(), row_h),
+                                egui::Layout::left_to_right(egui::Align::Center)
+                                    .with_cross_justify(true),
+                                |ui| {
+                                    if ui.add(
+                                        egui::TextEdit::singleline(key)
+                                            .hint_text("KEY")
+                                            .desired_width(120.0)
+                                            .margin(egui::Margin::symmetric(4, 9)),
+                                    ).changed() {
+                                        changed = true;
+                                    }
+                                    ui.label("=");
+                                    if ui.add(
+                                        egui::TextEdit::singleline(val)
+                                            .hint_text("VALUE")
+                                            .desired_width(ui.available_width() - 40.0)
+                                            .margin(egui::Margin::symmetric(4, 9)),
+                                    ).changed() {
+                                        changed = true;
+                                    }
+                                    if ui.add(theme.icon_button(egui_phosphor::regular::TRASH)).clicked() {
+                                        to_remove = Some(idx);
+                                    }
+                                },
+                            );
+                        }
+
+                        if let Some(idx) = to_remove {
+                            config.global_env_vars.remove(idx);
+                            let _ = config.save();
+                        } else if changed {
+                            let _ = config.save();
+                        }
+
+                        ui.add_space(8.0);
+                        let row_h = ui.spacing().interact_size.y + 4.0;
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(ui.available_width(), row_h),
+                            egui::Layout::left_to_right(egui::Align::Center)
+                                .with_cross_justify(true),
+                            |ui| {
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.new_env_key)
+                                        .hint_text("New Key")
+                                        .desired_width(120.0)
+                                        .margin(egui::Margin::symmetric(4, 9)),
+                                );
+                                ui.label("=");
+                                ui.add(
+                                    egui::TextEdit::singleline(&mut self.new_env_val)
+                                        .hint_text("New Value")
+                                        .desired_width(ui.available_width() - 80.0)
+                                        .margin(egui::Margin::symmetric(4, 9)),
+                                );
+                                if ui.add(theme.accent_button("Add")).clicked() && !self.new_env_key.trim().is_empty() {
+                                    config.global_env_vars.push((self.new_env_key.trim().to_string(), self.new_env_val.clone()));
+                                    self.new_env_key.clear();
+                                    self.new_env_val.clear();
+                                    let _ = config.save();
+                                }
+                            },
+                        );
                     });
                 ui.add_space(16.0);
 

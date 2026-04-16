@@ -20,6 +20,7 @@ pub struct LaunchContext {
     pub library_paths: Vec<PathBuf>,
     pub assets_dir: PathBuf,
     pub natives_dir: PathBuf,
+    pub global_env_vars: Vec<(String, String)>,
 }
 
 /// The result of building a launch command
@@ -99,8 +100,11 @@ impl LaunchContext {
 
         let working_dir = self.instance.minecraft_dir()?;
 
-        // Parse instance env vars (lines of KEY=VALUE, # comments)
-        let env_vars: Vec<(String, String)> = self
+        // Environment variables: start with global ones
+        let mut env_vars = self.global_env_vars.clone();
+
+        // Add instance env vars (lines of KEY=VALUE, # comments), overriding global ones
+        let instance_envs: Vec<(String, String)> = self
             .instance
             .env_vars
             .lines()
@@ -113,6 +117,14 @@ impl LaunchContext {
                 Some((k.trim().to_string(), v.trim().to_string()))
             })
             .collect();
+
+        for (k, v) in instance_envs {
+            if let Some(existing) = env_vars.iter_mut().find(|(ek, _)| ek == &k) {
+                existing.1 = v;
+            } else {
+                env_vars.push((k, v));
+            }
+        }
 
         Ok(LaunchCommand {
             java_path: self.java.path.clone(),
@@ -334,6 +346,7 @@ pub fn prepare_and_launch(
     account: &Account,
     java_installs: &[JavaInstall],
     manifest_versions: &[(String, String)], // (id, url) pairs
+    global_env_vars: Vec<(String, String)>,
     ctx: egui::Context,
     progress: Arc<Mutex<LaunchProgress>>,
 ) -> anyhow::Result<Arc<Mutex<ProcessState>>> {
@@ -556,6 +569,7 @@ pub fn prepare_and_launch(
         library_paths,
         assets_dir,
         natives_dir,
+        global_env_vars,
     };
 
     let cmd = launch_ctx.build_command()?;

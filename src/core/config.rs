@@ -12,6 +12,7 @@ pub struct AppConfig {
     pub window_height: f32,
     /// Optional CurseForge API key override (uses embedded default if None/empty)
     pub curseforge_api_key: Option<String>,
+    pub global_env_vars: Vec<(String, String)>,
 }
 
 impl Default for AppConfig {
@@ -25,6 +26,7 @@ impl Default for AppConfig {
             window_width: 1024.0,
             window_height: 768.0,
             curseforge_api_key: None,
+            global_env_vars: Vec::new(),
         }
     }
 }

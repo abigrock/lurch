@@ -540,6 +540,7 @@ impl App {
         // Spawn background thread
         let ctx_clone = ctx.clone();
         let progress_clone = Arc::clone(&progress);
+        let global_env_vars = self.config.global_env_vars.clone();
 
         std::thread::spawn(move || {
             // Refresh auth token before launch (MC tokens expire in ~24h)
@@ -568,6 +569,7 @@ impl App {
                 &account,
                 &java_installs,
                 &manifest_versions,
+                global_env_vars,
                 ctx_clone.clone(),
                 progress_clone.clone(),
             ) {
