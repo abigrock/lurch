@@ -1,4 +1,5 @@
 use eframe::egui;
+use egui_phosphor;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
@@ -84,6 +85,110 @@ pub fn tab_button(ui: &mut egui::Ui, label: &str, active: bool, theme: &Theme) -
     .corner_radius(egui::CornerRadius::same(6))
     .min_size(egui::vec2(0.0, crate::theme::TAB_HEIGHT));
     ui.add(btn).clicked()
+}
+
+pub fn closable_tab_button(
+    ui: &mut egui::Ui,
+    label: &str,
+    active: bool,
+    danger: bool,
+    theme: &Theme,
+) -> (bool, bool) {
+    let mut tab_clicked = false;
+    let mut close_clicked = false;
+
+    let stroke_color = if active {
+        theme.color("accent")
+    } else {
+        theme.color("surface_hover")
+    };
+
+    let bg = if active {
+        theme.color("surface").gamma_multiply(0.5)
+    } else {
+        egui::Color32::TRANSPARENT
+    };
+
+    let frame = egui::Frame::new()
+        .fill(bg)
+        .stroke(egui::Stroke::new(1.0, stroke_color))
+        .corner_radius(egui::CornerRadius::same(6))
+        .inner_margin(egui::Margin {
+            left: 8,
+            right: 4,
+            top: 0,
+            bottom: 0,
+        });
+
+    let response = frame.show(ui, |ui| {
+        ui.allocate_ui_with_layout(
+            egui::vec2(ui.available_width(), crate::theme::TAB_HEIGHT),
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                ui.spacing_mut().item_spacing.x = 6.0;
+
+                let label_text = egui::RichText::new(label)
+                    .size(12.5)
+                    .color(if active {
+                        theme.color("accent")
+                    } else {
+                        theme.color("fg_dim")
+                    })
+                    .strong();
+
+                let label_res = ui.add(egui::Label::new(label_text).sense(egui::Sense::click()));
+                if label_res.clicked() {
+                    tab_clicked = true;
+                }
+
+                let x_color = if danger {
+                    theme.color("error")
+                } else if active {
+                    theme.color("accent")
+                } else {
+                    theme.color("fg_muted")
+                };
+
+                let x_stroke = if danger {
+                    egui::Stroke::new(1.0, theme.color("error"))
+                } else {
+                    egui::Stroke::new(1.0, theme.color("surface_hover"))
+                };
+
+                let x_res = ui.add(
+                    egui::Button::new(
+                        egui::RichText::new(egui_phosphor::regular::X)
+                            .size(10.0)
+                            .color(x_color),
+                    )
+                    .fill(egui::Color32::TRANSPARENT)
+                    .stroke(x_stroke)
+                    .min_size(egui::vec2(16.0, 16.0))
+                    .corner_radius(egui::CornerRadius::same(4))
+                    .small(),
+                );
+
+                if x_res.clicked() {
+                    close_clicked = true;
+                }
+            },
+        );
+    }).response;
+
+    if response.clicked() && !close_clicked {
+        tab_clicked = true;
+    }
+
+    if !active && response.hovered() {
+        ui.painter().rect_stroke(
+            response.rect,
+            egui::CornerRadius::same(6),
+            egui::Stroke::new(1.0, theme.color("surface_active")),
+            egui::StrokeKind::Inside,
+        );
+    }
+
+    (tab_clicked, close_clicked)
 }
 
 pub fn section_heading(text: &str, theme: &Theme) -> egui::RichText {

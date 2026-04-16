@@ -1,6 +1,6 @@
 use crate::app::RunningProcess;
 use crate::core::MutexExt;
-use crate::ui::helpers::tab_button;
+use crate::ui::helpers::closable_tab_button;
 use eframe::egui;
 
 #[derive(Default)]
@@ -32,13 +32,14 @@ impl ConsoleView {
             let tabs_max_w = (ui.available_width() - controls_reserve).max(100.0);
 
             let mut switch_to: Option<String> = None;
+            ui.spacing_mut().item_spacing.x = 0.0;
             egui::ScrollArea::horizontal()
                 .id_salt("console_tabs_scroll")
                 .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
                 .max_width(tabs_max_w)
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        let default_spacing = ui.spacing().item_spacing.x;
+                        ui.spacing_mut().item_spacing.x = 4.0;
                         for rp in running_processes.iter() {
                             let is_active =
                                 self.active_instance_id.as_deref() == Some(&rp.instance_id);
@@ -49,30 +50,14 @@ impl ConsoleView {
                             };
                             let tab_label = format!("{status_icon} {}", rp.instance_name);
 
-                            if tab_button(ui, &tab_label, is_active, theme) {
+                            let (clicked, close) = closable_tab_button(ui, &tab_label, is_active, rp.is_alive(), theme);
+                            if clicked {
                                 switch_to = Some(rp.instance_id.clone());
                             }
-                            if !rp.is_alive() {
-                                // Tight spacing to group X with its tab
-                                ui.spacing_mut().item_spacing.x = 2.0;
-                                let err = theme.color("error");
-                                let x_clicked = ui
-                                    .add(
-                                        egui::Button::new(
-                                            egui::RichText::new(egui_phosphor::regular::X)
-                                                .color(err)
-                                                .strong(),
-                                        )
-                                        .fill(egui::Color32::TRANSPARENT)
-                                        .stroke(egui::Stroke::new(1.0, err))
-                                        .corner_radius(egui::CornerRadius::same(6))
-                                        .min_size(egui::vec2(0.0, crate::theme::TAB_HEIGHT)),
-                                    )
-                                    .clicked();
-                                ui.spacing_mut().item_spacing.x = default_spacing;
-                                // Extra gap after X to separate from next tab group
-                                ui.add_space(8.0);
-                                if x_clicked {
+                            if close {
+                                if rp.is_alive() {
+                                    self.confirm_kill = Some(rp.instance_id.clone());
+                                } else {
                                     tab_to_remove = Some(rp.instance_id.clone());
                                 }
                             }
@@ -83,10 +68,14 @@ impl ConsoleView {
                 self.active_instance_id = Some(id);
             }
 
+            ui.add_space(4.0);
             ui.separator();
+            ui.add_space(4.0);
 
             // ── Right: fixed controls ──
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.spacing_mut().item_spacing.x = 12.0;
+
                 if running_processes.iter().any(|rp| !rp.is_alive()) {
                     let lbl = format!("{} Clear Finished", egui_phosphor::regular::BROOM);
                     if ui.add(theme.ghost_button(&lbl)).clicked() {
@@ -106,25 +95,6 @@ impl ConsoleView {
                     .active_instance_id
                     .clone()
                     .or_else(|| running_processes.first().map(|rp| rp.instance_id.clone()));
-
-                if let Some(ref active_id) = active_id
-                    && let Some(rp) = running_processes
-                        .iter()
-                        .find(|rp| rp.instance_id == *active_id)
-                {
-                    let is_running = rp
-                        .process
-                        .as_ref()
-                        .map(|p| p.lock_or_recover().running)
-                        .unwrap_or(false);
-
-                    if is_running {
-                        let kill_lbl = format!("{} Kill", egui_phosphor::regular::SKULL);
-                        if ui.add(theme.danger_button(&kill_lbl)).clicked() {
-                            self.confirm_kill = Some(active_id.clone());
-                        }
-                    }
-                }
 
                 if let Some(ref active_id) = active_id
                     && let Some(rp) = running_processes
