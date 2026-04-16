@@ -17,7 +17,7 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 - **GUI**: eframe/egui (immediate mode)
 - **Entry**: `src/main.rs` → `src/app.rs` (central `App` struct, ~1900 LOC)
 - **Pattern**: Background threads + `Arc<Mutex<T>>` polling, UI request flags → App dispatch
-- **Total**: ~17.9k LOC total, ~8.2k LOC in UI layer, ~7.2k LOC in `core/` business logic
+- **Total**: ~18.0k LOC total, ~8.3k LOC in UI layer, ~7.2k LOC in `core/` business logic
 
 ## Key Conventions
 
@@ -32,6 +32,7 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 - Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `validate_jar()`, `is_jar_valid()`, `strip_ansi()`, `maven_path()`, `extract_zip_overrides()`, `MutexExt` trait, `CommandHideConsole` trait (suppresses console window on Windows for `Command::new` calls), `BgTaskSlot<T>` type alias (`Arc<Mutex<Option<Result<T, String>>>>`)
 - JSON persistence for config, instances, accounts in platform directories (`src/util/paths.rs`)
 - Mod loaders: Vanilla, Forge, NeoForge, Fabric, Quilt — profiles merged in `src/core/loader_profiles.rs`
+- **Environment variables** — global variables in `AppConfig` are merged with instance-specific variables (defined as `KEY=VALUE` lines) during launch; instance variables override global ones.
 - **Image loading** — uses egui's built-in loaders (`egui_extras::install_image_loaders` in `main.rs`, `all_loaders` feature). Display with `egui::Image::new(url).fit_to_exact_size(size)`. No custom image cache.
 - **Missing mod detection** — modpack installs write `.modpack_mods.json` (JSON array of `ModpackModEntry` structs with `display_name`, `download_url`, `disabled`, `manual` flags, slug, file_id, website_url, and CF metadata) into `<minecraft_dir>/`. Pre-launch check in `do_launch()` reads this file, verifies each mod exists in `mods/`, and shows `MissingModsState` dialog if any are missing. Dialog offers "Download Missing" (auto-downloads + manual download flow for blocked mods), "Launch Anyway" (bypasses via `force_launch_requested`), or "Cancel". Backward-compatible with legacy `Vec<String>` format.
 - **Modpack updates** — clicking "Update available" badge opens the version picker (pre-selects latest) instead of auto-updating. Updates propagate `mc_version`, `loader`, and `loader_version` to the instance via `UpdatedModpackMeta`. Stale mods (present in old `.modpack_mods.json` but absent from the new version) are automatically removed from `mods/` during version changes.

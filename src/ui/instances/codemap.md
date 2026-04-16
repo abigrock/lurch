@@ -17,7 +17,7 @@ Instance management UI — instance list/grid, creation dialogs, modpack browsin
 | `mod.rs` | ~1700 | `InstancesView`: instance list, modpack view delegation; responsive header with progressive collapse (wide >800 / medium / narrow ≤550); background export/import with toast replacement; delegates create/edit to child modules |
 | `modpack_browser.rs` | ~600 | `ModpackBrowser`: Modrinth + CurseForge modpack search/browse/install UI |
 | `create_dialog.rs` | ~460 | Create instance dialog: Vanilla + import tabs; spawns import background thread |
-| `edit_dialog.rs` | ~490 | Edit instance dialog + delete confirmation |
+| `edit_dialog.rs` | ~490 | Edit instance dialog + delete confirmation (includes instance environment variables) |
 | `detail/` | ~2100 | Per-instance detail view with tabbed content management |
 
 ## Flow

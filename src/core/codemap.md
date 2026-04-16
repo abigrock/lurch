@@ -5,7 +5,7 @@ Business logic layer — all non-UI functionality for the Minecraft launcher: au
 
 ## Design
 21 modules, each owning a specific domain. Key patterns:
-- **Pipeline**: `launch.rs` orchestrates a multi-step launch sequence (version fetch → loader merge → Java selection → client JAR → Forge processors → libraries → assets → spawn)
+- **Pipeline**: `launch.rs` orchestrates a multi-step launch sequence (version fetch → loader merge → Java selection → client JAR → Forge processors → libraries → assets → environment merge → spawn)
 - **Auth Chain**: `account.rs` implements Microsoft Device Code Flow (MS → XBL → XSTS → MC → Profile) with token refresh
 - **Profile Merging**: `loader_profiles.rs` merges mod loader profiles (Fabric/Quilt/Forge) into base Mojang version info
 - **Parallel Downloads**: `version.rs` uses 8-thread pool for asset downloads; `java.rs` uses parallel manifest downloads for Mojang JRE
@@ -17,11 +17,11 @@ Business logic layer — all non-UI functionality for the Minecraft launcher: au
 | Module | Purpose | Key Types |
 |--------|---------|-----------|
 | `mod.rs` | Shared utilities: USER_AGENT, http_client(), sha1_hex(), validate_jar(), is_jar_valid(), strip_ansi(), maven_path(), extract_zip_overrides(), `ModpackModEntry` struct | — |
-| `config.rs` | App configuration persistence | `AppConfig` |
-| `instance.rs` | Instance model + CRUD | `Instance`, `ModLoader` enum (Vanilla/Forge/NeoForge/Fabric/Quilt) |
+| `config.rs` | App configuration persistence | `AppConfig` (includes `global_env_vars`) |
+| `instance.rs` | Instance model + CRUD | `Instance` (includes `env_vars` string), `ModLoader` enum |
 | `account.rs` | Microsoft OAuth + offline accounts | `MinecraftAccount`, `AccountStore` |
 | `java.rs` | Java detection, download (Adoptium + Mojang JRE), version recommendation | `JavaInstallation`, `detect_java_installations()` |
-| `launch.rs` | Game launch pipeline, process management | `LaunchContext`, `ProcessState` |
+| `launch.rs` | Game launch pipeline, process management; merges global and instance env vars | `LaunchContext`, `ProcessState` |
 | `version.rs` | Mojang manifest, library/asset downloads | `VersionManifest`, `VersionInfo`, rule evaluation |
 | `forge.rs` | Forge/NeoForge installer processing | Forge profile merging, processor execution |
 | `modpack_manager.rs` | Modpack installation orchestrator | `ModpackManager`, background thread spawning |
@@ -43,7 +43,7 @@ Business logic layer — all non-UI functionality for the Minecraft launcher: au
 1. **Config** loads from `config_dir/config.json` at startup
 2. **Instances** loaded from `instances_dir/*/instance.json` via `load_all_instances()`
 3. **Accounts** loaded from `config_dir/accounts.json` via `AccountStore`
-4. **Launch sequence**: UI triggers → `prepare_and_launch()` → version resolution → loader merge → Java auto-select → downloads → `LaunchContext::build_command()` → `ProcessState` (stdout/stderr capture, kill support)
+4. **Launch sequence**: UI triggers → `prepare_and_launch()` → version resolution → loader merge → Java auto-select → downloads → environment merge (global + instance) → `LaunchContext::build_command()` → `ProcessState` (stdout/stderr capture, kill support)
 5. **Modpack install**: Parse archive → create instance → download mods → write overrides → persist `.modpack_mods.json` manifest
 
 ## Integration

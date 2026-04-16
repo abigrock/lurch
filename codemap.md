@@ -26,8 +26,8 @@ main.rs → App::new() → eframe event loop
 | Directory | Responsibility | Detailed Map |
 |-----------|---------------|--------------|
 | `src/` | Application root: entry point, App struct, module organization | [View Map](src/codemap.md) |
-| `src/core/` | Business logic: auth, launch, versions, mods, Java, instances (21 modules) | [View Map](src/core/codemap.md) |
-| `src/ui/` | GUI presentation: views, sidebar, helpers (egui immediate-mode) | [View Map](src/ui/codemap.md) |
+| `src/core/` | Business logic: auth, launch, versions, mods, Java, instances (21 modules, ~7.2k LOC) | [View Map](src/core/codemap.md) |
+| `src/ui/` | GUI presentation: views, sidebar, helpers (egui immediate-mode, ~8.3k LOC) | [View Map](src/ui/codemap.md) |
 | `src/ui/instances/` | Instance management UI: list, creation, modpack browser (~5400 LOC) | [View Map](src/ui/instances/codemap.md) |
 | `src/ui/instances/detail/` | Per-instance detail: tabbed mods/worlds/shaders/servers management | [View Map](src/ui/instances/detail/codemap.md) |
 | `src/theme/` | Theme engine: 33 bundled themes, user themes, styling helpers | [View Map](src/theme/codemap.md) |

@@ -22,7 +22,7 @@ GUI presentation layer — renders all views using egui immediate-mode framework
 | `instances/` | Instance list + detail views (tabbed: mods, worlds, shaders, servers) |
 | `accounts.rs` | Account management — add/remove Microsoft and offline accounts |
 | `console.rs` | Game console/log viewer for running instances |
-| `settings.rs` | `SettingsView`: settings page (theme, Java, memory, JVM args, CF API key) |
+| `settings.rs` | `SettingsView`: settings page (theme, Java, memory, JVM args, CF API key, global environment variables) |
 | `helpers.rs` | Reusable UI utility functions: `tab_button()`, `SearchState<R>`, `section_heading()`, `card_frame()`, `row_hover_highlight()`, `project_tooltip()`, and more |
 | `instances/modpack_browser.rs` | Modpack browser (Modrinth + CurseForge search/install) |
 | `browse_common.rs` | Shared `BrowseTab` struct: search, filtering, sorting, list/grid rendering, pagination for mod/modpack browsers; responsive filter row with progressive collapse popover |
