@@ -55,9 +55,32 @@ impl ConsoleView {
                                 switch_to = Some(rp.instance_id.clone());
                             }
                             if close {
-                                if rp.is_alive() {
+                                // Check if we should cancel presetup or show kill confirmation
+                                let mut should_cancel_presetup = false;
+                                let mut should_kill_process = false;
+                                
+                                // First check if process exists (no lock needed for this check)
+                                if rp.process.is_none() {
+                                    // No process yet, check if we're in presetup phase
+                                    let progress = rp.progress.lock_or_recover();
+                                    if !progress.done && progress.error.is_none() {
+                                        should_cancel_presetup = true;
+                                    }
+                                } else if rp.is_alive() {
+                                    should_kill_process = true;
+                                }
+                                
+                                if should_cancel_presetup {
+                                    // Cancel ongoing presetup
+                                    let mut p = rp.progress.lock_or_recover();
+                                    p.cancelled = true;
+                                    p.done = true;
+                                    p.error = Some("Cancelled by user".to_string());
+                                } else if should_kill_process {
+                                    // Process is running, show kill confirmation
                                     self.confirm_kill = Some(rp.instance_id.clone());
                                 } else {
+                                    // Presetup is complete or failed, safe to remove tab
                                     tab_to_remove = Some(rp.instance_id.clone());
                                 }
                             }
