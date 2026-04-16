@@ -179,8 +179,7 @@ pub fn detect_java_installations() -> Vec<JavaInstall> {
     {
         for entry in entries.flatten() {
             let path = entry.path();
-            let bin = path.join("bin").join(java_binary_name());
-            if bin.exists()
+            if let Some(bin) = find_java_bin_in_dir(&path)
                 && let Some(mut inst) = probe_java(&bin)
                 && seen_paths.insert(inst.path.clone())
             {
@@ -227,7 +226,15 @@ fn find_java_bin_in_dir(install_dir: &std::path::Path) -> Option<PathBuf> {
         if mac_bin.exists() {
             bin = mac_bin;
         } else {
-            return None;
+            // Mojang macOS style: jre.bundle/Contents/Home/bin/java
+            let mojang_mac_bin = install_dir
+                .join("jre.bundle/Contents/Home/bin")
+                .join(java_binary_name());
+            if mojang_mac_bin.exists() {
+                bin = mojang_mac_bin;
+            } else {
+                return None;
+            }
         }
     }
 
