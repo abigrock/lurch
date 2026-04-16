@@ -447,6 +447,7 @@ impl BrowseTab {
                 .id_salt(format!("{}_list", config.id_salt))
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
+                    ui.set_width(ui.available_width() - 8.0); // Reserve space for scrollbar
                     for (idx, item) in self.results.iter().enumerate() {
                         if idx > 0 {
                             ui.separator();

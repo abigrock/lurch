@@ -296,13 +296,12 @@ fn scan_java_dir(
         if !path.is_dir() {
             continue;
         }
-        if let Some(bin) = find_java_bin_in_dir(&path) {
-            if let Some(inst) = probe_java(&bin)
+        if let Some(bin) = find_java_bin_in_dir(&path)
+            && let Some(inst) = probe_java(&bin)
                 && seen.insert(inst.path.clone())
             {
                 installs.push(inst);
             }
-        }
     }
 }
 
@@ -386,13 +385,12 @@ pub fn download_java(
     let target_dir = managed_dir.join(format!("java-{}", major_version));
 
     // If already downloaded, just probe and return
-    if let Some(bin) = find_java_bin_in_dir(&target_dir) {
-        if let Some(mut inst) = probe_java(&bin) {
+    if let Some(bin) = find_java_bin_in_dir(&target_dir)
+        && let Some(mut inst) = probe_java(&bin) {
             inst.managed = true;
             inst.vendor = "Adoptium".to_string();
             return Ok(inst);
         }
-    }
 
     let url = adoptium_download_url(major_version);
     progress_cb(&format!("Downloading Java {}...", major_version));
@@ -633,12 +631,11 @@ pub fn download_mojang_java(
     let target_dir = managed_dir.join(format!("mojang-{}", component));
 
     // If already downloaded, just probe and return
-    if let Some(bin) = find_java_bin_in_dir(&target_dir) {
-        if let Some(mut inst) = probe_java(&bin) {
+    if let Some(bin) = find_java_bin_in_dir(&target_dir)
+        && let Some(mut inst) = probe_java(&bin) {
             inst.managed = true;
             return Ok(inst);
         }
-    }
 
     progress_cb(&format!(
         "Fetching Mojang Java runtime manifest ({})...",
