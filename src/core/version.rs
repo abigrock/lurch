@@ -454,51 +454,27 @@ pub fn download_assets(
 
     let objects: Vec<_> = index.objects.values().collect();
     let total = objects.len();
-    let completed = AtomicUsize::new(0);
 
     if !progress(0, total) {
         anyhow::bail!("Cancelled");
     }
 
-    let num_threads = 8.min(total);
-    if num_threads == 0 {
-        return Ok(());
-    }
-    let chunk_size = total.div_ceil(num_threads);
+    use rayon::prelude::*;
+    let completed = std::sync::atomic::AtomicUsize::new(0);
 
-    std::thread::scope(|s| {
-        let errors: Vec<_> = objects
-            .chunks(chunk_size)
-            .map(|chunk| {
-                let objects_dir = &objects_dir;
-                let completed = &completed;
-                let progress = &progress;
-                s.spawn(move || -> anyhow::Result<()> {
-                    for obj in chunk {
-                        let prefix = &obj.hash[..2];
-                        let dest = objects_dir.join(prefix).join(&obj.hash);
-                        let url = format!("{RESOURCES_BASE}{prefix}/{}", obj.hash);
-                        download_file(client, &url, &dest, &obj.hash)?;
-                        let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
-                        if !progress(done, total) {
-                            anyhow::bail!("Cancelled");
-                        }
-                    }
-                    Ok(())
-                })
-            })
-            .collect::<Vec<_>>()
-            .into_iter()
-            .filter_map(|handle| handle.join().ok())
-            .filter_map(|r| r.err())
-            .collect();
-
-        if let Some(e) = errors.into_iter().next() {
-            Err(e)
-        } else {
+    objects
+        .into_par_iter()
+        .try_for_each(|obj| -> anyhow::Result<()> {
+            let prefix = &obj.hash[..2];
+            let dest = objects_dir.join(prefix).join(&obj.hash);
+            let url = format!("{RESOURCES_BASE}{prefix}/{}", obj.hash);
+            download_file(client, &url, &dest, &obj.hash)?;
+            let done = completed.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+            if !progress(done, total) {
+                anyhow::bail!("Cancelled");
+            }
             Ok(())
-        }
-    })?;
+        })?;
 
     Ok(())
 }

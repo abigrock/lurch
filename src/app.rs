@@ -403,51 +403,30 @@ impl App {
                 if let Some(expected) = expected {
                     let mods_dir = mc_dir.join("mods");
 
-                    // Parallel check for existence and corruption using a small thread pool (or chunked scope)
-                    // to avoid the UI freeze on large modpacks.
-                    let num_threads = std::thread::available_parallelism()
-                        .map(|n| n.get())
-                        .unwrap_or(4);
-                    let chunks = expected.chunks((expected.len() / num_threads).max(1));
-
-                    let missing = std::thread::scope(|s| {
-                        let mut handles = Vec::new();
-                        for chunk in chunks {
-                            let mods_dir = mods_dir.clone();
-                            handles.push(s.spawn(move || {
-                                let mut local_missing = Vec::new();
-                                for f in chunk {
-                                    if f.disabled {
-                                        continue;
-                                    }
-                                    let mod_path = mods_dir.join(&f.name);
-                                    let is_missing = if mod_path.exists() {
-                                        !crate::core::is_jar_valid(&mod_path)
-                                    } else {
-                                        let disabled_mod_path =
-                                            mods_dir.join(format!("{}.disabled", f.name));
-                                        if disabled_mod_path.exists() {
-                                            !crate::core::is_jar_valid(&disabled_mod_path)
-                                        } else {
-                                            true // Missing
-                                        }
-                                    };
-
-                                    if is_missing {
-                                        local_missing.push(f.clone());
-                                    }
-                                }
-                                local_missing
-                            }));
-                        }
-                        let mut all_missing = Vec::new();
-                        for h in handles {
-                            if let Ok(res) = h.join() {
-                                all_missing.extend(res);
+                    // Parallel check for existence and corruption using Rayon for better
+                    // load balancing and cleaner code.
+                    use rayon::prelude::*;
+                    let missing: Vec<ModpackModEntry> = expected
+                        .into_par_iter()
+                        .filter(|f| {
+                            if f.disabled {
+                                return false;
                             }
-                        }
-                        all_missing
-                    });
+                            let mod_path = mods_dir.join(&f.name);
+                            let is_missing = if mod_path.exists() {
+                                !crate::core::is_jar_valid(&mod_path)
+                            } else {
+                                let disabled_mod_path =
+                                    mods_dir.join(format!("{}.disabled", f.name));
+                                if disabled_mod_path.exists() {
+                                    !crate::core::is_jar_valid(&disabled_mod_path)
+                                } else {
+                                    true // Missing
+                                }
+                            };
+                            is_missing
+                        })
+                        .collect();
 
                     if !missing.is_empty() {
                         self.missing_mods = Some(MissingModsState {
