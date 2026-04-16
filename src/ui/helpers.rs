@@ -2,6 +2,7 @@ use eframe::egui;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime};
 
+use crate::core::BgTaskSlot;
 use crate::theme::Theme;
 
 pub const SEARCH_DEBOUNCE: Duration = Duration::from_millis(400);
@@ -250,7 +251,7 @@ pub struct SearchState<R: Send + 'static> {
     pub last_edit: Option<Instant>,
     pub initialized: bool,
     #[allow(clippy::type_complexity)]
-    pub pending: Option<Arc<Mutex<Option<Result<R, String>>>>>,
+    pub pending: Option<BgTaskSlot<R>>,
 }
 
 impl<R: Send + 'static> Default for SearchState<R> {
@@ -345,7 +346,7 @@ impl<R: Send + 'static> SearchState<R> {
     where
         F: FnOnce() -> Result<R, String> + Send + 'static,
     {
-        let result: Arc<Mutex<Option<Result<R, String>>>> = Arc::new(Mutex::new(None));
+        let result: BgTaskSlot<R> = Arc::new(Mutex::new(None));
         let result_clone = Arc::clone(&result);
         let ctx_clone = ctx.clone();
         std::thread::spawn(move || {

@@ -297,17 +297,6 @@ pub fn fetch_version_info(
     Ok(info)
 }
 
-/// Fetch the asset index (blocking)
-#[allow(dead_code)]
-pub fn fetch_asset_index(
-    client: &reqwest::blocking::Client,
-    url: &str,
-) -> anyhow::Result<AssetIndex> {
-    let resp = client.get(url).send()?;
-    let index: AssetIndex = resp.json()?;
-    Ok(index)
-}
-
 // ── File download helpers ────────────────────────────────────────────────────
 
 /// Download a file to a path, creating parent dirs. Skips if SHA1 matches.

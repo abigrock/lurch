@@ -139,19 +139,6 @@ impl InstanceDetailView {
         self.installed.iter().map(|m| m.filename.clone()).collect()
     }
 
-    /// Open for a specific tab (e.g., when coming from a specific button).
-    #[allow(dead_code)]
-    pub fn with_tab(mut self, tab: u8) -> Self {
-        self.selected_tab = match tab {
-            0 => DetailTab::Mods,
-            1 => DetailTab::Shaders,
-            2 => DetailTab::Worlds,
-            3 => DetailTab::Servers,
-            _ => DetailTab::Mods,
-        };
-        self
-    }
-
     pub fn show(&mut self, ui: &mut egui::Ui, instance: &Instance, theme: &crate::theme::Theme) {
         // ── Header: back button + instance info ──────────────────
         let row_h = ui.spacing().interact_size.y + 12.0;

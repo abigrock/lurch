@@ -2,6 +2,7 @@ use eframe::egui;
 use std::sync::{Arc, Mutex};
 
 use crate::core::account::{self, Account, AccountStore};
+use crate::core::BgTaskSlot;
 
 enum AuthFlowState {
     Idle,
@@ -9,7 +10,7 @@ enum AuthFlowState {
     WaitingForUser {
         user_code: String,
         verification_uri: String,
-        result: Arc<Mutex<Option<Result<Account, String>>>>,
+        result: BgTaskSlot<Account>,
     },
     /// Auth completed with an error
     Error(String),
@@ -159,7 +160,7 @@ impl AccountsView {
         if let Some(uuid) = refresh_uuid
             && let Some(account) = store.accounts.iter().find(|a| a.uuid == uuid).cloned()
         {
-            let result: Arc<Mutex<Option<Result<Account, String>>>> = Arc::new(Mutex::new(None));
+            let result: BgTaskSlot<Account> = Arc::new(Mutex::new(None));
             let result_clone = Arc::clone(&result);
             let ctx = ui.ctx().clone();
 
@@ -182,7 +183,7 @@ impl AccountsView {
         for uuid in refresh_uuids_to_check {
             let key = egui::Id::new("refresh_result").with(&uuid);
             #[allow(clippy::type_complexity)]
-            let maybe_result: Option<Arc<Mutex<Option<Result<Account, String>>>>> =
+            let maybe_result: Option<BgTaskSlot<Account>> =
                 ui.ctx().data(|d| d.get_temp(key));
             if let Some(arc) = maybe_result {
                 let finished = arc
@@ -193,7 +194,7 @@ impl AccountsView {
                 if finished {
                     let result = arc.lock().ok().and_then(|mut g| g.take());
                     ui.ctx()
-                        .data_mut(|d| d.remove::<Arc<Mutex<Option<Result<Account, String>>>>>(key));
+                        .data_mut(|d| d.remove::<BgTaskSlot<Account>>(key));
                     match result {
                         Some(Ok(updated)) => {
                             store.add_or_update(updated);
@@ -216,7 +217,7 @@ impl AccountsView {
         let waiting_data: Option<(
             String,
             String,
-            Arc<Mutex<Option<Result<Account, String>>>>,
+            BgTaskSlot<Account>,
         )> = if let AuthFlowState::WaitingForUser {
             user_code,
             verification_uri,
@@ -440,7 +441,7 @@ impl AccountsView {
     }
 
     fn start_microsoft_login(&mut self, ui: &mut egui::Ui) {
-        let result: Arc<Mutex<Option<Result<Account, String>>>> = Arc::new(Mutex::new(None));
+        let result: BgTaskSlot<Account> = Arc::new(Mutex::new(None));
         let result_clone = Arc::clone(&result);
         let ctx = ui.ctx().clone();
 

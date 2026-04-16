@@ -422,7 +422,7 @@ impl InstancesView {
                 {
                     match crate::core::import_export::detect_archive_type(&path) {
                         Ok(crate::core::import_export::ArchiveType::LurchExport) => {
-                            let slot: Arc<Mutex<Option<Result<Instance, String>>>> =
+                            let slot: crate::core::BgTaskSlot<crate::core::instance::Instance> =
                                 Arc::new(Mutex::new(None));
                             let slot_clone = Arc::clone(&slot);
                             let ctx_clone = ui.ctx().clone();

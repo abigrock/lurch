@@ -172,11 +172,6 @@ impl Instance {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn remove_mod_origin(&mut self, filename: &str) {
-        self.mod_origins.retain(|o| o.filename != filename);
-    }
-
     pub fn reconcile_mod_origins(&mut self, installed_filenames: &[String]) {
         let base_names: Vec<&str> = installed_filenames
             .iter()

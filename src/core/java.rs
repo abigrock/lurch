@@ -353,18 +353,6 @@ pub fn recommended_java_version(mc_version: &str) -> u32 {
     }
 }
 
-/// Find the best matching installed Java for a Minecraft version
-#[allow(dead_code)]
-pub fn find_best_java(mc_version: &str, installs: &[JavaInstall]) -> Option<usize> {
-    let recommended = recommended_java_version(mc_version);
-    // Exact major match first
-    if let Some(idx) = installs.iter().position(|i| i.major == recommended) {
-        return Some(idx);
-    }
-    // Fall back to any Java >= recommended
-    installs.iter().position(|i| i.major >= recommended)
-}
-
 /// Download and install a Java JRE from Adoptium.
 /// `progress_cb` is called with status messages during the process.
 /// Returns the newly installed `JavaInstall` with `managed = true`.

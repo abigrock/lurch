@@ -136,6 +136,39 @@ pub struct JavaPromptState {
     pub component: Option<String>,
 }
 
+/// Process distribution-blocked CurseForge mods that need manual download.
+fn handle_skipped_mods(
+    skipped: &[curseforge_modpack::SkippedMod],
+    mods_dir: Option<std::path::PathBuf>,
+    pending_manual_downloads: &mut Vec<PendingManualDownload>,
+    toasts: &mut Vec<Toast>,
+    show_manual_downloads_dialog: &mut bool,
+) {
+    if skipped.is_empty() {
+        return;
+    }
+    for sm in skipped.iter() {
+        let url = crate::core::curseforge::curseforge_file_download_url(
+            &sm.slug,
+            sm.file_id,
+            sm.website_url.as_deref(),
+        );
+        if let Some(ref target) = mods_dir {
+            pending_manual_downloads.push(PendingManualDownload {
+                file_name: sm.file_name.clone(),
+                display_name: sm.display_name.clone(),
+                target_dir: target.clone(),
+                download_url: url,
+            });
+        }
+    }
+    toasts.push(Toast::error(format!(
+        "{} mod(s) need manual download. Watching your Downloads folder",
+        skipped.len()
+    )));
+    *show_manual_downloads_dialog = true;
+}
+
 impl App {
     pub fn new(ctx: egui::Context) -> Self {
         let config = AppConfig::load();
@@ -514,29 +547,8 @@ impl App {
                 // Handle skipped (distribution-blocked) mods
                 if let Some(skipped_slot) = &task.skipped_slot {
                     let skipped = skipped_slot.lock_or_recover();
-                    if !skipped.is_empty() {
-                        let mods_dir = inst.minecraft_dir().ok().map(|d| d.join("mods"));
-                        for sm in skipped.iter() {
-                            let url = crate::core::curseforge::curseforge_file_download_url(
-                                &sm.slug,
-                                sm.file_id,
-                                sm.website_url.as_deref(),
-                            );
-                            if let Some(ref target) = mods_dir {
-                                self.pending_manual_downloads.push(PendingManualDownload {
-                                    file_name: sm.file_name.clone(),
-                                    display_name: sm.display_name.clone(),
-                                    target_dir: target.clone(),
-                                    download_url: url,
-                                });
-                            }
-                        }
-                        self.toasts.push(Toast::error(format!(
-                            "{} mod(s) need manual download. Watching your Downloads folder",
-                            skipped.len()
-                        )));
-                        self.show_manual_downloads_dialog = true;
-                    }
+                    let mods_dir = inst.minecraft_dir().ok().map(|d| d.join("mods"));
+                    handle_skipped_mods(&skipped, mods_dir, &mut self.pending_manual_downloads, &mut self.toasts, &mut self.show_manual_downloads_dialog);
                 }
 
                 self.instances.push(inst);
@@ -579,28 +591,7 @@ impl App {
                 // Handle skipped (distribution-blocked) mods from CF update
                 if let Some(skipped_slot) = &task.skipped_slot {
                     let skipped = skipped_slot.lock_or_recover();
-                    if !skipped.is_empty() {
-                        if let Some(ref target) = mods_dir {
-                            for sm in skipped.iter() {
-                                let url = crate::core::curseforge::curseforge_file_download_url(
-                                    &sm.slug,
-                                    sm.file_id,
-                                    sm.website_url.as_deref(),
-                                );
-                                self.pending_manual_downloads.push(PendingManualDownload {
-                                    file_name: sm.file_name.clone(),
-                                    display_name: sm.display_name.clone(),
-                                    target_dir: target.clone(),
-                                    download_url: url,
-                                });
-                            }
-                        }
-                        self.toasts.push(Toast::error(format!(
-                            "{} mod(s) need manual download. Watching your Downloads folder",
-                            skipped.len()
-                        )));
-                        self.show_manual_downloads_dialog = true;
-                    }
+                    handle_skipped_mods(&skipped, mods_dir.clone(), &mut self.pending_manual_downloads, &mut self.toasts, &mut self.show_manual_downloads_dialog);
                 }
 
                 self.toasts
@@ -722,6 +713,12 @@ impl App {
     }
 
     fn handle_view_requests(&mut self, ctx: &egui::Context) {
+        let modpack_manager = crate::core::modpack_manager::ModpackManager::new(
+            self.http_client.clone(),
+            self.config.default_min_memory_mb,
+            self.config.default_max_memory_mb,
+        );
+
         // Remove toasts that views have flagged for replacement
         if !self.instances_view.toast_removals.is_empty() {
             let removals: Vec<String> = self.instances_view.toast_removals.drain(..).collect();
@@ -767,13 +764,8 @@ impl App {
 
         // Handle modpack install requests from instances view
         if let Some(req) = self.instances_view.modpack_browser.install_requested.take() {
-            let manager = crate::core::modpack_manager::ModpackManager::new(
-                self.http_client.clone(),
-                self.config.default_min_memory_mb,
-                self.config.default_max_memory_mb,
-            );
             let label = format!("Modpack: {}", req.title);
-            let (progress, instance_slot) = manager.install_modpack(
+            let (progress, instance_slot) = modpack_manager.install_modpack(
                 req.project_id,
                 req.title,
                 req.icon_url,
@@ -798,13 +790,8 @@ impl App {
             .cf_install_requested
             .take()
         {
-            let manager = crate::core::modpack_manager::ModpackManager::new(
-                self.http_client.clone(),
-                self.config.default_min_memory_mb,
-                self.config.default_max_memory_mb,
-            );
             let label = format!("CurseForge: {}", req.title);
-            let (progress, instance_slot, skipped) = manager.install_cf_modpack(
+            let (progress, instance_slot, skipped) = modpack_manager.install_cf_modpack(
                 req.mod_id,
                 req.title,
                 req.icon_url,
@@ -824,12 +811,7 @@ impl App {
 
         // Handle local modpack imports from instances view
         if let Some(path) = self.instances_view.local_mrpack_import.take() {
-            let manager = crate::core::modpack_manager::ModpackManager::new(
-                self.http_client.clone(),
-                self.config.default_min_memory_mb,
-                self.config.default_max_memory_mb,
-            );
-            let (progress, instance_slot) = manager.import_local_mrpack(path, ctx);
+            let (progress, instance_slot) = modpack_manager.import_local_mrpack(path, ctx);
             self.background_tasks.push(BackgroundTask {
                 id: format!("modpack-import-{}", uuid::Uuid::new_v4()),
                 label: "Modpack Import".to_string(),
@@ -840,12 +822,7 @@ impl App {
             });
         }
         if let Some(path) = self.instances_view.local_cf_modpack_import.take() {
-            let manager = crate::core::modpack_manager::ModpackManager::new(
-                self.http_client.clone(),
-                self.config.default_min_memory_mb,
-                self.config.default_max_memory_mb,
-            );
-            let (progress, instance_slot) = manager.import_local_cf_modpack(path, ctx);
+            let (progress, instance_slot) = modpack_manager.import_local_cf_modpack(path, ctx);
             self.background_tasks.push(BackgroundTask {
                 id: format!("modpack-import-{}", uuid::Uuid::new_v4()),
                 label: "CurseForge Import".to_string(),
