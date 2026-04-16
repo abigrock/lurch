@@ -15,9 +15,9 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 
 - **Language**: Rust (edition 2024)
 - **GUI**: eframe/egui (immediate mode)
-- **Entry**: `src/main.rs` → `src/app.rs` (central `App` struct, ~1800 LOC)
+- **Entry**: `src/main.rs` → `src/app.rs` (central `App` struct, ~1900 LOC)
 - **Pattern**: Background threads + `Arc<Mutex<T>>` polling, UI request flags → App dispatch
-- **Total**: ~17.6k LOC total, ~8.1k LOC in UI layer, ~7.1k LOC in `core/` business logic
+- **Total**: ~17.9k LOC total, ~8.2k LOC in UI layer, ~7.2k LOC in `core/` business logic
 
 ## Key Conventions
 
@@ -29,12 +29,13 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
 - **View-level background tasks** — views can own their own `BgTaskSlot<T>` fields (e.g., `export_task`, `import_task` in `InstancesView`) for view-scoped background work, polled in the view's `show()` method rather than `App::poll_background_tasks()`
 - **Toast replacement** — for multi-step operations that show progress toasts, views use `pending_toasts: Vec<Toast>` (drained to `App.toasts` in `handle_view_requests()`) and `toast_removals: Vec<String>` (processed first to remove stale toasts before adding new ones) to cleanly swap "in-progress" toasts with result toasts in the same frame
 - File downloads are SHA1-verified via `crate::core::sha1_hex()` (wraps `sha1_smol`). Downloads without SHA1 (Maven-style loader libs, Forge installer, some mods) use **post-download JAR validation** via `validate_jar()` / `is_jar_valid()` to detect truncated or corrupt `.jar` files.
-- Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `validate_jar()`, `is_jar_valid()`, `maven_path()`, `extract_zip_overrides()`, `MutexExt` trait, `CommandHideConsole` trait (suppresses console window on Windows for `Command::new` calls), `BgTaskSlot<T>` type alias (`Arc<Mutex<Option<Result<T, String>>>>`)
+- Shared utilities in `src/core/mod.rs`: `USER_AGENT`, `http_client()`, `sha1_hex()`, `validate_jar()`, `is_jar_valid()`, `strip_ansi()`, `maven_path()`, `extract_zip_overrides()`, `MutexExt` trait, `CommandHideConsole` trait (suppresses console window on Windows for `Command::new` calls), `BgTaskSlot<T>` type alias (`Arc<Mutex<Option<Result<T, String>>>>`)
 - JSON persistence for config, instances, accounts in platform directories (`src/util/paths.rs`)
 - Mod loaders: Vanilla, Forge, NeoForge, Fabric, Quilt — profiles merged in `src/core/loader_profiles.rs`
 - **Image loading** — uses egui's built-in loaders (`egui_extras::install_image_loaders` in `main.rs`, `all_loaders` feature). Display with `egui::Image::new(url).fit_to_exact_size(size)`. No custom image cache.
-- **Missing mod detection** — modpack installs write `.modpack_mods.json` (JSON array of `ModpackModEntry` structs with name, download_url, manual flag, slug, file_id, website_url) into `<minecraft_dir>/`. Pre-launch check in `do_launch()` reads this file, verifies each mod exists in `mods/`, and shows `MissingModsState` dialog if any are missing. Dialog offers "Download Missing" (auto-downloads + manual download flow for blocked mods), "Launch Anyway" (bypasses via `force_launch_requested`), or "Cancel". Backward-compatible with legacy `Vec<String>` format.
+- **Missing mod detection** — modpack installs write `.modpack_mods.json` (JSON array of `ModpackModEntry` structs with `display_name`, `download_url`, `disabled`, `manual` flags, slug, file_id, website_url, and CF metadata) into `<minecraft_dir>/`. Pre-launch check in `do_launch()` reads this file, verifies each mod exists in `mods/`, and shows `MissingModsState` dialog if any are missing. Dialog offers "Download Missing" (auto-downloads + manual download flow for blocked mods), "Launch Anyway" (bypasses via `force_launch_requested`), or "Cancel". Backward-compatible with legacy `Vec<String>` format.
 - **Modpack updates** — clicking "Update available" badge opens the version picker (pre-selects latest) instead of auto-updating. Updates propagate `mc_version`, `loader`, and `loader_version` to the instance via `UpdatedModpackMeta`. Stale mods (present in old `.modpack_mods.json` but absent from the new version) are automatically removed from `mods/` during version changes.
+- **Mod count caching** — `InstancesView` caches mod counts (`mod_counts` HashMap) and uses a `mod_counts_dirty` flag to avoid expensive filesystem scans every frame. Mod counts are recalculated when instances are added/removed or when a view explicitly sets the dirty flag.
 
 ### Theme & Styling
 - Theme engine in `src/theme/mod.rs` — 33 bundled themes + user JSON themes
@@ -49,7 +50,7 @@ For deep work on a specific folder, also read that folder's `codemap.md`.
   - `menu_item(label)` — fg_dim text, no custom fill/stroke (denser, for popup menus)
 - **Size constants**: `BUTTON_HEIGHT = 32.0`, `TAB_HEIGHT = 28.0`
 - **Other helpers**: `section_header()` (15pt bold fg), `title()` (bold fg), `subtext()` (12pt fg_muted), `card_frame()` (bg_secondary fill), `sidebar_frame()`, `topbar_frame()` (bg_tertiary), `code_frame()` (bg_tertiary), `content_frame()` (bg fill), `badge_frame(fill)` (pill), `style_menu(ui)`, `mono_font()`
-- UI helpers (`src/ui/helpers.rs`): `section_heading()` (wraps theme's `section_header`), `card_frame()`, `card_grid()`, `SearchState<R>` generic, `row_hover_highlight()`, `project_tooltip()`, `load_more_button()`, `empty_state()`, `format_human_timestamp()`, `tab_button()` (uses `TAB_HEIGHT`)
+- UI helpers (`src/ui/helpers.rs`): `section_heading()` (wraps theme's `section_header`), `card_frame()`, `card_grid()`, `SearchState<R>` generic, `row_hover_highlight()`, `project_tooltip()`, `load_more_button()`, `empty_state()`, `format_human_timestamp()`, `tab_button()` (uses `TAB_HEIGHT`), `closable_tab_button()` (supports active state and close button)
 - **Browse component** (`src/ui/browse_common.rs`): shared `BrowseTab` struct used by mod and modpack browsers — handles search, filtering, sorting, list/grid rendering, pagination
 
 ### UI Layout Patterns

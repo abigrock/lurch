@@ -1,7 +1,7 @@
 # src/ui/instances/
 
 ## Responsibility
-Instance management UI — instance list/grid, creation dialogs, modpack browsing, and routing to per-instance detail views. Heaviest UI submodule (~5000 LOC).
+Instance management UI — instance list/grid, creation dialogs, modpack browsing, and routing to per-instance detail views. Heaviest UI submodule (~5400 LOC).
 
 ## Design
 - **ViewMode enum**: `List` (instance grid + create dialog), `Modpacks` (delegates to `ModpackBrowser`), `Detail(view)` (delegates to `InstanceDetailView`)
@@ -14,11 +14,11 @@ Instance management UI — instance list/grid, creation dialogs, modpack browsin
 
 | Module | LOC | Purpose |
 |--------|-----|---------|
-| `mod.rs` | ~1490 | `InstancesView`: instance list, modpack view delegation; responsive header with progressive collapse (wide >800 / medium / narrow ≤550); background export/import with toast replacement; delegates create/edit to child modules |
+| `mod.rs` | ~1700 | `InstancesView`: instance list, modpack view delegation; responsive header with progressive collapse (wide >800 / medium / narrow ≤550); background export/import with toast replacement; delegates create/edit to child modules |
 | `modpack_browser.rs` | ~600 | `ModpackBrowser`: Modrinth + CurseForge modpack search/browse/install UI |
 | `create_dialog.rs` | ~460 | Create instance dialog: Vanilla + import tabs; spawns import background thread |
-| `edit_dialog.rs` | ~488 | Edit instance dialog + delete confirmation |
-| `detail/` | ~2000 | Per-instance detail view with tabbed content management |
+| `edit_dialog.rs` | ~490 | Edit instance dialog + delete confirmation |
+| `detail/` | ~2100 | Per-instance detail view with tabbed content management |
 
 ## Flow
 1. Instance list renders all loaded instances as cards

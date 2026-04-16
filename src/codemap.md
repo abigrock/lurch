@@ -5,12 +5,12 @@ Application root — contains the entry point, central App orchestrator, and all
 
 ## Design
 - **`main.rs`**: Entry point — configures eframe native options (1100x700 window, icon), loads Phosphor icon fonts, creates `App` instance, runs event loop
-- **`app.rs`**: Central `App` struct (~1800 lines) — holds all application state, implements `eframe::App`. Orchestrates:
+- **`app.rs`**: Central `App` struct (~1900 lines) — holds all application state, implements `eframe::App`. Orchestrates:
   - Background task polling via `Arc<Mutex<T>>` slots
   - View request handling (UI sets flags → App dispatches to core logic)
   - Game launching, modpack installs/updates, Java management
   - State management for instances, accounts, config, running processes
-- **`core/`**: Business logic layer (19 modules)
+- **`core/`**: Business logic layer (21 modules)
 - **`ui/`**: GUI presentation layer (7 modules + nested instance views)
 - **`theme/`**: JSON-based theme engine with 33 bundled themes
 - **`util/`**: Platform directory resolution

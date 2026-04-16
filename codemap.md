@@ -5,7 +5,7 @@ A Minecraft launcher written in Rust using eframe/egui, supporting multiple mod 
 
 ## System Entry Points
 - `src/main.rs`: Application entry — configures eframe window, loads fonts, creates App
-- `src/app.rs`: Central orchestrator (~1800 lines) — all state, background task polling, request dispatch
+- `src/app.rs`: Central orchestrator (~1900 lines) — all state, background task polling, request dispatch
 - `Cargo.toml`: Dependency manifest (eframe 0.34.1, egui 0.34.1, reqwest, serde, tokio, etc.)
 
 ## Architecture Overview
@@ -26,9 +26,9 @@ main.rs → App::new() → eframe event loop
 | Directory | Responsibility | Detailed Map |
 |-----------|---------------|--------------|
 | `src/` | Application root: entry point, App struct, module organization | [View Map](src/codemap.md) |
-| `src/core/` | Business logic: auth, launch, versions, mods, Java, instances (19 modules) | [View Map](src/core/codemap.md) |
+| `src/core/` | Business logic: auth, launch, versions, mods, Java, instances (21 modules) | [View Map](src/core/codemap.md) |
 | `src/ui/` | GUI presentation: views, sidebar, helpers (egui immediate-mode) | [View Map](src/ui/codemap.md) |
-| `src/ui/instances/` | Instance management UI: list, creation, modpack browser (~5000 LOC) | [View Map](src/ui/instances/codemap.md) |
+| `src/ui/instances/` | Instance management UI: list, creation, modpack browser (~5400 LOC) | [View Map](src/ui/instances/codemap.md) |
 | `src/ui/instances/detail/` | Per-instance detail: tabbed mods/worlds/shaders/servers management | [View Map](src/ui/instances/detail/codemap.md) |
 | `src/theme/` | Theme engine: 33 bundled themes, user themes, styling helpers | [View Map](src/theme/codemap.md) |
 | `src/util/` | Utilities: platform directory resolution | [View Map](src/util/codemap.md) |

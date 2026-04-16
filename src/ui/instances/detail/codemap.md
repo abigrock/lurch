@@ -15,14 +15,14 @@ Per-instance detail view — tabbed interface for managing a single instance's c
 
 | Module | LOC | Purpose |
 |--------|-----|---------|
-| `mod.rs` | ~327 | `InstanceDetailView`: tab coordinator, owns all tab state |
-| `mods_tab/mod.rs` | ~368 | Tab switcher + version picker (shared) |
-| `mods_tab/installed.rs` | ~397 | Installed mods list: scan, filter, toggle, update |
-| `mods_tab/browse_mr.rs` | ~185 | Modrinth mod browse + install |
-| `mods_tab/browse_cf.rs` | ~189 | CurseForge mod browse + install |
-| `servers_tab.rs` | ~229 | Servers: NBT server list, add/edit/remove/reorder |
-| `shaders_tab.rs` | ~200 | Shaders: scan/enable/disable/remove shader packs |
-| `worlds_tab.rs` | ~145 | Worlds: list saves with sizes, delete |
+| `mod.rs` | 327 | `InstanceDetailView`: tab coordinator, owns all tab state |
+| `mods_tab/mod.rs` | ~350 | Tab switcher + version picker (shared) |
+| `mods_tab/installed.rs` | ~420 | Installed mods list: scan, filter, toggle, update |
+| `mods_tab/browse_mr.rs` | ~190 | Modrinth mod browse + install |
+| `mods_tab/browse_cf.rs` | ~200 | CurseForge mod browse + install |
+| `servers_tab.rs` | ~260 | Servers: NBT server list, add/edit/remove/reorder |
+| `shaders_tab.rs` | ~230 | Shaders: scan/enable/disable/remove shader packs |
+| `worlds_tab.rs` | ~160 | Worlds: list saves with sizes, delete |
 
 ## Flow
 1. User selects instance → `InstanceDetailView::show()` called
